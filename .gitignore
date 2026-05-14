@@ -1,0 +1,13 @@
+sentinel.db
+mock_data/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.DS_Store
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.vite/
+*.egg-info/
+dist/
+build/
