@@ -114,14 +114,15 @@ def run_anomaly_detector():
     # Model
     model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
     model.fit(X_scaled)
-    # IsolationForest returns -1 for anomalies, 1 for normal.
-    # We want a score where higher is more anomalous.
-    df_features['anomaly_score'] = -model.decision_function(X_scaled)
     
-    # Min-max scale the score to 0-10
-    min_s = df_features['anomaly_score'].min()
-    max_s = df_features['anomaly_score'].max()
-    df_features['normalized_score'] = (df_features['anomaly_score'] - min_s) / (max_s - min_s) * 10
+    # score_samples returns negative values (more negative = more anomalous)
+    raw_scores = model.score_samples(X_scaled)
+    
+    # Normalize to 0-1 where 1.0 = most anomalous
+    min_score = raw_scores.min()
+    max_score = raw_scores.max()
+    normalized = (raw_scores - min_score) / (max_score - min_score)
+    df_features['normalized_score'] = 1.0 - normalized
     
     # Store scores
     print("Storing anomaly scores...")
@@ -160,7 +161,7 @@ def run_anomaly_detector():
     df_eval = df_alerts.merge(df_features, left_on=['emp_id', 'alert_date'], right_on=['emp_id', 'score_date'], how='left')
     
     initial_alerts = len(df_alerts)
-    reduced_alerts = len(df_eval[df_eval['normalized_score'] > 2.0])
+    reduced_alerts = len(df_eval[df_eval['normalized_score'] > 0.2])
     reduction = (initial_alerts - reduced_alerts) / initial_alerts if initial_alerts > 0 else 0
     
     print(f"\n=== ANOMALY DETECTOR SUMMARY ===")

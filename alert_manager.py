@@ -48,11 +48,11 @@ def run_alert_manager():
         score = row['anomaly_score']
         sev = row['severity']
         
-        if score > 8.0: return "Critical"
-        if score > 5.0:
+        if score > 0.8: return "Critical"
+        if score > 0.5:
             if sev == "High": return "Critical"
             return "High"
-        if score < 1.0:
+        if score < 0.3:
             if sev == "Critical": return "High"
             if sev == "High": return "Medium"
             return "Suppressed" # Demote Low/Medium with low anomaly score
