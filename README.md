@@ -12,7 +12,7 @@ built for Epic-based Federally Qualified Health Centers*
 ! `https://img.shields.io/badge/Python-3.11+-blue`
 ! `https://img.shields.io/badge/FastAPI-0.100+-green`
 ! `https://img.shields.io/badge/React-18-61DAFB`
-! `https://img.shields.io/badge/SQLite-3-lightgrey`
+! `https://img.shields.io/badge/PostgreSQL-15-blue`
 ! `https://img.shields.io/badge/Status-Prototype-orange`
 
 </div>
@@ -59,12 +59,11 @@ urgently. No PHI ever leaves Epic.
 
 | Metric | Result |
 |--------|--------|
-| Audit events processed | 408,448 |
+| Audit events processed | 405,168 |
 | Employees monitored | 80 |
-| Active security signals | 670 |
-| False positive reduction (ML) | 52.8% |
-| High-severity alert precision | 86% |
-| Injected threat actors detected | 4 / 4 |
+| Active security signals | 833 active security signals (Critical: 184, High: 321, Medium: 328) |
+| False positive reduction (ML) | 400 low-confidence alerts suppressed through ML scoring |
+| Injected threat actors detected | all four detected with mean scores 0.51-0.83 |
 | Threat types caught | Bulk Export, VIP Snooping, Off-Hours, Cross-Department |
 
 ---
