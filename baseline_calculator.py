@@ -1,57 +1,43 @@
-import sqlite3
 import pandas as pd
 import numpy as np
 import time
 import os
 from datetime import datetime, timezone
+from db import get_connection
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+
+load_dotenv()
 
 # ─── CONFIGURATION ──────────────────────────────────────────
-DB_PATH = "./sentinel.db"
 BASELINE_WINDOW_DAYS = 90
 COLD_START_THRESHOLD = 30
 LOG_WARNINGS = []
 
 def get_db_connection():
-    return sqlite3.connect(DB_PATH)
+    return get_connection()
 
 def setup_baseline_table(conn):
-    cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS user_baselines (
-        emp_id INTEGER PRIMARY KEY,
-        role TEXT,
-        is_float INTEGER,
-        baseline_type TEXT,
-        avg_daily_volume REAL,
-        std_daily_volume REAL,
-        max_daily_volume_p95 REAL,
-        off_hours_rate REAL,
-        in_panel_rate REAL,
-        export_print_rate REAL,
-        break_glass_rate REAL,
-        cross_dept_rate REAL,
-        avg_unique_patients_day REAL,
-        std_unique_patients_day REAL,
-        primary_dept_id INTEGER,
-        days_of_data INTEGER,
-        baseline_window_days INTEGER,
-        last_calculated_at TEXT
-    )
-    """)
-    conn.commit()
+    # Handled by setup_db.py
+    pass
 
 def calculate_baselines():
     start_time = time.time()
     conn = get_db_connection()
-    setup_baseline_table(conn)
     
     # Load data
-    print("Loading data from sentinel.db...")
-    df_audit = pd.read_sql_query("SELECT * FROM audit_events WHERE is_known_user = 1", conn)
-    df_emp = pd.read_sql_query("SELECT * FROM employees", conn)
+    print("Loading data from Neon PostgreSQL...")
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    engine = create_engine(DATABASE_URL)
+    
+    df_audit = pd.read_sql_query("SELECT * FROM audit_events WHERE is_known_user = 1", engine)
+    df_emp = pd.read_sql_query("SELECT * FROM employees", engine)
     
     if df_audit.empty:
         print("No audit events found for known users.")
+        conn.close()
         return
 
     df_audit['action_datetime'] = pd.to_datetime(df_audit['action_datetime'])
@@ -204,44 +190,31 @@ def calculate_baselines():
                 if col not in ['role', 'is_float', 'emp_id', 'days_of_data']:
                     d[col] = fallback[col]
         else:
-            # Absolute fallback if even role group has no seniors (shouldn't happen with our mock data)
-            d.update({
-                'avg_daily_volume': 0.0, 'std_daily_volume': 1.0, 'max_daily_volume_p95': 0.0,
-                'off_hours_rate': 0.0, 'in_panel_rate': 1.0, 'export_print_rate': 0.0,
-                'break_glass_rate': 0.0, 'cross_dept_rate': 0.0,
-                'avg_unique_patients_day': 0.0, 'std_unique_patients_day': 1.0,
-                'primary_dept_id': emp_info['dept_id']
-            })
+            # Absolute fallback if no one in the role has data
+            for col in ['avg_daily_volume', 'std_daily_volume', 'max_daily_volume_p95', 
+                        'off_hours_rate', 'in_panel_rate', 'export_print_rate', 
+                        'break_glass_rate', 'cross_dept_rate', 'avg_unique_patients_day', 
+                        'std_unique_patients_day']:
+                d[col] = 0.0
+            d['primary_dept_id'] = emp_info['dept_id']
+            
         final_baselines.append(d)
-
+        
     # Store in DB
-    print(f"Storing {len(final_baselines)} baselines in sentinel.db...")
+    print(f"Storing {len(final_baselines)} baselines in user_baselines table...")
     df_final = pd.DataFrame(final_baselines)
     
-    # Final normalization: ensure std >= 1.0
-    df_final['std_daily_volume'] = df_final['std_daily_volume'].clip(lower=1.0)
-    df_final['std_unique_patients_day'] = df_final['std_unique_patients_day'].clip(lower=1.0)
+    cursor = conn.cursor()
+    cursor.execute("TRUNCATE TABLE user_baselines") # Clear old baselines
+    conn.commit()
     
-    df_final.to_sql('user_baselines', conn, if_exists='replace', index=False)
-    conn.close()
+    df_final.to_sql('user_baselines', engine, if_exists='append', index=False)
     
     runtime = time.time() - start_time
-    
-    # Summary
-    print("\n=== BASELINE CALCULATION SUMMARY ===")
-    print(f"Total baselines stored:   {len(df_final)}")
-    print(f"Personal baselines:       {len(df_final[df_final['baseline_type'] == 'personal'])}")
-    print(f"Role-group baselines:     {len(df_final[df_final['baseline_type'] == 'role_group'])}")
-    print("\nBreakdown by role:")
-    print(df_final['role'].value_counts())
-    
-    if LOG_WARNINGS:
-        print("\nWarnings:")
-        for w in set(LOG_WARNINGS):
-            print(f" - {w}")
-            
-    print(f"\nScript runtime:           {runtime:.2f} seconds")
-    print("==========================================================")
+    print(f"Baseline calculation complete in {runtime:.2f} seconds.")
+    print(f"Personal Baselines: {len(personal_df)}")
+    print(f"Role-Group Baselines: {len(final_baselines) - len(personal_df)}")
+    conn.close()
 
 if __name__ == "__main__":
     calculate_baselines()

@@ -1,185 +1,105 @@
-import sqlite3
+import pandas as pd
+import numpy as np
 import os
+import time
 from datetime import datetime, timezone
+from db import get_connection
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
 
-# ─── CONFIGURATION ──────────────────────────────────────────
-DB_PATH = "./sentinel.db"
+load_dotenv()
 
 def get_db_connection():
-    return sqlite3.connect(DB_PATH)
+    return get_connection()
 
-def setup_alert_management(conn):
-    cursor = conn.cursor()
+def run_alert_manager():
+    start_time = time.time()
+    conn = get_db_connection()
     
-    # Idempotent column additions
-    cursor.execute("PRAGMA table_info(alerts)")
-    existing_cols = [row[1] for row in cursor.fetchall()]
-    
-    col_definitions = {
-        'status': "TEXT DEFAULT 'open'",
-        'reviewer_notes': "TEXT DEFAULT ''",
-        'priority_rank': "INTEGER",
-        'reviewed_by': "TEXT DEFAULT ''",
-        'reviewed_at': "TEXT DEFAULT ''"
-    }
-    
-    for col, definition in col_definitions.items():
-        if col not in existing_cols:
-            cursor.execute(f"ALTER TABLE alerts ADD COLUMN {col} {definition}")
-            print(f"Added column: {col}")
-            
-    conn.commit()
-
-def compute_priority_rank(conn):
     print("Computing priority rankings for alerts...")
-    cursor = conn.cursor()
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    engine = create_engine(DATABASE_URL)
     
-    # Assign priority_rank based on severity tier and anomaly_score
-    # Tier mapping: Critical=1, High=2, Medium=3
-    cursor.execute("""
-        WITH ranked_alerts AS (
-            SELECT 
-                alert_id,
-                adjusted_severity,
-                anomaly_score,
-                alert_date,
-                CASE 
-                    WHEN adjusted_severity = 'Critical' THEN 1
-                    WHEN adjusted_severity = 'High' THEN 2
-                    WHEN adjusted_severity = 'Medium' THEN 3
-                    ELSE 4
-                END as tier
-            FROM alerts
-            WHERE adjusted_severity != 'Suppressed'
-        )
-        SELECT 
-            alert_id,
-            ROW_NUMBER() OVER (
-                ORDER BY tier ASC, anomaly_score DESC, alert_date DESC
-            ) as new_rank
-        FROM ranked_alerts
-    """)
+    # Load alerts and anomaly scores
+    df_alerts = pd.read_sql_query("SELECT * FROM alerts", engine)
+    df_scores = pd.read_sql_query("SELECT * FROM anomaly_scores", engine)
     
-    ranks = cursor.fetchall()
-    
-    # Update priority_rank for non-suppressed alerts
-    cursor.executemany(
-        "UPDATE alerts SET priority_rank = ? WHERE alert_id = ?",
-        [(r[1], r[0]) for r in ranks]
-    )
-    
-    # Set priority_rank for suppressed alerts
-    cursor.execute("UPDATE alerts SET priority_rank = 9999 WHERE adjusted_severity = 'Suppressed'")
-    
-    conn.commit()
-
-def enhance_explanations(conn):
-    print("Enhancing alert explanations with ML context...")
-    cursor = conn.cursor()
-    
-    # Population mean from anomaly_detector.py summary was ~0.22
-    POP_MEAN = 0.22
-    
-    # Update explanation where not already enhanced
-    cursor.execute(f"""
-        UPDATE alerts 
-        SET explanation = explanation || ' | ML Anomaly Score: ' || printf('%.2f', anomaly_score) || ' (population mean: {POP_MEAN})'
-        WHERE anomaly_score > 0 
-        AND explanation NOT LIKE '% | ML Anomaly Score%'
-    """)
-    
-    conn.commit()
-
-def create_views(conn):
-    print("Creating SQLite views for dashboarding...")
-    cursor = conn.cursor()
-    
-    # VIEW: active_alerts
-    cursor.execute("DROP VIEW IF EXISTS active_alerts")
-    cursor.execute("""
-        CREATE VIEW active_alerts AS
-        SELECT * FROM alerts
-        WHERE adjusted_severity != 'Suppressed'
-        AND status != 'resolved'
-        ORDER BY priority_rank ASC
-    """)
-    
-    # VIEW: daily_digest
-    cursor.execute("DROP VIEW IF EXISTS daily_digest")
-    cursor.execute("""
-        CREATE VIEW daily_digest AS
-        SELECT 
-            alert_date,
-            COUNT(*) as total_alerts,
-            SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END) as critical_count,
-            SUM(CASE WHEN adjusted_severity = 'High' THEN 1 ELSE 0 END) as high_count,
-            SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium_count,
-            MAX(anomaly_score) as top_score
-        FROM alerts
-        WHERE adjusted_severity != 'Suppressed'
-        GROUP BY alert_date
-        ORDER BY alert_date DESC
-    """)
-    
-    conn.commit()
-
-def print_summary(conn):
-    cursor = conn.cursor()
-    
-    # Total active alerts
-    cursor.execute("""
-        SELECT 
-            COUNT(*),
-            SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN adjusted_severity = 'High' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END)
-        FROM alerts
-        WHERE adjusted_severity != 'Suppressed'
-        AND status != 'resolved'
-    """)
-    total, critical, high, medium = cursor.fetchone()
-    
-    # Top 5 highest priority alerts
-    cursor.execute("""
-        SELECT emp_id, alert_date, adjusted_severity, anomaly_score, explanation
-        FROM alerts
-        WHERE adjusted_severity != 'Suppressed'
-        AND status != 'resolved'
-        ORDER BY priority_rank ASC
-        LIMIT 5
-    """)
-    top_alerts = cursor.fetchall()
-    
-    # Date range of digest
-    cursor.execute("SELECT MIN(alert_date), MAX(alert_date) FROM daily_digest")
-    min_date, max_date = cursor.fetchone()
-    
-    print("\n=== ALERT MANAGEMENT SUMMARY ===")
-    print(f"Total active alerts (non-suppressed): {total or 0}")
-    print(f" - Critical: {critical or 0}")
-    print(f" - High:     {high or 0}")
-    print(f" - Medium:   {medium or 0}")
-    
-    print("\nTop 5 Highest Priority Alerts:")
-    print(f"{'EMP_ID':<8} | {'DATE':<12} | {'SEVERITY':<10} | {'SCORE':<6} | {'EXPLANATION (PREVIEW)'}")
-    print("-" * 85)
-    for a in top_alerts:
-        explanation_preview = a[4][:100].replace('\n', ' ') + "..."
-        print(f"{a[0]:<8} | {a[1]:<12} | {a[2]:<10} | {a[3]:<6.2f} | {explanation_preview}")
+    if df_alerts.empty:
+        print("No alerts to process.")
+        conn.close()
+        return
         
-    print(f"\nDate range of daily digest: {min_date} to {max_date}")
-    print("==========================================================")
+    df_alerts['alert_date'] = df_alerts['alert_date'].astype(str)
+    df_scores['score_date'] = df_scores['score_date'].astype(str)
+    
+    # Merge alerts with scores
+    # Note: Use suffixes to handle overlapping column names if any
+    df = df_alerts.merge(df_scores[['emp_id', 'score_date', 'anomaly_score']], 
+                         left_on=['emp_id', 'alert_date'], 
+                         right_on=['emp_id', 'score_date'], 
+                         how='left', suffixes=('', '_new'))
+    
+    df['anomaly_score'] = df['anomaly_score_new'].fillna(0)
+    
+    # Priority Logic
+    def calculate_adjusted_severity(row):
+        score = row['anomaly_score']
+        sev = row['severity']
+        
+        if score > 8.0: return "Critical"
+        if score > 5.0:
+            if sev == "High": return "Critical"
+            return "High"
+        if score < 1.0:
+            if sev == "Critical": return "High"
+            if sev == "High": return "Medium"
+            return "Suppressed" # Demote Low/Medium with low anomaly score
+            
+        return sev
+
+    df['adjusted_severity'] = df.apply(calculate_adjusted_severity, axis=1)
+    
+    # Calculate priority_rank (1=Critical, 2=High, 3=Medium, 4=Low/Suppressed)
+    rank_map = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4, "Suppressed": 5}
+    df['priority_rank'] = df['adjusted_severity'].map(rank_map).fillna(5)
+    
+    # Update the database
+    print(f"Updating {len(df)} alerts with adjusted severity and scores...")
+    cursor = conn.cursor()
+    
+    # We'll use a temporary table to do a bulk update
+    cursor.execute("CREATE TEMP TABLE alerts_update (alert_id INT, anomaly_score REAL, adjusted_severity TEXT, priority_rank INT)")
+    
+    update_data = df[['alert_id', 'anomaly_score', 'adjusted_severity', 'priority_rank']].values.tolist()
+    
+    from psycopg2.extras import execute_values
+    execute_values(cursor, "INSERT INTO alerts_update (alert_id, anomaly_score, adjusted_severity, priority_rank) VALUES %s", update_data)
+    
+    cursor.execute("""
+        UPDATE alerts a
+        SET anomaly_score = u.anomaly_score,
+            adjusted_severity = u.adjusted_severity,
+            priority_rank = u.priority_rank
+        FROM alerts_update u
+        WHERE a.alert_id = u.alert_id
+    """)
+    
+    conn.commit()
+    
+    # Final Summary
+    counts = df['adjusted_severity'].value_counts()
+    
+    print(f"\n=== ALERT MANAGER SUMMARY ===")
+    print(f"Total alerts processed: {len(df)}")
+    print(f"  Critical: {counts.get('Critical', 0)}")
+    print(f"  High:     {counts.get('High', 0)}")
+    print(f"  Medium:   {counts.get('Medium', 0)}")
+    print(f"  Suppressed: {counts.get('Suppressed', 0)}")
+    print(f"Processing time: {time.time() - start_time:.2f} seconds")
+    
+    conn.close()
 
 if __name__ == "__main__":
-    if not os.path.exists(DB_PATH):
-        print(f"Error: {DB_PATH} not found.")
-    else:
-        conn = get_db_connection()
-        try:
-            setup_alert_management(conn)
-            compute_priority_rank(conn)
-            enhance_explanations(conn)
-            create_views(conn)
-            print_summary(conn)
-        finally:
-            conn.close()
+    run_alert_manager()

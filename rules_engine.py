@@ -1,43 +1,23 @@
-import sqlite3
 import pandas as pd
 import numpy as np
 import os
 import time
 from datetime import datetime, timezone
+from db import get_connection
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+
+load_dotenv()
 
 # ─── CONFIGURATION ──────────────────────────────────────────
-DB_PATH = "./sentinel.db"
 MOCK_DATA_DIR = "./mock_data/"
 
 def get_db_connection():
-    return sqlite3.connect(DB_PATH)
+    return get_connection()
 
 def setup_alerts_table(conn):
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS alerts")
-    cursor.execute("""
-    CREATE TABLE alerts (
-        alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        emp_id INTEGER,
-        alert_date TEXT,
-        rules_triggered TEXT,
-        rule_count INTEGER,
-        severity TEXT,
-        explanation TEXT,
-        event_count INTEGER,
-        out_of_panel INTEGER,
-        off_hours_count INTEGER,
-        export_print_count INTEGER,
-        break_glass_count INTEGER,
-        vip_out_of_panel INTEGER,
-        cross_dept_count INTEGER,
-        is_acknowledged INTEGER DEFAULT 0,
-        created_at TEXT
-    )
-    """)
-    cursor.execute("CREATE INDEX idx_alerts_emp_date ON alerts (emp_id, alert_date)")
-    cursor.execute("CREATE INDEX idx_alerts_severity ON alerts (severity)")
-    cursor.execute("CREATE INDEX idx_alerts_ack ON alerts (is_acknowledged)")
+    cursor.execute("TRUNCATE TABLE alerts RESTART IDENTITY CASCADE")
     conn.commit()
 
 def run_rules_engine():
@@ -45,27 +25,21 @@ def run_rules_engine():
     conn = get_db_connection()
     setup_alerts_table(conn)
     
-    print("Loading data from sentinel.db...")
+    print("Loading data from Neon PostgreSQL...")
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    engine = create_engine(DATABASE_URL)
+    
     # anomaly_type must NEVER be read by this script
     df_audit = pd.read_sql_query("""
         SELECT audit_id, emp_id, pat_id, action_c, action_datetime, dept_id, in_panel, is_vip_access 
         FROM audit_events 
         WHERE is_known_user = 1
-    """, conn)
-    df_baselines = pd.read_sql_query("SELECT * FROM user_baselines", conn)
-    df_employees = pd.read_sql_query("SELECT emp_id, normal_start, normal_end FROM employees", conn)
+    """, engine)
+    df_baselines = pd.read_sql_query("SELECT * FROM user_baselines", engine)
+    df_employees = pd.read_sql_query("SELECT emp_id, normal_start, normal_end FROM employees", engine)
     
-    # Load attacker manifest for final summary
-    attackers = {}
-    manifest_path = os.path.join(MOCK_DATA_DIR, "attacker_manifest.txt")
-    if os.path.exists(manifest_path):
-        with open(manifest_path, "r") as f:
-            for line in f:
-                parts = line.split(",")
-                emp_id_part = parts[0].split(":")[1].strip()
-                emp_id = int(emp_id_part)
-                attackers[emp_id] = parts[2].split(":")[1].strip()
-
     df_audit['action_datetime'] = pd.to_datetime(df_audit['action_datetime'])
     df_audit['date'] = df_audit['action_datetime'].dt.date
     df_audit['hour'] = df_audit['action_datetime'].dt.hour
@@ -73,159 +47,137 @@ def run_rules_engine():
     dates = sorted(df_audit['date'].unique())
     if len(dates) < 5:
         print("Not enough days of data to run rules (need 5+ days).")
+        conn.close()
         return
         
-    # Process from day 5 onwards
     processing_dates = dates[4:]
-    baseline_lookup = df_baselines.set_index('emp_id').to_dict('index')
-    emp_lookup = df_employees.set_index('emp_id').to_dict('index')
-    
-    all_alerts = []
-    rule_usage = {"R1": 0, "R2": 0, "R3": 0, "R4": 0, "R5": 0, "R6": 0, "R7": 0}
-    
     print(f"Processing {len(processing_dates)} days of activity...")
     
-    for alert_date in processing_dates:
-        day_df = df_audit[df_audit['date'] == alert_date]
-        
-        for emp_id, group in day_df.groupby('emp_id'):
-            if emp_id not in baseline_lookup or emp_id not in emp_lookup:
-                continue
-                
-            b = baseline_lookup[emp_id]
-            e = emp_lookup[emp_id]
-            
-            # Daily Metrics
-            total_events = len(group)
-            out_of_panel = len(group[(group['in_panel'] == 0) & (group['pat_id'].notna())])
-            off_hours_count = len(group[(group['hour'] < e['normal_start']) | (group['hour'] > e['normal_end'])])
-            export_print_count = len(group[group['action_c'].isin([3, 4])])
-            break_glass_count = len(group[group['action_c'] == 5])
-            vip_out_of_panel = len(group[(group['is_vip_access'] == 1) & (group['in_panel'] == 0)])
-            cross_dept_count = len(group[group['dept_id'] != b['primary_dept_id']])
-            
-            triggered = []
-            explanations = []
-            
-            # Float Nurse Handling
-            float_mult = 1.5 if b['is_float'] == 1 else 1.0
-            
-            # RULE 1 — PANEL VIOLATION (R1)
-            r1_threshold = max(3, (b['avg_daily_volume'] * (1 - b['in_panel_rate']) * 2))
-            if out_of_panel > r1_threshold:
-                triggered.append("R1")
-                explanations.append(f"Accessed {out_of_panel} records outside assigned panel (baseline: {r1_threshold:.1f})")
-                
-            # RULE 2 — VOLUME SPIKE (R2)
-            r2_threshold = (b['avg_daily_volume'] + 2 * b['std_daily_volume']) * float_mult
-            p95_threshold = b['max_daily_volume_p95'] * float_mult
-            if total_events > r2_threshold or total_events > p95_threshold:
-                triggered.append("R2")
-                explanations.append(f"Accessed {total_events} records today (baseline avg: {b['avg_daily_volume']:.1f}, p95: {b['max_daily_volume_p95']:.1f})")
-                
-            # RULE 3 — OFF-HOURS (R3)
-            r3_threshold = b['off_hours_rate'] * total_events * 2
-            if off_hours_count >= 3 and off_hours_count > r3_threshold:
-                triggered.append("R3")
-                explanations.append(f"{off_hours_count} accesses outside normal shift hours {e['normal_start']}:00-{e['normal_end']}:00 (baseline rate: {b['off_hours_rate']:.1%})")
-                
-            # RULE 4 — VIP ACCESS (R4)
-            if vip_out_of_panel >= 1:
-                triggered.append("R4")
-                explanations.append(f"Accessed {vip_out_of_panel} VIP-flagged records with no documented care relationship")
-                
-            # RULE 5 — CROSS-DEPT (R5)
-            r5_threshold = b['cross_dept_rate'] * total_events * 2 * float_mult
-            if cross_dept_count >= 3 and cross_dept_count > r5_threshold:
-                triggered.append("R5")
-                explanations.append(f"{cross_dept_count} accesses to patients outside primary department (baseline rate: {b['cross_dept_rate']:.1%})")
-                
-            # RULE 6 — BULK EXPORT/PRINT (R6)
-            r6_threshold = b['export_print_rate'] * total_events * 2
-            if export_print_count >= 5 and export_print_count > r6_threshold:
-                triggered.append("R6")
-                explanations.append(f"{export_print_count} export/print events in one day (baseline rate: {b['export_print_rate']:.1%})")
-                
-            # RULE 7 — BREAK-GLASS ABUSE (R7)
-            r7_threshold = b['break_glass_rate'] * total_events * 2
-            if break_glass_count >= 2 and break_glass_count > r7_threshold:
-                triggered.append("R7")
-                explanations.append(f"{break_glass_count} emergency override events with no documented justification (baseline rate: {b['break_glass_rate']:.1%})")
-                
-            # Severity Logic
-            count = len(triggered)
-            if count == 0:
-                continue
-                
-            severity = "Low"
-            if "R4" in triggered:
-                if count > 1:
-                    severity = "Critical"
-                else:
-                    severity = "Medium"
-            elif count == 2:
-                severity = "Medium"
-            elif count >= 3:
-                severity = "High"
-                
-            # Store only Medium+ alerts
-            if severity != "Low":
-                full_explanation = f"{b['role']} employee on {alert_date}: " + ". ".join(explanations) + "."
-                all_alerts.append((
-                    emp_id, str(alert_date), ",".join(triggered), count, severity, full_explanation,
-                    total_events, out_of_panel, off_hours_count, export_print_count,
-                    break_glass_count, vip_out_of_panel, cross_dept_count,
-                    datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-                ))
-                for r in triggered:
-                    rule_usage[r] += 1
+    df = df_audit[df_audit['date'].isin(processing_dates)].copy()
+    
+    # Merge baselines and employee info
+    df = df.merge(df_baselines, on='emp_id', how='inner')
+    df = df.merge(df_employees, on='emp_id', how='inner', suffixes=('', '_emp'))
+    
+    # Row-level violations
+    print("Calculating row-level indicators...")
+    df['is_out_of_panel'] = ((df['in_panel'] == 0) & (df['pat_id'].notna())).astype(int)
+    df['is_off_hours'] = ((df['hour'] < df['normal_start']) | (df['hour'] > df['normal_end'])).astype(int)
+    df['is_export_print'] = df['action_c'].isin([3, 4]).astype(int)
+    df['is_break_glass'] = (df['action_c'] == 5).astype(int)
+    df['is_vip_out_of_panel'] = ((df['is_vip_access'] == 1) & (df['in_panel'] == 0)).astype(int)
+    df['is_cross_dept'] = (df['dept_id'] != df['primary_dept_id']).astype(int)
+    
+    # Calculate daily metrics per (date, emp_id)
+    print("Aggregating to daily metrics...")
+    daily = df.groupby(['date', 'emp_id']).agg({
+        'audit_id': 'count',
+        'is_out_of_panel': 'sum',
+        'is_off_hours': 'sum',
+        'is_export_print': 'sum',
+        'is_break_glass': 'sum',
+        'is_vip_out_of_panel': 'sum',
+        'is_cross_dept': 'sum'
+    }).rename(columns={'audit_id': 'total_events'}).reset_index()
+    
+    # Re-merge baseline info to 'daily'
+    daily = daily.merge(df_baselines, on='emp_id', how='inner')
+    daily = daily.merge(df_employees, on='emp_id', how='inner', suffixes=('', '_emp'))
+    
+    # Vectorized Rule Checks
+    print("Applying rules...")
+    float_mult = np.where(daily['is_float'] == 1, 1.5, 1.0)
+    
+    # R1
+    r1_thresh = np.maximum(3, (daily['avg_daily_volume'] * (1 - daily['in_panel_rate']) * 2))
+    daily['R1'] = daily['is_out_of_panel'] > r1_thresh
+    
+    # R2
+    r2_thresh = (daily['avg_daily_volume'] + 2 * daily['std_daily_volume']) * float_mult
+    p95_thresh = daily['max_daily_volume_p95'] * float_mult
+    daily['R2'] = (daily['total_events'] > r2_thresh) | (daily['total_events'] > p95_thresh)
+    
+    # R3
+    r3_thresh = daily['off_hours_rate'] * daily['total_events'] * 2
+    daily['R3'] = (daily['is_off_hours'] >= 3) & (daily['is_off_hours'] > r3_thresh)
+    
+    # R4
+    daily['R4'] = daily['is_vip_out_of_panel'] >= 1
+    
+    # R5
+    r5_thresh = daily['cross_dept_rate'] * daily['total_events'] * 2 * float_mult
+    daily['R5'] = (daily['is_cross_dept'] >= 3) & (daily['is_cross_dept'] > r5_thresh)
+    
+    # R6
+    r6_thresh = daily['export_print_rate'] * daily['total_events'] * 2
+    daily['R6'] = (daily['is_export_print'] >= 5) & (daily['is_export_print'] > r6_thresh)
+    
+    # R7
+    r7_thresh = daily['break_glass_rate'] * daily['total_events'] * 2
+    daily['R7'] = (daily['is_break_glass'] >= 2) & (daily['is_break_glass'] > r7_thresh)
+    
+    # Calculate severity and explanation
+    rules = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7']
+    daily['rule_count'] = daily[rules].sum(axis=1)
+    
+    # Filter only triggered
+    triggered_df = daily[daily['rule_count'] > 0].copy()
+    
+    if triggered_df.empty:
+        print("No alerts generated.")
+        conn.close()
+        return
 
-    # Batch insert alerts
+    def get_severity(row):
+        count = row['rule_count']
+        if row['R4']:
+            return "Critical" if count > 1 else "Medium"
+        if count == 2: return "Medium"
+        if count >= 3: return "High"
+        return "Low"
+
+    triggered_df['severity'] = triggered_df.apply(get_severity, axis=1)
+    triggered_df = triggered_df[triggered_df['severity'] != "Low"].copy()
+    
+    def get_explanation(row):
+        expl = []
+        if row['R1']: expl.append(f"Accessed {row['is_out_of_panel']} records outside panel")
+        if row['R2']: expl.append(f"Accessed {row['total_events']} records (volume spike)")
+        if row['R3']: expl.append(f"{row['is_off_hours']} off-hours accesses")
+        if row['R4']: expl.append(f"Accessed {row['is_vip_out_of_panel']} VIP records")
+        if row['R5']: expl.append(f"{row['is_cross_dept']} cross-dept accesses")
+        if row['R6']: expl.append(f"{row['is_export_print']} export/print events")
+        if row['R7']: expl.append(f"{row['is_break_glass']} break-glass events")
+        return f"{row['role']} on {row['date']}: " + ". ".join(expl) + "."
+
+    triggered_df['explanation'] = triggered_df.apply(get_explanation, axis=1)
+    triggered_df['rules_triggered'] = triggered_df.apply(lambda r: ",".join([rl for rl in rules if r[rl]]), axis=1)
+    triggered_df['created_at'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Prepare for insert
+    print(f"Storing {len(triggered_df)} alerts...")
+    alerts_to_insert = triggered_df[[
+        'emp_id', 'date', 'rules_triggered', 'rule_count', 'severity', 'explanation',
+        'total_events', 'is_out_of_panel', 'is_off_hours', 'is_export_print',
+        'is_break_glass', 'is_vip_out_of_panel', 'is_cross_dept', 'created_at'
+    ]].values.tolist()
+    
+    from psycopg2.extras import execute_values
     cursor = conn.cursor()
-    cursor.executemany("""
+    execute_values(cursor, """
         INSERT INTO alerts (
             emp_id, alert_date, rules_triggered, rule_count, severity, explanation,
             event_count, out_of_panel, off_hours_count, export_print_count,
             break_glass_count, vip_out_of_panel, cross_dept_count, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, all_alerts)
+        ) VALUES %s
+    """, alerts_to_insert)
     conn.commit()
     conn.close()
     
     runtime = time.time() - start_time
-    
-    # Final Summary
-    df_results = pd.DataFrame(all_alerts, columns=[
-        'emp_id', 'alert_date', 'rules', 'count', 'severity', 'explanation',
-        'event_count', 'out_of_panel', 'off_hours', 'export', 'break', 'vip', 'cross', 'created'
-    ])
-    
-    print("\n=== RULES ENGINE SUMMARY ===")
-    print(f"Total alerts generated (Medium+): {len(df_results)}")
-    print("\nBreakdown by severity:")
-    print(df_results['severity'].value_counts())
-    
-    print("\nBreakdown by rule triggered:")
-    for r, c in sorted(rule_usage.items(), key=lambda x: x[1], reverse=True):
-        print(f" - {r}: {c}")
-        
-    print("\nAttacker Detection Rate:")
-    for emp_id, anomaly in attackers.items():
-        alert_days = len(df_results[df_results['emp_id'] == emp_id]['alert_date'].unique())
-        print(f" - EMP_ID {emp_id} ({anomaly}): {alert_days} alert days generated")
-        
-    print("\nFalse Positive Check (Non-attackers with 5+ alert days):")
-    fp_df = df_results[~df_results['emp_id'].isin(attackers.keys())]
-    fp_counts = fp_df.groupby('emp_id').size()
-    fps = fp_counts[fp_counts > 5]
-    if fps.empty:
-        print(" - None found (Clean baseline)")
-    else:
-        for eid, count in fps.items():
-            print(f" - EMP_ID {eid}: {count} alert days")
-            
-    print(f"\nScript runtime: {runtime:.2f} seconds")
-    print("==========================================================")
+    print(f"\n=== RULES ENGINE SUMMARY ===")
+    print(f"Total Medium+ alerts generated: {len(triggered_df)}")
+    print(f"Processing time: {runtime:.2f} seconds")
 
 if __name__ == "__main__":
     run_rules_engine()

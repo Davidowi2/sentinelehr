@@ -1,12 +1,14 @@
 from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
-import sqlite3
 import os
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, List
+from dotenv import load_dotenv
+from db import get_connection
 
 # ─── SETUP ──────────────────────────────────────────────────
+load_dotenv()
 app = FastAPI(title="SentinelEHR API")
 
 app.add_middleware(
@@ -17,13 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = "./sentinel.db"
-
 # ─── DATABASE HELPER ────────────────────────────────────────
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return get_connection()
 
 # ─── MODELS ─────────────────────────────────────────────────
 class StatusUpdate(BaseModel):
@@ -37,7 +35,8 @@ class StatusUpdate(BaseModel):
 def health_check():
     try:
         conn = get_db()
-        conn.execute("SELECT 1")
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
         conn.close()
         return {
             "status": "ok",
@@ -72,7 +71,7 @@ def get_summary():
         
         # Total employees monitored
         cursor.execute("SELECT COUNT(*) FROM employees")
-        total_employees = cursor.fetchone()[0]
+        total_employees = cursor.fetchone()['count']
         
         # Date range
         cursor.execute("""
@@ -89,11 +88,11 @@ def get_summary():
             "critical": alert_stats["critical"] or 0,
             "high": alert_stats["high"] or 0,
             "medium": alert_stats["medium"] or 0,
-            "top_anomaly_score": alert_stats["top_anomaly_score"] or 0.0,
+            "top_anomaly_score": float(alert_stats["top_anomaly_score"]) if alert_stats["top_anomaly_score"] is not None else 0.0,
             "total_employees_monitored": total_employees,
             "date_range": {
-                "start": dates[0],
-                "end": dates[1]
+                "start": dates['min'],
+                "end": dates['max']
             }
         }
     except Exception as e:
@@ -114,19 +113,19 @@ def get_alerts(
         params = []
         
         if severity:
-            query += " AND adjusted_severity = ?"
+            query += " AND adjusted_severity = %s"
             params.append(severity)
         if status:
-            query += " AND status = ?"
+            query += " AND status = %s"
             params.append(status)
             
         # Get total count for pagination
-        count_query = f"SELECT COUNT(*) FROM ({query})"
+        count_query = f"SELECT COUNT(*) FROM ({query}) AS subquery"
         cursor.execute(count_query, params)
-        total_count = cursor.fetchone()[0]
+        total_count = cursor.fetchone()['count']
         
         # Get paginated results
-        query += " LIMIT ? OFFSET ?"
+        query += " LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         cursor.execute(query, params)
         alerts = [dict(row) for row in cursor.fetchall()]
@@ -146,7 +145,7 @@ def get_alert(alert_id: int):
     try:
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM alerts WHERE alert_id = ?", (alert_id,))
+        cursor.execute("SELECT * FROM alerts WHERE alert_id = %s", (alert_id,))
         alert = cursor.fetchone()
         conn.close()
         
@@ -165,7 +164,7 @@ def update_alert_status(alert_id: int, update: StatusUpdate):
         cursor = conn.cursor()
         
         # Check if alert exists
-        cursor.execute("SELECT * FROM alerts WHERE alert_id = ?", (alert_id,))
+        cursor.execute("SELECT * FROM alerts WHERE alert_id = %s", (alert_id,))
         if not cursor.fetchone():
             conn.close()
             raise HTTPException(status_code=404, detail={"error": "Alert not found"})
@@ -176,17 +175,17 @@ def update_alert_status(alert_id: int, update: StatusUpdate):
             
         cursor.execute("""
             UPDATE alerts 
-            SET status = ?, 
-                reviewer_notes = COALESCE(?, reviewer_notes), 
-                reviewed_by = COALESCE(?, reviewed_by),
-                reviewed_at = COALESCE(?, reviewed_at)
-            WHERE alert_id = ?
+            SET status = %s, 
+                reviewer_notes = COALESCE(%s, reviewer_notes), 
+                reviewed_by = COALESCE(%s, reviewed_by),
+                reviewed_at = COALESCE(%s, reviewed_at)
+            WHERE alert_id = %s
         """, (update.status, update.reviewer_notes, update.reviewed_by, reviewed_at, alert_id))
         
         conn.commit()
         
         # Return updated alert
-        cursor.execute("SELECT * FROM alerts WHERE alert_id = ?", (alert_id,))
+        cursor.execute("SELECT * FROM alerts WHERE alert_id = %s", (alert_id,))
         updated_alert = dict(cursor.fetchone())
         conn.close()
         
@@ -203,14 +202,14 @@ def get_employee_profile(emp_id: int):
         cursor = conn.cursor()
         
         # Employee info
-        cursor.execute("SELECT * FROM employees WHERE emp_id = ?", (emp_id,))
+        cursor.execute("SELECT * FROM employees WHERE emp_id = %s", (emp_id,))
         emp = cursor.fetchone()
         if not emp:
             conn.close()
             raise HTTPException(status_code=404, detail={"error": "Employee not found"})
             
         # Baseline info
-        cursor.execute("SELECT * FROM user_baselines WHERE emp_id = ?", (emp_id,))
+        cursor.execute("SELECT * FROM user_baselines WHERE emp_id = %s", (emp_id,))
         baseline = cursor.fetchone()
         
         # Alert summary
@@ -222,7 +221,7 @@ def get_employee_profile(emp_id: int):
                 SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium_count,
                 MAX(anomaly_score) as max_anomaly_score
             FROM alerts
-            WHERE emp_id = ? AND adjusted_severity != 'Suppressed'
+            WHERE emp_id = %s AND adjusted_severity != 'Suppressed'
         """, (emp_id,))
         alert_summary = cursor.fetchone()
         
@@ -246,7 +245,7 @@ def get_digest(days: int = 30):
     try:
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM daily_digest LIMIT ?", (days,))
+        cursor.execute("SELECT * FROM daily_digest LIMIT %s", (days,))
         digest = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return digest
@@ -256,4 +255,5 @@ def get_digest(days: int = 30):
 # ─── SERVER STARTUP ─────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("api:app", host="0.0.0.0", port=port, reload=False)
