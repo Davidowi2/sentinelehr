@@ -419,39 +419,40 @@ const App = () => {
                         label: 'Critical', 
                         data: last30.map(d => d.critical_count || 0), 
                         borderColor: '#e11d48', 
-                        backgroundColor: 'transparent', 
-                        borderWidth: 2, 
+                        backgroundColor: 'rgba(225, 29, 72, 0.04)', 
+                        borderWidth: 2.5, 
+                        fill: true,
                         pointRadius: 0, 
                         pointHoverRadius: 4, 
                         pointHoverBackgroundColor: '#e11d48', 
-                        tension: 0.4 
+                        tension: 0.15 
                       }, 
                       { 
                         label: 'High', 
                         data: last30.map(d => d.high_count || 0), 
                         borderColor: '#f97316', 
                         backgroundColor: 'transparent', 
-                        borderWidth: 2, 
+                        borderWidth: 2.5, 
                         pointRadius: 0, 
                         pointHoverRadius: 4, 
                         pointHoverBackgroundColor: '#f97316', 
-                        tension: 0.4 
+                        tension: 0.15 
                       }, 
                       { 
                         label: 'Medium', 
                         data: last30.map(d => d.medium_count || 0), 
                         borderColor: '#3b82f6', 
                         backgroundColor: 'transparent', 
-                        borderWidth: 2, 
+                        borderWidth: 2.5, 
                         pointRadius: 0, 
                         pointHoverRadius: 4, 
                         pointHoverBackgroundColor: '#3b82f6', 
-                        tension: 0.4 
+                        tension: 0.15 
                       }, 
                       { 
                         label: 'Threshold', 
                         data: last30.map(() => 3), 
-                        borderColor: '#94a3b8', 
+                        borderColor: '#cbd5e1', 
                         backgroundColor: 'transparent', 
                         borderWidth: 1.5, 
                         borderDash: [6, 4], 
@@ -489,6 +490,7 @@ const App = () => {
                       }, 
                       y: { 
                         min: 0, 
+                        suggestedMax: 16,
                         grid: { color: '#f1f5f9' }, 
                         border: { display: false }, 
                         ticks: { 
