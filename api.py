@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler 
+from slowapi.util import get_remote_address 
+from slowapi.errors import RateLimitExceeded 
 import os
 from datetime import datetime
 from pydantic import BaseModel
@@ -17,6 +20,13 @@ from datetime import datetime, timedelta
 # ─── SETUP ──────────────────────────────────────────────────
 load_dotenv()
 app = FastAPI(title="SentinelEHR API")
+
+limiter = Limiter(key_func=get_remote_address) 
+app.state.limiter = limiter 
+app.add_exception_handler( 
+    RateLimitExceeded, 
+    _rate_limit_exceeded_handler 
+) 
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin") 
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "sentinelehr2026") 
@@ -79,7 +89,8 @@ class StatusUpdate(BaseModel):
 # ─── ENDPOINTS ──────────────────────────────────────────────
 
 @app.post("/login") 
-def login(body: dict): 
+@limiter.limit("5/minute") 
+def login(request: Request, body: dict): 
     username = body.get("username", "") 
     password = body.get("password", "") 
     if username != ADMIN_USERNAME or password != ADMIN_PASSWORD: 
@@ -113,7 +124,8 @@ def health_check():
         }
 
 @app.get("/summary")
-def get_summary(user: str = Depends(verify_token)):
+@limiter.limit("60/minute") 
+def get_summary(request: Request, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -160,7 +172,9 @@ def get_summary(user: str = Depends(verify_token)):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/alerts")
+@limiter.limit("60/minute") 
 def get_alerts(
+    request: Request,
     severity: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = Query(50, le=200),
@@ -262,7 +276,8 @@ def update_alert_status(alert_id: int, update: StatusUpdate, user: str = Depends
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/employees/{emp_id}/profile")
-def get_employee_profile(emp_id: int, user: str = Depends(verify_token)):
+@limiter.limit("30/minute") 
+def get_employee_profile(request: Request, emp_id: int, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -307,7 +322,8 @@ def get_employee_profile(emp_id: int, user: str = Depends(verify_token)):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/digest")
-def get_digest(days: int = 30, user: str = Depends(verify_token)):
+@limiter.limit("30/minute") 
+def get_digest(request: Request, days: int = 30, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
