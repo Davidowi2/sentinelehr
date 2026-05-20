@@ -109,15 +109,19 @@ def get_alerts(
         conn = get_db()
         cursor = conn.cursor()
         
-        query = "SELECT * FROM active_alerts WHERE 1=1"
+        query = "SELECT * FROM alerts WHERE 1=1"
         params = []
         
         if severity:
             query += " AND adjusted_severity = %s"
             params.append(severity)
+        
         if status:
             query += " AND status = %s"
             params.append(status)
+        else:
+            # Default: exclude resolved and suppressed
+            query += " AND status != 'resolved' AND adjusted_severity != 'Suppressed'"
             
         # Get total count for pagination
         count_query = f"SELECT COUNT(*) FROM ({query}) AS subquery"
