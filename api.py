@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import os
 from datetime import datetime
 from pydantic import BaseModel
@@ -57,6 +58,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception) 
+async def global_exception_handler(request, exc): 
+    return JSONResponse( 
+        status_code=500, 
+        content={"error": "An internal error occurred."} 
+    ) 
 
 # ─── DATABASE HELPER ────────────────────────────────────────
 def get_db():

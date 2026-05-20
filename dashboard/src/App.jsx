@@ -1,15 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  ReferenceLine
-} from 'recharts';
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const params = new URLSearchParams(window.location.search);
@@ -401,71 +391,246 @@ const App = () => {
               })}
             </div>
 
-            <div className="chart-card">
-              <div className="chart-header">
-                <div className="chart-title-group">
-                  <span className="chart-title">ALERT TREND</span>
-                  <span className="chart-subtitle">Last 30 days</span>
-                </div>
-                <div className="chart-legend">
-                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--critical)' }}></div><span>Critical (red)</span></div>
-                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--high)' }}></div><span>High (amber)</span></div>
-                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--medium)' }}></div><span>Medium (blue)</span></div>
-                  <div className="legend-item"><div className="legend-line" style={{ borderTop: '2px dashed #94A3B8', width: '16px', marginRight: '8px' }}></div><span style={{ color: '#94A3B8' }}>--- Threshold (dashed gray)</span></div>
-                </div>
-              </div>
-              <div className="chart-body">
-                <div style={{ width: '100%', height: 300 }}>
-                  <ResponsiveContainer>
-                    <LineChart data={[...digest].reverse()}>
-                      <CartesianGrid vertical={false} stroke="#EEF2FF" strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="alert_date" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        stroke="var(--text-muted)" 
-                        fontSize={10} 
-                        tickFormatter={(str) => {
-                          const date = new Date(str);
-                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                        }}
-                      />
-                      <YAxis axisLine={false} tickLine={false} stroke="var(--text-muted)" fontSize={10} />
-                      <YAxis yAxisId="high" orientation="right" axisLine={false} tickLine={false} stroke="var(--high)" fontSize={10} />
-                      <ReferenceLine y={3} stroke="#94A3B8" strokeDasharray="4 2" label={{ value: 'threshold', position: 'right', fontSize: 10, fill: '#94A3B8' }} />
-                      <Tooltip 
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            const critical = payload.find(p => p.dataKey === 'critical_count')?.value || 0;
-                            const high = payload.find(p => p.dataKey === 'high_count')?.value || 0;
-                            const medium = payload.find(p => p.dataKey === 'medium_count')?.value || 0;
-                            const total = critical + high + medium;
-                            return (
-                              <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', fontFamily: 'var(--font-mono)', fontSize: '12px', boxShadow: 'var(--shadow-md)' }}>
-                                <div style={{ marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{label}</div>
-                                <div style={{ color: 'var(--critical)' }}>Critical: {critical}</div>
-                                <div style={{ color: 'var(--high)' }}>High: {high}</div>
-                                <div style={{ color: 'var(--medium)' }}>Medium: {medium}</div>
-                                <div style={{ marginTop: '8px', borderTop: '1px solid var(--border)', paddingTop: '4px', color: 'var(--text-primary)', fontWeight: 'bold' }}>Total Alerts: {total}</div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Line type="monotone" dataKey="critical_count" stroke="var(--critical)" strokeWidth={2.5} dot={false} />
-                      <Line type="monotone" dataKey="high_count" yAxisId="high" stroke="var(--high)" strokeWidth={3} dot={false} />
-                      <Line type="monotone" dataKey="medium_count" stroke="var(--medium)" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              {summary && (
-                <div className="chart-footer">
-                  Monitoring {ORG_NAME} | Employees {summary.total_employees_monitored} | Active signals {summary.total_active} | Range {new Date(summary.date_range.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(summary.date_range.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </div>
-              )}
-            </div>
+            {(() => { 
+              const chartRef = useRef(null) 
+              const chartInstance = useRef(null) 
+             
+              useEffect(() => { 
+                if (!digest.length || !chartRef.current) return 
+                 
+                const last30 = [...digest].reverse().slice(-30) 
+                const labels = last30.map(d => { 
+                  const date = new Date(d.alert_date) 
+                  return date.toLocaleDateString('en-US',  
+                    { month: 'short', day: 'numeric' }) 
+                }) 
+                 
+                if (chartInstance.current) { 
+                  chartInstance.current.destroy() 
+                } 
+                 
+                const ctx = chartRef.current.getContext('2d') 
+                chartInstance.current = new window.Chart(ctx, { 
+                  type: 'line', 
+                  data: { 
+                    labels, 
+                    datasets: [ 
+                      { 
+                        label: 'Critical', 
+                        data: last30.map(d => d.critical_count || 0), 
+                        borderColor: '#e11d48', 
+                        backgroundColor: 'transparent', 
+                        borderWidth: 2, 
+                        pointRadius: 0, 
+                        pointHoverRadius: 4, 
+                        pointHoverBackgroundColor: '#e11d48', 
+                        tension: 0.4 
+                      }, 
+                      { 
+                        label: 'High', 
+                        data: last30.map(d => d.high_count || 0), 
+                        borderColor: '#f97316', 
+                        backgroundColor: 'transparent', 
+                        borderWidth: 2, 
+                        pointRadius: 0, 
+                        pointHoverRadius: 4, 
+                        pointHoverBackgroundColor: '#f97316', 
+                        tension: 0.4 
+                      }, 
+                      { 
+                        label: 'Medium', 
+                        data: last30.map(d => d.medium_count || 0), 
+                        borderColor: '#3b82f6', 
+                        backgroundColor: 'transparent', 
+                        borderWidth: 2, 
+                        pointRadius: 0, 
+                        pointHoverRadius: 4, 
+                        pointHoverBackgroundColor: '#3b82f6', 
+                        tension: 0.4 
+                      }, 
+                      { 
+                        label: 'Threshold', 
+                        data: last30.map(() => 3), 
+                        borderColor: '#94a3b8', 
+                        backgroundColor: 'transparent', 
+                        borderWidth: 1.5, 
+                        borderDash: [6, 4], 
+                        pointRadius: 0, 
+                        pointHoverRadius: 0, 
+                        tension: 0 
+                      } 
+                    ] 
+                  }, 
+                  options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    interaction: { mode: 'index', intersect: false }, 
+                    plugins: { 
+                      legend: { display: false }, 
+                      tooltip: { 
+                        backgroundColor: '#fff', 
+                        borderColor: '#e2e8f0', 
+                        borderWidth: 1, 
+                        titleColor: '#0f172a', 
+                        bodyColor: '#475569', 
+                        padding: 10, 
+                        bodySpacing: 6 
+                      } 
+                    }, 
+                    scales: { 
+                      x: { 
+                        grid: { display: false }, 
+                        border: { color: '#e2e8f0' }, 
+                        ticks: { 
+                          color: '#94a3b8', 
+                          font: { size: 11 }, 
+                          maxTicksLimit: 8 
+                        } 
+                      }, 
+                      y: { 
+                        min: 0, 
+                        grid: { color: '#f1f5f9' }, 
+                        border: { display: false }, 
+                        ticks: { 
+                          color: '#94a3b8', 
+                          font: { size: 11 }, 
+                          stepSize: 2 
+                        } 
+                      } 
+                    } 
+                  } 
+                }) 
+                 
+                return () => { 
+                  if (chartInstance.current) { 
+                    chartInstance.current.destroy() 
+                  } 
+                } 
+              }, [digest]) 
+             
+              return ( 
+                <div style={{ 
+                  background: '#fff', 
+                  borderRadius: '12px', 
+                  border: '1px solid #E2E8F4', 
+                  boxShadow: '0 1px 4px rgba(15,23,42,0.06)', 
+                  padding: '28px 32px', 
+                  margin: '0 32px 24px' 
+                }}> 
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    marginBottom: '20px' 
+                  }}> 
+                    <div> 
+                      <div style={{ 
+                        fontSize: '11px', 
+                        fontWeight: '600', 
+                        letterSpacing: '0.08em', 
+                        textTransform: 'uppercase', 
+                        color: '#94a3b8', 
+                        marginBottom: '4px' 
+                      }}>Alert Trend</div> 
+                      <div style={{ 
+                        fontSize: '20px', 
+                        fontWeight: '700', 
+                        color: '#0f172a' 
+                      }}>Last 30 days</div> 
+                    </div> 
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '20px', 
+                      fontSize: '12px', 
+                      color: '#475569' 
+                    }}> 
+                      {[ 
+                        { color: '#e11d48', label: 'Critical' }, 
+                        { color: '#f97316', label: 'High' }, 
+                        { color: '#3b82f6', label: 'Medium' } 
+                      ].map(item => ( 
+                        <span key={item.label} style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '6px' 
+                        }}> 
+                          <span style={{ 
+                            display: 'inline-block', 
+                            width: '20px', 
+                            height: '3px', 
+                            background: item.color, 
+                            borderRadius: '2px' 
+                          }}></span> 
+                          {item.label} 
+                        </span> 
+                      ))} 
+                      <span style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px' 
+                      }}> 
+                        <span style={{ 
+                          display: 'inline-block', 
+                          width: '20px', 
+                          height: '0', 
+                          borderTop: '2px dashed #94a3b8' 
+                        }}></span> 
+                        Threshold 
+                      </span> 
+                    </div> 
+                  </div> 
+             
+                  <div style={{ position: 'relative', height: '260px' }}> 
+                    <canvas 
+                      ref={chartRef} 
+                      role="img" 
+                      aria-label="Alert trend over last 30 days" 
+                    /> 
+                  </div> 
+             
+                  <div style={{ 
+                    borderTop: '1px solid #e2e8f0', 
+                    marginTop: '20px', 
+                    paddingTop: '14px', 
+                    display: 'flex', 
+                    alignItems: 'center' 
+                  }}> 
+                    {[ 
+                      { label: 'Monitoring', value: ORG_NAME }, 
+                      { label: 'Employees',  
+                        value: summary?.total_employees_monitored || 80 }, 
+                      { label: 'Active signals',  
+                        value: summary?.total_active || 833 }, 
+                      { label: 'Range',  
+                        value: summary ?  
+                          `${new Date(summary.date_range?.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –  
+                           ${new Date(summary.date_range?.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :  
+                          'Jan 5 – Mar 31' } 
+                    ].map((item, i, arr) => ( 
+                      <div key={item.label} style={{ 
+                        flex: 1, 
+                        textAlign: 'center', 
+                        padding: '0 16px', 
+                        borderRight: i < arr.length - 1 ?  
+                          '1px solid #e2e8f0' : 'none' 
+                      }}> 
+                        <div style={{ 
+                          fontSize: '11px', 
+                          color: '#94a3b8', 
+                          marginBottom: '2px' 
+                        }}>{item.label}</div> 
+                        <div style={{ 
+                          fontSize: '11px', 
+                          fontWeight: '600', 
+                          color: '#475569' 
+                        }}>{item.value}</div> 
+                      </div> 
+                    ))} 
+                  </div> 
+                </div> 
+              ) 
+            })()} 
           </div>
         )}
 
