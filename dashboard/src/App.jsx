@@ -206,9 +206,10 @@ const App = () => {
                   <span className="chart-subtitle">Last 30 days</span>
                 </div>
                 <div className="chart-legend">
-                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--critical)' }}></div><span>Critical</span></div>
-                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--high)' }}></div><span>High</span></div>
-                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--medium)' }}></div><span>Medium</span></div>
+                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--critical)' }}></div><span>Critical (red)</span></div>
+                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--high)' }}></div><span>High (amber)</span></div>
+                  <div className="legend-item"><div className="legend-dot" style={{ backgroundColor: 'var(--medium)' }}></div><span>Medium (blue)</span></div>
+                  <div className="legend-item"><div className="legend-line" style={{ borderTop: '2px dashed #94A3B8', width: '16px', marginRight: '8px' }}></div><span style={{ color: '#94A3B8' }}>--- Threshold (dashed gray)</span></div>
                 </div>
               </div>
               <div className="chart-body">
@@ -216,10 +217,20 @@ const App = () => {
                   <ResponsiveContainer>
                     <LineChart data={[...digest].reverse()}>
                       <CartesianGrid vertical={false} stroke="#EEF2FF" strokeDasharray="3 3" />
-                      <XAxis dataKey="alert_date" axisLine={false} tickLine={false} stroke="var(--text-muted)" fontSize={10} />
+                      <XAxis 
+                        dataKey="alert_date" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        stroke="var(--text-muted)" 
+                        fontSize={10} 
+                        tickFormatter={(str) => {
+                          const date = new Date(str);
+                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        }}
+                      />
                       <YAxis axisLine={false} tickLine={false} stroke="var(--text-muted)" fontSize={10} />
                       <YAxis yAxisId="high" orientation="right" axisLine={false} tickLine={false} stroke="var(--high)" fontSize={10} />
-                      <ReferenceLine y={5} stroke="#E2E8F4" strokeDasharray="4 2" label={{ value: 'threshold', position: 'right', fontSize: 10, fill: 'var(--text-muted)' }} />
+                      <ReferenceLine y={3} stroke="#94A3B8" strokeDasharray="4 2" label={{ value: 'threshold', position: 'right', fontSize: 10, fill: '#94A3B8' }} />
                       <Tooltip 
                         content={({ active, payload, label }) => {
                           if (active && payload && payload.length) {
@@ -249,7 +260,7 @@ const App = () => {
               </div>
               {summary && (
                 <div className="chart-footer">
-                  Monitoring {ORG_NAME} · {summary.total_employees_monitored} employees · {summary.total_active} active signals · {summary.date_range.start} to {summary.date_range.end}
+                  Monitoring {ORG_NAME} | Employees {summary.total_employees_monitored} | Active signals {summary.total_active} | Range {new Date(summary.date_range.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(summary.date_range.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               )}
             </div>
