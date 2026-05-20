@@ -17,6 +17,41 @@ const ORG_NAME = params.get('org') || "SentinelEHR Demo";
 const ORG_SUBTITLE = "Central Texas Community Health Centers";
 
 const App = () => {
+  const [token, setToken] = useState( 
+    localStorage.getItem('sentinel_token') || null 
+  ) 
+  const [loginError, setLoginError] = useState('') 
+  const [loginForm, setLoginForm] = useState( 
+    { username: '', password: '' } 
+  ) 
+
+  const handleLogin = async (e) => { 
+    e.preventDefault() 
+    try { 
+      const res = await fetch(`${API_BASE}/login`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(loginForm) 
+      }) 
+      if (res.ok) { 
+        const data = await res.json() 
+        localStorage.setItem('sentinel_token', 
+          data.access_token) 
+        setToken(data.access_token) 
+        setLoginError('') 
+      } else { 
+        setLoginError('Incorrect username or password') 
+      } 
+    } catch { 
+      setLoginError('Cannot connect to server') 
+    } 
+  } 
+
+  const handleLogout = () => { 
+    localStorage.removeItem('sentinel_token') 
+    setToken(null) 
+  } 
+
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [apiStatus, setApiStatus] = useState('connecting');
   const [summary, setSummary] = useState(null);
@@ -44,8 +79,11 @@ const App = () => {
     };
     
     const fetchSummary = async () => {
+      if (!token) return;
       try {
-        const res = await axios.get(`${API_BASE}/summary`);
+        const res = await axios.get(`${API_BASE}/summary`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         setSummary(res.data);
       } catch (e) {}
     };
@@ -61,10 +99,12 @@ const App = () => {
 
   // Digest for Overview
   useEffect(() => {
-    if (activeTab === 'OVERVIEW') {
-      axios.get(`${API_BASE}/digest?days=30`).then(res => setDigest(res.data));
+    if (activeTab === 'OVERVIEW' && token) {
+      axios.get(`${API_BASE}/digest?days=30`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(res => setDigest(res.data));
     }
-  }, [activeTab]);
+  }, [activeTab, token]);
 
   // Alerts View
   useEffect(() => {
@@ -74,11 +114,14 @@ const App = () => {
   }, [activeTab, filters]);
 
   const fetchAlerts = async (reset = false) => {
+    if (!token) return;
     setLoading(true);
     const offset = reset ? 0 : alertOffset;
     const url = `${API_BASE}/alerts?limit=50&offset=${offset}${filters.severity ? `&severity=${filters.severity}` : ''}${filters.status ? `&status=${filters.status}` : ''}`;
     try {
-      const res = await axios.get(url);
+      const res = await axios.get(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (reset) {
         setAlerts(res.data.alerts);
         setAlertOffset(50);
@@ -93,7 +136,9 @@ const App = () => {
 
   const handleUpdateStatus = async (id, data) => {
     try {
-      await axios.patch(`${API_BASE}/alerts/${id}/status`, data);
+      await axios.patch(`${API_BASE}/alerts/${id}/status`, data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setDrawerOpen(false);
       fetchAlerts(true);
     } catch (e) {
@@ -103,19 +148,23 @@ const App = () => {
 
   const handleLookup = async (idToLookup) => {
     const id = idToLookup || investigateId;
-    if (!id) return;
+    if (!id || !token) return;
     setLoading(true);
     try {
-      const profileRes = await axios.get(`${API_BASE}/employees/${id}/profile`);
+      const profileRes = await axios.get(`${API_BASE}/employees/${id}/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setProfile(profileRes.data);
       
-      const alertsRes = await axios.get(`${API_BASE}/alerts?limit=200`);
+      const alertsRes = await axios.get(`${API_BASE}/alerts?limit=200`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const filtered = alertsRes.data.alerts.filter(a => a.emp_id === parseInt(id));
       setProfileAlerts(filtered);
       if (!idToLookup) setInvestigateId(id);
     } catch (e) {
       setProfile(null);
-      alert("Employee not found");
+      alert("Employee not found or access denied");
     }
     setLoading(false);
   };
@@ -136,6 +185,146 @@ const App = () => {
     return alert.alert_date;
   };
 
+  if (!token) { 
+    return ( 
+      <div style={{ 
+        minHeight: '100vh', 
+        background: '#EEF2FF', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        fontFamily: "'DM Sans', sans-serif" 
+      }}> 
+        <div style={{ 
+          background: '#fff', 
+          borderRadius: '12px', 
+          border: '1px solid #E2E8F4', 
+          boxShadow: '0 4px 24px rgba(15,23,42,0.10)', 
+          padding: '40px', 
+          width: '360px' 
+        }}> 
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            marginBottom: '6px' 
+          }}> 
+            <div style={{ 
+              width: '32px', height: '32px', 
+              background: '#FFF1F3', 
+              borderRadius: '8px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '16px' 
+            }}>🛡</div> 
+            <span style={{ 
+              fontWeight: 600, 
+              fontSize: '18px', 
+              color: '#0F172A' 
+            }}>SentinelEHR</span> 
+          </div> 
+          <p style={{ 
+            fontSize: '12px', 
+            color: '#94A3B8', 
+            marginBottom: '28px', 
+            marginTop: '2px' 
+          }}>EHR Privacy Monitoring System</p> 
+
+          <form onSubmit={handleLogin}> 
+            <div style={{ marginBottom: '16px' }}> 
+              <label style={{ 
+                display: 'block', 
+                fontSize: '11px', 
+                fontWeight: '500', 
+                letterSpacing: '0.08em', 
+                textTransform: 'uppercase', 
+                color: '#64748B', 
+                marginBottom: '6px' 
+              }}>Username</label> 
+              <input 
+                type="text" 
+                value={loginForm.username} 
+                onChange={e => setLoginForm({ 
+                  ...loginForm, username: e.target.value 
+                })} 
+                placeholder="Enter username" 
+                style={{ 
+                  width: '100%', 
+                  padding: '10px 12px', 
+                  border: '1px solid #E2E8F4', 
+                  borderRadius: '8px', 
+                  fontSize: '14px', 
+                  color: '#0F172A', 
+                  background: '#FAFBFF', 
+                  boxSizing: 'border-box', 
+                  outline: 'none', 
+                  fontFamily: "'IBM Plex Mono', monospace" 
+                }} 
+              /> 
+            </div> 
+
+            <div style={{ marginBottom: '20px' }}> 
+              <label style={{ 
+                display: 'block', 
+                fontSize: '11px', 
+                fontWeight: '500', 
+                letterSpacing: '0.08em', 
+                textTransform: 'uppercase', 
+                color: '#64748B', 
+                marginBottom: '6px' 
+              }}>Password</label> 
+              <input 
+                type="password" 
+                value={loginForm.password} 
+                onChange={e => setLoginForm({ 
+                  ...loginForm, password: e.target.value 
+                })} 
+                placeholder="Enter password" 
+                style={{ 
+                  width: '100%', 
+                  padding: '10px 12px', 
+                  border: '1px solid #E2E8F4', 
+                  borderRadius: '8px', 
+                  fontSize: '14px', 
+                  color: '#0F172A', 
+                  background: '#FAFBFF', 
+                  boxSizing: 'border-box', 
+                  outline: 'none', 
+                  fontFamily: "'IBM Plex Mono', monospace" 
+                }} 
+              /> 
+            </div> 
+
+            {loginError && ( 
+              <p style={{ 
+                color: '#E11D48', 
+                fontSize: '13px', 
+                marginBottom: '16px', 
+                marginTop: '-8px' 
+              }}>{loginError}</p> 
+            )}
+
+            <button type="submit" style={{ 
+              width: '100%', 
+              padding: '12px', 
+              background: '#E11D48', 
+              color: '#fff', 
+              border: 'none', 
+              borderRadius: '8px', 
+              fontSize: '12px', 
+              fontWeight: '600', 
+              letterSpacing: '0.08em', 
+              textTransform: 'uppercase', 
+              cursor: 'pointer', 
+              fontFamily: "'DM Sans', sans-serif" 
+            }}>Sign In →</button> 
+          </form> 
+        </div> 
+      </div> 
+    ) 
+  }
+
   return (
     <div className="app-container">
       <header className="header">
@@ -150,9 +339,21 @@ const App = () => {
         </div>
         <div className="header-divider"></div>
         <div className="header-version">v1.0 · Prototype</div>
-        <div className="connection-status">
-          <span className="status-dot pulse"></span>
-          <span>LIVE</span>
+        <div className="api-status">
+          <div className={`status-dot ${apiStatus}`}></div>
+          <span className="status-text">{apiStatus.toUpperCase()}</span>
+          <button onClick={handleLogout} style={{ 
+            background: 'transparent', 
+            border: '1px solid #E2E8F4', 
+            borderRadius: '6px', 
+            padding: '4px 12px', 
+            fontSize: '11px', 
+            color: '#94A3B8', 
+            cursor: 'pointer', 
+            fontFamily: "'IBM Plex Mono', monospace", 
+            letterSpacing: '0.06em', 
+            marginLeft: '12px' 
+          }}>SIGN OUT</button> 
         </div>
       </header>
 

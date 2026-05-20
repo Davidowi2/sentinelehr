@@ -7,9 +7,48 @@ from typing import Optional, List
 from dotenv import load_dotenv
 from db import get_connection
 
+from jose import JWTError, jwt 
+from passlib.context import CryptContext 
+from fastapi import Depends, HTTPException, Request 
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials 
+from datetime import datetime, timedelta 
+
 # ─── SETUP ──────────────────────────────────────────────────
 load_dotenv()
 app = FastAPI(title="SentinelEHR API")
+
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin") 
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "sentinelehr2026") 
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret") 
+JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8")) 
+ 
+security = HTTPBearer() 
+ 
+def create_token(username: str) -> str: 
+    expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS) 
+    return jwt.encode( 
+        {"sub": username, "exp": expire}, 
+        JWT_SECRET, 
+        algorithm="HS256" 
+    ) 
+ 
+def verify_token( 
+    credentials: HTTPAuthorizationCredentials = Depends(security) 
+): 
+    try: 
+        payload = jwt.decode( 
+            credentials.credentials, 
+            JWT_SECRET, 
+            algorithms=["HS256"] 
+        ) 
+        username = payload.get("sub") 
+        if not username: 
+            raise HTTPException(status_code=401, 
+                detail="Invalid token") 
+        return username 
+    except JWTError: 
+        raise HTTPException(status_code=401, 
+            detail="Invalid or expired token") 
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +69,20 @@ class StatusUpdate(BaseModel):
     reviewed_by: Optional[str] = None
 
 # ─── ENDPOINTS ──────────────────────────────────────────────
+
+@app.post("/login") 
+def login(body: dict): 
+    username = body.get("username", "") 
+    password = body.get("password", "") 
+    if username != ADMIN_USERNAME or password != ADMIN_PASSWORD: 
+        raise HTTPException( 
+            status_code=401, 
+            detail="Incorrect username or password" 
+        ) 
+    return { 
+        "access_token": create_token(username), 
+        "token_type": "bearer" 
+    } 
 
 @app.get("/health")
 def health_check():
@@ -52,7 +105,7 @@ def health_check():
         }
 
 @app.get("/summary")
-def get_summary():
+def get_summary(user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -103,7 +156,8 @@ def get_alerts(
     severity: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = Query(50, le=200),
-    offset: int = 0
+    offset: int = 0,
+    user: str = Depends(verify_token)
 ):
     try:
         conn = get_db()
@@ -145,7 +199,7 @@ def get_alerts(
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/alerts/{alert_id}")
-def get_alert(alert_id: int):
+def get_alert(alert_id: int, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -162,7 +216,7 @@ def get_alert(alert_id: int):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.patch("/alerts/{alert_id}/status")
-def update_alert_status(alert_id: int, update: StatusUpdate):
+def update_alert_status(alert_id: int, update: StatusUpdate, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -200,7 +254,7 @@ def update_alert_status(alert_id: int, update: StatusUpdate):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/employees/{emp_id}/profile")
-def get_employee_profile(emp_id: int):
+def get_employee_profile(emp_id: int, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -245,7 +299,7 @@ def get_employee_profile(emp_id: int):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/digest")
-def get_digest(days: int = 30):
+def get_digest(days: int = 30, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
