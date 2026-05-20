@@ -12,7 +12,8 @@ import {
 } from 'recharts';
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
-const ORG_NAME = "CommUnityCare";
+const params = new URLSearchParams(window.location.search);
+const ORG_NAME = params.get('org') || "SentinelEHR Demo";
 const ORG_SUBTITLE = "Central Texas Community Health Centers";
 
 const App = () => {
@@ -144,7 +145,7 @@ const App = () => {
           </svg>
           <div className="brand-text-container">
             <h1 className="brand-title">SentinelEHR</h1>
-            <span className="brand-subtitle">EHR PRIVACY MONITORING SYSTEM</span>
+            <span className="brand-subtitle">EHR Privacy Monitoring</span>
           </div>
         </div>
         <div className="header-divider"></div>
