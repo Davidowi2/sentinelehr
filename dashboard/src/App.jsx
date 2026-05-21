@@ -10,6 +10,7 @@ const App = () => {
   const [token, setToken] = useState( 
     localStorage.getItem('sentinel_token') || null 
   ) 
+  const [loggingIn, setLoggingIn] = useState(false) 
   const [loginError, setLoginError] = useState('') 
   const [loginForm, setLoginForm] = useState( 
     { username: '', password: '' } 
@@ -17,6 +18,7 @@ const App = () => {
 
   const handleLogin = async (e) => { 
     e.preventDefault() 
+    setLoggingIn(true) 
     try { 
       const res = await fetch(`${API_BASE}/login`, { 
         method: 'POST', 
@@ -35,7 +37,15 @@ const App = () => {
     } catch { 
       setLoginError('Cannot connect to server') 
     } 
+    setLoggingIn(false) 
   } 
+
+  useEffect(() => { 
+    if (!token) { 
+      fetch(`${API_BASE}/health`) 
+        .catch(() => {}) 
+    } 
+  }, [token]) 
 
   const handleLogout = () => { 
     localStorage.removeItem('sentinel_token') 
@@ -295,7 +305,9 @@ const App = () => {
               }}>{loginError}</p> 
             )}
 
-            <button type="submit" style={{ 
+            <button type="submit" 
+              disabled={loggingIn}
+              style={{ 
               width: '100%', 
               padding: '12px', 
               background: '#E11D48', 
@@ -306,9 +318,12 @@ const App = () => {
               fontWeight: '600', 
               letterSpacing: '0.08em', 
               textTransform: 'uppercase', 
-              cursor: 'pointer', 
+              cursor: loggingIn ? 'not-allowed' : 'pointer', 
+              opacity: loggingIn ? 0.7 : 1,
               fontFamily: "'DM Sans', sans-serif" 
-            }}>Sign In →</button> 
+            }}>
+              {loggingIn ? 'Connecting...' : 'Sign In →'}
+            </button> 
           </form> 
         </div> 
       </div> 
