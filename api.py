@@ -30,8 +30,12 @@ app.add_exception_handler(
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin") 
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "sentinelehr2026") 
-DEMO_USERNAME = os.getenv("DEMO_USERNAME", "demo") 
-DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "hbh-demo-2026") 
+DEMO_USERS = { 
+    os.getenv("DEMO_USERNAME", "demo"): 
+        os.getenv("DEMO_PASSWORD", "hbh-demo-2026"), 
+    os.getenv("DEMO2_USERNAME", "erie-demo"): 
+        os.getenv("DEMO2_PASSWORD", "erie-demo-2026"), 
+} 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret") 
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8")) 
  
@@ -98,8 +102,8 @@ def login(request: Request, body: dict):
     if not ( 
         (username == ADMIN_USERNAME and 
          password == ADMIN_PASSWORD) or 
-        (username == DEMO_USERNAME and 
-         password == DEMO_PASSWORD) 
+        (username in DEMO_USERS and 
+         DEMO_USERS.get(username) == password) 
     ): 
         raise HTTPException( 
             status_code=401, 
