@@ -1,0 +1,37 @@
+{
+  "attackers": [
+    {
+      "USER_ID": 10050,
+      "ROLE": "MA",
+      "ANOMALY_TYPE": "VIP_SNOOP",
+      "DEPT": 8
+    },
+    {
+      "USER_ID": 10036,
+      "ROLE": "Float_Nurse",
+      "ANOMALY_TYPE": "BULK_EXPORT",
+      "DEPT": 10
+    },
+    {
+      "USER_ID": 10042,
+      "ROLE": "Float_Nurse",
+      "ANOMALY_TYPE": "OFF_HOURS",
+      "DEPT": 10
+    },
+    {
+      "USER_ID": 10065,
+      "ROLE": "Scheduler",
+      "ANOMALY_TYPE": "SENSITIVE_SNOOP",
+      "DEPT": 5
+    }
+  ],
+  "generated_at": "2026-05-23T15:22:38.823683",
+  "schema_version": "v2",
+  "clarity_table_verification_required": [
+    "ACCESS_LOG.ACCESS_INSTANT column name",
+    "ACCESS_LOG.DEP_ID column name",
+    "ACCESS_LOG.SESSION_KEY column name",
+    "CLARITY_EMP.EMP_STATUS_C column name",
+    "PATIENT.HOME_DEP_ID column name"
+  ]
+}

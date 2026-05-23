@@ -1,0 +1,12 @@
+ACTION_C,NAME,ABBR,INTERNAL_ID
+1,In Chart,IC,ACT_001
+2,Chart Review,CR,ACT_002
+3,Open Chart,OC,ACT_003
+4,Print Chart,PC,ACT_004
+5,Export Data,ED,ACT_005
+6,Break Glass,BG,ACT_006
+7,Search,SR,ACT_007
+8,Edit Note,EN,ACT_008
+9,Sign Order,SO,ACT_009
+10,View Result,VR,ACT_010
+11,Chart Close,CC,ACT_011

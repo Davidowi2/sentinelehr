@@ -1,0 +1,11 @@
+DEP_ID,DEPARTMENT_NAME,REV_LOC_ID,SPECIALTY_DEP_C
+1,Internal Medicine,100,4
+2,Pediatrics,100,1
+3,OB/GYN,100,9
+4,Emergency,101,8
+5,Oncology,101,8
+6,Behavioral Health,101,5
+7,Cardiology,102,4
+8,Orthopedics,102,18
+9,Billing/Admin,102,3
+10,Float Pool,103,19
