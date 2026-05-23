@@ -124,17 +124,36 @@ def process_new_alert(alert_id: int) -> str:
                 patient_ids=[]
             )
 
-def enforce_state_transition(current_status: str, new_status: str) -> bool:
+def enforce_state_transition(case_id: str, current_status: str, new_status: str) -> bool:
     allowed = {
         'Open': ['Under Investigation'],
         'Under Investigation': ['Pending HR', 'Resolved'],
         'Pending HR': ['Under Investigation'],
         'Resolved': ['Closed']
     }
-    # Note: 'Resolved' -> 'Closed' should ideally check for 90 days, 
-    # but the function signature doesn't provide dates. 
-    # We'll allow it and handle the check in update_case_status if needed.
-    return new_status in allowed.get(current_status, [])
+    
+    if new_status not in allowed.get(current_status, []):
+        return False
+
+    if new_status == 'Closed': 
+        conn = get_connection() 
+        cursor = conn.cursor() 
+        cursor.execute( 
+            "SELECT resolved_at FROM cases WHERE case_id = %s", 
+            (case_id,) 
+        ) 
+        result = cursor.fetchone() 
+        conn.close() 
+        if result and result['resolved_at']: 
+            from datetime import datetime, timezone 
+            days_since = ( 
+                datetime.now(timezone.utc) -  
+                result['resolved_at'].replace(tzinfo=timezone.utc) 
+            ).days 
+            if days_since < 90: 
+                return False 
+    
+    return True
 
 def update_case_status(case_id: str, new_status: str, user_id: int, note: str = None) -> bool:
     conn = get_connection()
@@ -147,13 +166,7 @@ def update_case_status(case_id: str, new_status: str, user_id: int, note: str = 
         
     current_status = case['status']
     
-    # Check 90 days for Resolved -> Closed
-    if current_status == 'Resolved' and new_status == 'Closed':
-        if not case['resolved_at'] or (datetime.now() - case['resolved_at']).days < 90:
-            conn.close()
-            return False
-
-    if not enforce_state_transition(current_status, new_status):
+    if not enforce_state_transition(case_id, current_status, new_status):
         conn.close()
         return False
         
