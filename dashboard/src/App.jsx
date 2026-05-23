@@ -67,6 +67,14 @@ const App = () => {
   const [profileAlerts, setProfileAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [casesData, setCasesData] = useState([]) 
+  const [casesTotal, setCasesTotal] = useState(0) 
+  const [casesLoading, setCasesLoading] = useState(false) 
+  const [caseStatusFilter, setCaseStatusFilter] = useState('Open') 
+  const [casePriorityFilter, setCasePriorityFilter] = useState('') 
+  const [casesOffset, setCasesOffset] = useState(0) 
+  const CASES_LIMIT = 50 
+
   // Health check & Summary
   useEffect(() => {
     const checkHealth = async () => {
@@ -168,6 +176,28 @@ const App = () => {
     }
     setLoading(false);
   };
+
+  const fetchCases = async () => { 
+    setCasesLoading(true) 
+    try { 
+      let url = `${API_BASE}/cases?limit=${CASES_LIMIT}&offset=${casesOffset}` 
+      if (caseStatusFilter) url += `&status=${encodeURIComponent(caseStatusFilter)}` 
+      if (casePriorityFilter) url += `&priority=${casePriorityFilter}` 
+      const res = await fetch(url, { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      }) 
+      const data = await res.json() 
+      setCasesData(data.cases || []) 
+      setCasesTotal(data.total_count || 0) 
+    } catch(e) { 
+      console.error('Cases fetch failed', e) 
+    } 
+    setCasesLoading(false) 
+  } 
+  
+  useEffect(() => { 
+    if (activeTab === 'cases') fetchCases() 
+  }, [activeTab, caseStatusFilter, casePriorityFilter, casesOffset, token]) 
 
   const getSeverityColors = (severity) => {
     switch (severity?.toLowerCase()) {
@@ -363,11 +393,11 @@ const App = () => {
       </header>
 
       <nav className="nav-tabs">
-        {['OVERVIEW', 'ALERTS', 'INVESTIGATE'].map(tab => (
+        {['OVERVIEW', 'ALERTS', 'CASES', 'INVESTIGATE'].map(tab => (
           <button 
             key={tab} 
-            className={`tab ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
+            className={`tab ${activeTab === tab.toUpperCase() || (activeTab === 'cases' && tab === 'CASES') ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab === 'CASES' ? 'cases' : tab)}
           >
             {tab}
           </button>
@@ -751,6 +781,284 @@ const App = () => {
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'cases' && ( 
+          <div style={{padding: '24px 32px'}}> 
+        
+            {/* Filter bar */} 
+            <div style={{ 
+              background: '#fff', 
+              borderRadius: '12px', 
+              border: '1px solid #E2E8F4', 
+              boxShadow: '0 1px 4px rgba(15,23,42,0.06)', 
+              padding: '16px 20px', 
+              marginBottom: '16px', 
+              display: 'flex', 
+              alignItems: 'flex-end', 
+              gap: '16px' 
+            }}> 
+              <div> 
+                <div style={{fontSize:'11px', fontWeight:'500', 
+                  letterSpacing:'0.08em', textTransform:'uppercase', 
+                  color:'#64748B', marginBottom:'6px'}}> 
+                  Status 
+                </div> 
+                <select 
+                  value={caseStatusFilter} 
+                  onChange={e => { 
+                    setCaseStatusFilter(e.target.value) 
+                    setCasesOffset(0) 
+                  }} 
+                  style={{background:'#FAFBFF', 
+                    border:'1px solid #E2E8F4', 
+                    borderRadius:'6px', padding:'8px 12px', 
+                    fontSize:'13px', color:'#0F172A', 
+                    fontFamily:'IBM Plex Mono, monospace'}}> 
+                  <option value="">All</option> 
+                  <option value="Open">Open</option> 
+                  <option value="Under Investigation"> 
+                    Under Investigation</option> 
+                  <option value="Pending HR">Pending HR</option> 
+                  <option value="Resolved">Resolved</option> 
+                  <option value="Closed">Closed</option> 
+                </select> 
+              </div> 
+        
+              <div> 
+                <div style={{fontSize:'11px', fontWeight:'500', 
+                  letterSpacing:'0.08em', textTransform:'uppercase', 
+                  color:'#64748B', marginBottom:'6px'}}> 
+                  Priority 
+                </div> 
+                <select 
+                  value={casePriorityFilter} 
+                  onChange={e => { 
+                    setCasePriorityFilter(e.target.value) 
+                    setCasesOffset(0) 
+                  }} 
+                  style={{background:'#FAFBFF', 
+                    border:'1px solid #E2E8F4', 
+                    borderRadius:'6px', padding:'8px 12px', 
+                    fontSize:'13px', color:'#0F172A', 
+                    fontFamily:'IBM Plex Mono, monospace'}}> 
+                  <option value="">All</option> 
+                  <option value="Critical">Critical</option> 
+                  <option value="Medium">Medium</option> 
+                  <option value="Low">Low</option> 
+                </select> 
+              </div> 
+        
+              <div style={{marginLeft:'auto', fontSize:'12px', 
+                color:'#94A3B8', 
+                fontFamily:'IBM Plex Mono, monospace'}}> 
+                {casesTotal} cases 
+              </div> 
+            </div> 
+        
+            {/* Cases table */} 
+            <div style={{ 
+              background: '#fff', 
+              borderRadius: '12px', 
+              border: '1px solid #E2E8F4', 
+              boxShadow: '0 1px 4px rgba(15,23,42,0.06)', 
+              overflow: 'hidden' 
+            }}> 
+              <table style={{width:'100%', 
+                borderCollapse:'collapse'}}> 
+                <thead> 
+                  <tr style={{background:'#F8FAFF'}}> 
+                    {['Case ID','Employee','Priority', 
+                      'Status','Days Open','Alerts', 
+                      'Window','Assigned To'].map(h => ( 
+                      <th key={h} style={{ 
+                        padding:'12px 16px', 
+                        textAlign:'left', 
+                        fontSize:'10px', 
+                        fontWeight:'600', 
+                        letterSpacing:'0.12em', 
+                        textTransform:'uppercase', 
+                        color:'#94A3B8', 
+                        borderBottom:'1px solid #E2E8F4' 
+                      }}>{h}</th> 
+                    ))} 
+                  </tr> 
+                </thead> 
+                <tbody> 
+                  {casesLoading ? ( 
+                    <tr><td colSpan={8} style={{ 
+                      padding:'40px', textAlign:'center', 
+                      color:'#94A3B8', fontSize:'13px' 
+                    }}>Loading cases...</td></tr> 
+                  ) : casesData.length === 0 ? ( 
+                    <tr><td colSpan={8} style={{ 
+                      padding:'40px', textAlign:'center', 
+                      color:'#94A3B8', fontSize:'13px' 
+                    }}>No cases found</td></tr> 
+                  ) : casesData.map(c => { 
+                    const priorityColor = 
+                      c.priority === 'Critical' ? '#E11D48' : 
+                      c.priority === 'Medium' ? '#2563EB' : '#64748B' 
+                    const statusColor = 
+                      c.status === 'Open' ? '#E11D48' : 
+                      c.status === 'Under Investigation' ? '#D97706' : 
+                      c.status === 'Pending HR' ? '#7C3AED' : 
+                      c.status === 'Resolved' ? '#059669' : '#64748B' 
+                    const daysOpen = Math.round( 
+                      c.days_open || 0) 
+                    const alertCount = Array.isArray(c.alert_ids) 
+                      ? c.alert_ids.length 
+                      : (c.alert_ids 
+                        ? JSON.parse(c.alert_ids).length 
+                        : 0) 
+                    const windowStart = c.window_start 
+                      ? c.window_start.slice(0,10) : '' 
+                    const windowEnd = c.window_end 
+                      ? c.window_end.slice(0,10) : '' 
+        
+                    return ( 
+                      <tr key={c.case_id} 
+                        style={{borderBottom:'1px solid #E2E8F4', 
+                          cursor:'pointer'}} 
+                        onMouseEnter={e => 
+                          e.currentTarget.style.background='#F8FAFF'} 
+                        onMouseLeave={e => 
+                          e.currentTarget.style.background='#fff'} 
+                      > 
+                        <td style={{padding:'14px 16px'}}> 
+                          <span style={{ 
+                            fontFamily:'IBM Plex Mono, monospace', 
+                            fontSize:'12px', fontWeight:'600', 
+                            color:'#E11D48' 
+                          }}>{c.case_id}</span> 
+                        </td> 
+                        <td style={{padding:'14px 16px', 
+                          fontFamily:'IBM Plex Mono, monospace', 
+                          fontSize:'12px', color:'#0F172A', 
+                          fontWeight:'500'}}> 
+                          EMP-{c.emp_id} 
+                        </td> 
+                        <td style={{padding:'14px 16px'}}> 
+                          <span style={{ 
+                            display:'inline-block', 
+                            padding:'3px 10px', 
+                            borderRadius:'20px', 
+                            fontSize:'11px', 
+                            fontWeight:'500', 
+                            textTransform:'uppercase', 
+                            letterSpacing:'0.06em', 
+                            color: priorityColor, 
+                            background: c.priority==='Critical' 
+                              ? '#FFF1F3' 
+                              : c.priority==='Medium' 
+                              ? '#EFF6FF' : '#F8FAFF', 
+                            border:`1px solid ${priorityColor}40` 
+                          }}>{c.priority}</span> 
+                        </td> 
+                        <td style={{padding:'14px 16px'}}> 
+                          <span style={{ 
+                            display:'inline-flex', 
+                            alignItems:'center', 
+                            gap:'6px', 
+                            fontSize:'12px', 
+                            color: statusColor, 
+                            fontWeight:'500' 
+                          }}> 
+                            <span style={{ 
+                              width:'6px', height:'6px', 
+                              borderRadius:'50%', 
+                              background: statusColor, 
+                              flexShrink:0 
+                            }}/> 
+                            {c.status} 
+                          </span> 
+                        </td> 
+                        <td style={{ 
+                          padding:'14px 16px', 
+                          fontFamily:'IBM Plex Mono, monospace', 
+                          fontSize:'12px', 
+                          color: daysOpen > 14 ? '#E11D48' 
+                            : '#475569', 
+                          fontWeight: daysOpen > 14 ? '600':'400' 
+                        }}> 
+                          {daysOpen}d 
+                          {daysOpen > 14 && 
+                            <span style={{marginLeft:'4px', 
+                              fontSize:'10px'}}>⚠</span>} 
+                        </td> 
+                        <td style={{ 
+                          padding:'14px 16px', 
+                          fontFamily:'IBM Plex Mono, monospace', 
+                          fontSize:'12px', color:'#475569' 
+                        }}>{alertCount}</td> 
+                        <td style={{ 
+                          padding:'14px 16px', 
+                          fontSize:'11px', color:'#94A3B8', 
+                          fontFamily:'IBM Plex Mono, monospace' 
+                        }}> 
+                          {windowStart}<br/> 
+                          <span style={{color:'#CBD5E1'}}> 
+                            to {windowEnd} 
+                          </span> 
+                        </td> 
+                        <td style={{ 
+                          padding:'14px 16px', 
+                          fontSize:'12px', color:'#94A3B8', 
+                          fontFamily:'IBM Plex Mono, monospace' 
+                        }}> 
+                          {c.assigned_to 
+                            ? `USR-${c.assigned_to}` 
+                            : '—'} 
+                        </td> 
+                      </tr> 
+                    ) 
+                  })} 
+                </tbody> 
+              </table> 
+        
+              {/* Pagination */} 
+              {casesTotal > CASES_LIMIT && ( 
+                <div style={{ 
+                  padding:'16px 20px', 
+                  borderTop:'1px solid #E2E8F4', 
+                  display:'flex', gap:'8px', 
+                  alignItems:'center' 
+                }}> 
+                  <button 
+                    onClick={() => setCasesOffset( 
+                      Math.max(0, casesOffset - CASES_LIMIT))} 
+                    disabled={casesOffset === 0} 
+                    style={{ 
+                      padding:'6px 16px', 
+                      border:'1px solid #E2E8F4', 
+                      borderRadius:'6px', background:'#fff', 
+                      fontSize:'12px', cursor:'pointer', 
+                      color: casesOffset===0 
+                        ? '#CBD5E1' : '#475569' 
+                    }}>← Prev</button> 
+                  <span style={{fontSize:'12px', 
+                    color:'#94A3B8', 
+                    fontFamily:'IBM Plex Mono, monospace'}}> 
+                    {casesOffset + 1}– 
+                    {Math.min(casesOffset+CASES_LIMIT, casesTotal)} 
+                    {' '}of {casesTotal} 
+                  </span> 
+                  <button 
+                    onClick={() => setCasesOffset( 
+                      casesOffset + CASES_LIMIT)} 
+                    disabled={casesOffset+CASES_LIMIT >= casesTotal} 
+                    style={{ 
+                      padding:'6px 16px', 
+                      border:'1px solid #E2E8F4', 
+                      borderRadius:'6px', background:'#fff', 
+                      fontSize:'12px', cursor:'pointer', 
+                      color: casesOffset+CASES_LIMIT>=casesTotal 
+                        ? '#CBD5E1' : '#475569' 
+                    }}>Next →</button> 
+                </div> 
+              )} 
+            </div> 
+          </div> 
         )}
 
         {activeTab === 'INVESTIGATE' && (
