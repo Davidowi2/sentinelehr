@@ -18,6 +18,8 @@ def get_db_connection():
 def setup_alerts_table(conn):
     cursor = conn.cursor()
     cursor.execute("TRUNCATE TABLE alerts RESTART IDENTITY CASCADE")
+    # Add new columns if not exists
+    cursor.execute("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS sensitive_out_of_panel INTEGER DEFAULT 0;")
     conn.commit()
 
 def run_rules_engine():
@@ -33,7 +35,7 @@ def run_rules_engine():
     
     # anomaly_type must NEVER be read by this script
     df_audit = pd.read_sql_query("""
-        SELECT audit_id, emp_id, pat_id, action_c, action_datetime, dept_id, in_panel, is_vip_access 
+        SELECT audit_id, emp_id, pat_id, action_c, action_datetime, dept_id, in_panel, is_vip_access, is_sensitive_access
         FROM audit_events 
         WHERE is_known_user = 1
     """, engine)
@@ -67,6 +69,7 @@ def run_rules_engine():
     df['is_break_glass'] = (df['action_c'] == 5).astype(int)
     df['is_vip_out_of_panel'] = ((df['is_vip_access'] == 1) & (df['in_panel'] == 0)).astype(int)
     df['is_cross_dept'] = (df['dept_id'] != df['primary_dept_id']).astype(int)
+    df['is_sensitive_out_of_panel'] = ((df['is_sensitive_access'] == 1) & (df['in_panel'] == 0)).astype(int)
     
     # Calculate daily metrics per (date, emp_id)
     print("Aggregating to daily metrics...")
@@ -77,7 +80,8 @@ def run_rules_engine():
         'is_export_print': 'sum',
         'is_break_glass': 'sum',
         'is_vip_out_of_panel': 'sum',
-        'is_cross_dept': 'sum'
+        'is_cross_dept': 'sum',
+        'is_sensitive_out_of_panel': 'sum'
     }).rename(columns={'audit_id': 'total_events'}).reset_index()
     
     # Re-merge baseline info to 'daily'
@@ -116,8 +120,15 @@ def run_rules_engine():
     r7_thresh = daily['break_glass_rate'] * daily['total_events'] * 2
     daily['R7'] = (daily['is_break_glass'] >= 2) & (daily['is_break_glass'] > r7_thresh)
     
+    # R8 - SENSITIVE RECORD ACCESS (HARD RULE)
+    # Threshold 3 accounts for accidental access. 
+    # In real Epic, extra access controls reduce 
+    # accidental sensitive hits significantly. 
+    # 3+ hits in one day indicates intent, not accident. 
+    daily['R8'] = daily['is_sensitive_out_of_panel'] >= 3
+    
     # Calculate severity and explanation
-    rules = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7']
+    rules = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']
     daily['rule_count'] = daily[rules].sum(axis=1)
     
     # Filter only triggered
@@ -129,9 +140,17 @@ def run_rules_engine():
         return
 
     def get_severity(row):
-        count = row['rule_count']
+        # R4 and R8 are HARD RULES - fire standalone
+        if row['R8']:
+            # R8 alone -> High, R8 + any other -> Critical
+            return "Critical" if row['rule_count'] > 1 else "High"
+        
         if row['R4']:
-            return "Critical" if count > 1 else "Medium"
+            # R4 alone -> Medium (from previous logic), R4 + any other -> Critical if count > 1
+            return "Critical" if row['rule_count'] > 1 else "Medium"
+        
+        # Rule of 3 for others
+        count = row['rule_count']
         if count == 2: return "Medium"
         if count >= 3: return "High"
         return "Low"
@@ -148,6 +167,7 @@ def run_rules_engine():
         if row['R5']: expl.append(f"{row['is_cross_dept']} cross-dept accesses")
         if row['R6']: expl.append(f"{row['is_export_print']} export/print events")
         if row['R7']: expl.append(f"{row['is_break_glass']} break-glass events")
+        if row['R8']: expl.append(f"{row['is_sensitive_out_of_panel']} accesses to sensitive records (HIV/behavioral health) with no documented care relationship")
         return f"{row['role']} on {row['date']}: " + ". ".join(expl) + "."
 
     triggered_df['explanation'] = triggered_df.apply(get_explanation, axis=1)
@@ -159,7 +179,7 @@ def run_rules_engine():
     alerts_to_insert = triggered_df[[
         'emp_id', 'date', 'rules_triggered', 'rule_count', 'severity', 'explanation',
         'total_events', 'is_out_of_panel', 'is_off_hours', 'is_export_print',
-        'is_break_glass', 'is_vip_out_of_panel', 'is_cross_dept', 'created_at'
+        'is_break_glass', 'is_vip_out_of_panel', 'is_cross_dept', 'created_at', 'is_sensitive_out_of_panel'
     ]].values.tolist()
     
     from psycopg2.extras import execute_values
@@ -168,7 +188,7 @@ def run_rules_engine():
         INSERT INTO alerts (
             emp_id, alert_date, rules_triggered, rule_count, severity, explanation,
             event_count, out_of_panel, off_hours_count, export_print_count,
-            break_glass_count, vip_out_of_panel, cross_dept_count, created_at
+            break_glass_count, vip_out_of_panel, cross_dept_count, created_at, sensitive_out_of_panel
         ) VALUES %s
     """, alerts_to_insert)
     conn.commit()

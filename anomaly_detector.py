@@ -31,7 +31,7 @@ def build_feature_matrix(conn):
     engine = create_engine(DATABASE_URL)
     
     df_audit = pd.read_sql_query("""
-        SELECT audit_id, emp_id, action_datetime, pat_id, in_panel, is_vip_access, dept_id, action_c
+        SELECT audit_id, emp_id, action_datetime, pat_id, in_panel, is_vip_access, dept_id, action_c, is_sensitive_access
         FROM audit_events WHERE is_known_user = 1
     """, engine)
     df_baselines = pd.read_sql_query("SELECT * FROM user_baselines", engine)
@@ -55,6 +55,7 @@ def build_feature_matrix(conn):
     df['is_break_glass'] = (df['action_c'] == 5).astype(int)
     df['is_vip_out_of_panel'] = ((df['is_vip_access'] == 1) & (df['in_panel'] == 0)).astype(int)
     df['is_cross_dept'] = (df['dept_id'] != df['primary_dept_id']).astype(int)
+    df['is_sensitive_out_of_panel'] = ((df['is_sensitive_access'] == 1) & (df['in_panel'] == 0)).astype(int)
     
     # Aggregate daily
     print("Aggregating to daily metrics...")
@@ -67,6 +68,7 @@ def build_feature_matrix(conn):
         'is_break_glass': 'sum',
         'is_vip_out_of_panel': 'sum',
         'is_cross_dept': 'sum',
+        'is_sensitive_out_of_panel': 'sum',
         'pat_id': 'nunique'
     }).rename(columns={'audit_id': 'total_events', 'pat_id': 'unique_patients_today'}).reset_index()
     
@@ -89,8 +91,9 @@ def build_feature_matrix(conn):
     daily['f7'] = daily['is_cross_dept'] / np.maximum(daily['total_events'], 1)
     daily['f8'] = np.clip((daily['unique_patients_today'] - daily['avg_unique_patients_day']) / np.maximum(daily['std_unique_patients_day'], 0.1), -3, 10)
     daily['f9'] = daily['rule_count'].astype(float)
+    daily['f10'] = daily['is_sensitive_out_of_panel'] / np.maximum(daily['total_events'], 1)
     
-    feature_cols = ['emp_id', 'date', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9']
+    feature_cols = ['emp_id', 'date', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']
     return daily[feature_cols].rename(columns={'date': 'score_date'}).fillna(0)
 
 def run_anomaly_detector():
@@ -105,7 +108,7 @@ def run_anomaly_detector():
         return
         
     print(f"Training Isolation Forest on {len(df_features)} daily profiles...")
-    X = df_features[['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9']].values
+    X = df_features[['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']].values
     
     # Standardize
     scaler = StandardScaler()

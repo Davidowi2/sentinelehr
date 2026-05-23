@@ -61,6 +61,10 @@ def run_alert_manager():
 
     df['adjusted_severity'] = df.apply(calculate_adjusted_severity, axis=1)
     
+    # Apply R8 override in Python to ensure summary is accurate
+    mask_r8 = (df['rules_triggered'].str.contains('R8')) & (df['rule_count'] > 1) & (df['adjusted_severity'] != 'Suppressed')
+    df.loc[mask_r8, 'adjusted_severity'] = 'Critical'
+    
     # Calculate priority_rank (1=Critical, 2=High, 3=Medium, 4=Low/Suppressed)
     rank_map = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4, "Suppressed": 5}
     df['priority_rank'] = df['adjusted_severity'].map(rank_map).fillna(5)
@@ -77,13 +81,31 @@ def run_alert_manager():
     from psycopg2.extras import execute_values
     execute_values(cursor, "INSERT INTO alerts_update (alert_id, anomaly_score, adjusted_severity, priority_rank) VALUES %s", update_data)
     
+    # FIX 1 — Anomaly score linkage:
+    cursor.execute("""
+        UPDATE alerts a 
+        SET anomaly_score = s.anomaly_score 
+        FROM anomaly_scores s 
+        WHERE a.emp_id = s.emp_id 
+        AND DATE(a.alert_date) = DATE(s.score_date)
+    """)
+    
+    # Update other fields from Python logic
     cursor.execute("""
         UPDATE alerts a
-        SET anomaly_score = u.anomaly_score,
-            adjusted_severity = u.adjusted_severity,
+        SET adjusted_severity = u.adjusted_severity,
             priority_rank = u.priority_rank
         FROM alerts_update u
         WHERE a.alert_id = u.alert_id
+    """)
+    
+    # FIX 2 — Critical severity for R8 combinations:
+    cursor.execute("""
+        UPDATE alerts 
+        SET adjusted_severity = 'Critical' 
+        WHERE rules_triggered LIKE '%%R8%%' 
+        AND rule_count > 1 
+        AND adjusted_severity != 'Suppressed'
     """)
     
     conn.commit()

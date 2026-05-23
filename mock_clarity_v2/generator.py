@@ -115,7 +115,7 @@ for i in range(NUM_PATIENTS):
         "SEX_C": sex_c,
         "HOME_DEP_ID": random.randint(1, 8),
         "_IS_VIP": 1 if random.random() < 0.02 else 0,
-        "_IS_SENSITIVE": 1 if random.random() < 0.05 else 0
+        "_IS_SENSITIVE": 1 if random.random() < 0.015 else 0 # 1.5% of patients have sensitive records (HIV/behavioral health). Real Epic environments have stricter access controls on these records.
     })
 
 patients_df = pd.DataFrame(patient_records)

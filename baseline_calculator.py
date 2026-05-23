@@ -25,6 +25,12 @@ def calculate_baselines():
     start_time = time.time()
     conn = get_db_connection()
     
+    # Add column if not exists
+    cursor = conn.cursor()
+    cursor.execute("ALTER TABLE user_baselines ADD COLUMN IF NOT EXISTS sensitive_access_rate REAL DEFAULT 0.0;")
+    cursor.execute("ALTER TABLE user_baselines ADD COLUMN IF NOT EXISTS vip_access_rate REAL DEFAULT 0.0;")
+    conn.commit()
+
     # Load data
     print("Loading data from Neon PostgreSQL...")
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -32,7 +38,10 @@ def calculate_baselines():
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     engine = create_engine(DATABASE_URL)
     
-    df_audit = pd.read_sql_query("SELECT * FROM audit_events WHERE is_known_user = 1", engine)
+    # sensitive record accesses should never contribute to "normal" baseline behavior
+    df_audit = pd.read_sql_query("SELECT * FROM audit_events WHERE is_known_user = 1 AND is_sensitive_access = 0", engine)
+    # But we need total events for the new rates, so load a simplified version for rate calculation
+    df_all_events = pd.read_sql_query("SELECT emp_id, is_sensitive_access, is_vip_access FROM audit_events WHERE is_known_user = 1", engine)
     df_emp = pd.read_sql_query("SELECT * FROM employees", engine)
     
     if df_audit.empty:
@@ -95,6 +104,16 @@ def calculate_baselines():
         avg_unique_pats = daily_unique_pats.mean()
         std_unique_pats = max(1.0, daily_unique_pats.std()) if len(daily_unique_pats) > 1 else 1.0
         
+        # New rates calculation using all events
+        emp_all_events = df_all_events[df_all_events['emp_id'] == emp_id]
+        total_ev = len(emp_all_events)
+        if total_ev > 0:
+            sensitive_rate = len(emp_all_events[emp_all_events['is_sensitive_access'] == 1]) / total_ev
+            vip_rate = len(emp_all_events[emp_all_events['is_vip_access'] == 1]) / total_ev
+        else:
+            sensitive_rate = 0.0
+            vip_rate = 0.0
+
         emp_metrics.append({
             'emp_id': emp_id,
             'role': emp_info['role'],
@@ -109,6 +128,8 @@ def calculate_baselines():
             'cross_dept_rate': cross_dept_rate,
             'avg_unique_patients_day': avg_unique_pats,
             'std_unique_patients_day': std_unique_pats,
+            'sensitive_access_rate': sensitive_rate,
+            'vip_access_rate': vip_rate,
             'primary_dept_id': int(primary_dept_id),
             'days_of_data': days_of_data
         })
@@ -194,7 +215,7 @@ def calculate_baselines():
             for col in ['avg_daily_volume', 'std_daily_volume', 'max_daily_volume_p95', 
                         'off_hours_rate', 'in_panel_rate', 'export_print_rate', 
                         'break_glass_rate', 'cross_dept_rate', 'avg_unique_patients_day', 
-                        'std_unique_patients_day']:
+                        'std_unique_patients_day', 'sensitive_access_rate', 'vip_access_rate']:
                 d[col] = 0.0
             d['primary_dept_id'] = emp_info['dept_id']
             

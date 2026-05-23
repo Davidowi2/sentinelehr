@@ -25,7 +25,7 @@
       "DEPT": 5
     }
   ],
-  "generated_at": "2026-05-23T15:22:38.823683",
+  "generated_at": "2026-05-23T20:53:08.142212",
   "schema_version": "v2",
   "clarity_table_verification_required": [
     "ACCESS_LOG.ACCESS_INSTANT column name",
