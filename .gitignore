@@ -12,3 +12,5 @@ dashboard/.vite/
 *.egg-info/
 dist/
 build/
+
+mock_clarity_v2/output/
