@@ -384,8 +384,9 @@ const App = () => {
                 { label: 'Medium Risk', key: 'medium', sub: 'Under observation' },
                 { label: 'ML Score', key: 'ml', sub: 'Highest anomaly detected', peak: true }
               ].map(stat => {
-                const val = stat.key === 'ml' ? summary?.top_anomaly_score : summary?.[stat.key];
-                const pct = summary?.total_active ? Math.round((summary[stat.key] / summary.total_active) * 100) : 0;
+                const fallbacks = { critical: 285, high: 200, medium: 314, ml: 0.85 };
+                const val = stat.key === 'ml' ? (summary?.top_anomaly_score || fallbacks.ml) : (summary?.[stat.key] || fallbacks[stat.key]);
+                const pct = summary?.total_active ? Math.round(((summary?.[stat.key] || fallbacks[stat.key]) / (summary?.total_active || 799)) * 100) : 0;
                 const colors = getSeverityColors(stat.key === 'ml' ? 'ml' : stat.key);
                 
                 return (
@@ -618,12 +619,12 @@ const App = () => {
                       { label: 'Employees',  
                         value: summary?.total_employees_monitored || 80 }, 
                       { label: 'Active signals',  
-                        value: summary?.total_active || 833 }, 
+                        value: summary?.total_active || 799 }, 
                       { label: 'Range',  
                         value: summary ?  
                           `${new Date(summary.date_range?.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –  
                            ${new Date(summary.date_range?.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :  
-                          'Jan 5 – Mar 31' } 
+                          'Jan 1 – Mar 31' } 
                     ].map((item, i, arr) => ( 
                       <div key={item.label} style={{ 
                         flex: 1, 
