@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from dotenv import load_dotenv
 from db import get_connection
+import case_logic
 
 from jose import JWTError, jwt 
 from passlib.context import CryptContext 
@@ -67,6 +68,41 @@ def verify_token(
         raise HTTPException(status_code=401, 
             detail="Invalid or expired token") 
 
+def get_current_user( 
+  credentials: HTTPAuthorizationCredentials = Depends(security) 
+): 
+  username = verify_token(credentials) 
+  try: 
+    conn = get_connection() 
+    cursor = conn.cursor() 
+    cursor.execute( 
+      "SELECT id, username, role, is_senior FROM users WHERE username = %s", 
+      (username,) 
+    ) 
+    user = cursor.fetchone() 
+    conn.close() 
+    if user: 
+      return dict(user) 
+  except: 
+    pass 
+  # Fallback for env var admin 
+  return { 
+    "id": 0, 
+    "username": username, 
+    "role": "admin", 
+    "is_senior": True 
+  } 
+ 
+def require_role(*allowed_roles): 
+  def checker(user = Depends(get_current_user)): 
+    if user['role'] not in allowed_roles: 
+      raise HTTPException( 
+        status_code=403, 
+        detail=f"Role {user['role']} cannot access this endpoint" 
+      ) 
+    return user 
+  return checker 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -99,20 +135,53 @@ class StatusUpdate(BaseModel):
 def login(request: Request, body: dict): 
     username = body.get("username", "") 
     password = body.get("password", "") 
-    if not ( 
-        (username == ADMIN_USERNAME and 
-         password == ADMIN_PASSWORD) or 
-        (username in DEMO_USERS and 
-         DEMO_USERS.get(username) == password) 
-    ): 
-        raise HTTPException( 
-            status_code=401, 
-            detail="Incorrect username or password" 
+    
+    # First check database users 
+    try: 
+        conn = get_connection() 
+        cursor = conn.cursor() 
+        cursor.execute( 
+            "SELECT id, password_hash, role, is_senior, active FROM users WHERE username = %s", 
+            (username,) 
         ) 
-    return { 
-        "access_token": create_token(username), 
-        "token_type": "bearer" 
-    } 
+        user = cursor.fetchone() 
+        conn.close() 
+        
+        if user and user['active'] and case_logic.verify_password(password, user['password_hash']): 
+            token = create_token(username) 
+            return { 
+                "access_token": token, 
+                "token_type": "bearer", 
+                "role": user['role'], 
+                "is_senior": user['is_senior'], 
+                "user_id": user['id'] 
+            } 
+    except: 
+        pass 
+    
+    # Fallback to env var admin (for bootstrap) 
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD: 
+        token = create_token(username) 
+        return { 
+            "access_token": token, 
+            "token_type": "bearer", 
+            "role": "admin", 
+            "is_senior": True, 
+            "user_id": 0 
+        } 
+    
+    # Also check demo users (existing logic) 
+    if username in DEMO_USERS and DEMO_USERS.get(username) == password: 
+        token = create_token(username) 
+        return { 
+            "access_token": token, 
+            "token_type": "bearer", 
+            "role": "auditor", 
+            "is_senior": False, 
+            "user_id": -1 
+        } 
+    
+    raise HTTPException(status_code=401, detail="Incorrect username or password") 
 
 @app.get("/health")
 def health_check():
@@ -344,6 +413,261 @@ def get_digest(request: Request, days: int = 30, user: str = Depends(verify_toke
         return digest
     except Exception as e:
         raise HTTPException(status_code=500, detail={"error": str(e)})
+
+# USER MANAGEMENT (admin only) 
+ 
+@app.post("/users") 
+@limiter.limit("10/minute") 
+def create_user( 
+  request: Request, 
+  body: dict, 
+  user = Depends(require_role('admin')) 
+): 
+  username = body.get("username") 
+  email = body.get("email") 
+  password = body.get("password") 
+  role = body.get("role", "investigator") 
+  is_senior = body.get("is_senior", False) 
+  
+  if not all([username, email, password]): 
+    raise HTTPException(400, "Missing required fields") 
+  if role not in ['admin','investigator','auditor']: 
+    raise HTTPException(400, "Invalid role") 
+  
+  hashed = case_logic.hash_password(password) 
+  try: 
+    conn = get_connection() 
+    cursor = conn.cursor() 
+    cursor.execute( 
+      """INSERT INTO users 
+         (username, email, password_hash, role, is_senior) 
+         VALUES (%s,%s,%s,%s,%s) RETURNING id""", 
+      (username, email, hashed, role, is_senior) 
+    ) 
+    new_id = cursor.fetchone()['id'] 
+    conn.commit() 
+    conn.close() 
+    return {"id": new_id, "username": username, 
+            "role": role, "created": True} 
+  except Exception as e: 
+    raise HTTPException(400, "Username or email already exists") 
+ 
+@app.get("/users") 
+def list_users( 
+  user = Depends(require_role('admin')) 
+): 
+  conn = get_connection() 
+  cursor = conn.cursor() 
+  cursor.execute( 
+    "SELECT id, username, email, role, is_senior, active, created_at FROM users ORDER BY created_at" 
+  ) 
+  users = [dict(r) for r in cursor.fetchall()] 
+  conn.close() 
+  return {"users": users} 
+ 
+# CASE MANAGEMENT 
+ 
+@app.get("/cases") 
+def list_cases( 
+  status: str = None, 
+  priority: str = None, 
+  assigned_to: int = None, 
+  limit: int = 50, 
+  offset: int = 0, 
+  user = Depends(get_current_user) 
+): 
+  conditions = [] 
+  params = [] 
+  if status: 
+    conditions.append("status = %s") 
+    params.append(status) 
+  if priority: 
+    conditions.append("priority = %s") 
+    params.append(priority) 
+  if assigned_to: 
+    conditions.append("assigned_to = %s") 
+    params.append(assigned_to) 
+  
+  where = "WHERE " + " AND ".join(conditions) if conditions else "" 
+  
+  conn = get_connection() 
+  cursor = conn.cursor() 
+  cursor.execute( 
+    f"""SELECT *, 
+        EXTRACT(DAY FROM NOW() - created_at) as days_open 
+        FROM cases {where} 
+        ORDER BY 
+          CASE priority 
+            WHEN 'Critical' THEN 1 
+            WHEN 'Medium' THEN 2 
+            WHEN 'Low' THEN 3 
+          END, 
+          created_at ASC 
+        LIMIT %s OFFSET %s""", 
+    params + [limit, offset] 
+  ) 
+  cases = [dict(r) for r in cursor.fetchall()] 
+  cursor.execute(f"SELECT COUNT(*) FROM cases {where}", params) 
+  total = cursor.fetchone()['count'] 
+  conn.close() 
+  return {"cases": cases, "total_count": total, "limit": limit, "offset": offset} 
+ 
+@app.get("/cases/{case_id}") 
+def get_case( 
+  case_id: str, 
+  user = Depends(get_current_user) 
+): 
+  conn = get_connection() 
+  cursor = conn.cursor() 
+  cursor.execute( 
+    """SELECT c.*, EXTRACT(DAY FROM NOW() - c.created_at) as days_open 
+       FROM cases c WHERE c.case_id = %s""", 
+    (case_id,) 
+  ) 
+  case = cursor.fetchone() 
+  if not case: 
+    raise HTTPException(404, "Case not found") 
+  
+  cursor.execute( 
+    """SELECT l.*, u.username as changed_by_name 
+       FROM case_audit_log l 
+       LEFT JOIN users u ON l.user_id = u.id 
+       WHERE l.case_id = %s 
+       ORDER BY l.timestamp ASC""", 
+    (case_id,) 
+  ) 
+  audit_log = [dict(r) for r in cursor.fetchall()] 
+  conn.close() 
+  
+  result = dict(case) 
+  result['audit_log'] = audit_log 
+  return result 
+ 
+@app.patch("/cases/{case_id}/status") 
+def update_case_status( 
+  case_id: str, 
+  body: dict, 
+  user = Depends(require_role('admin','investigator')) 
+): 
+  new_status = body.get("status") 
+  note = body.get("note", "") 
+  
+  if not new_status: 
+    raise HTTPException(400, "Status required") 
+  
+  success = case_logic.update_case_status( 
+    case_id, new_status, user['id'], note 
+  ) 
+  if not success: 
+    raise HTTPException(400, f"Invalid status transition to {new_status}") 
+  return {"case_id": case_id, "status": new_status, "updated": True} 
+ 
+@app.post("/cases/{case_id}/notes") 
+def add_note( 
+  case_id: str, 
+  body: dict, 
+  user = Depends(require_role('admin','investigator')) 
+): 
+  note_text = body.get("note", "").strip() 
+  if not note_text: 
+    raise HTTPException(400, "Note cannot be empty") 
+  case_logic.add_case_note(case_id, user['id'], note_text) 
+  return {"case_id": case_id, "note_added": True} 
+ 
+@app.patch("/cases/{case_id}/assign") 
+def assign_case( 
+  case_id: str, 
+  body: dict, 
+  user = Depends(require_role('admin','investigator')) 
+): 
+  assign_to_id = body.get("user_id") 
+  conn = get_connection() 
+  cursor = conn.cursor() 
+  cursor.execute( 
+    "SELECT assigned_to FROM cases WHERE case_id = %s", 
+    (case_id,) 
+  ) 
+  current = cursor.fetchone() 
+  if not current: 
+    raise HTTPException(404, "Case not found") 
+  
+  old_assigned = current['assigned_to'] 
+  cursor.execute( 
+    """UPDATE cases SET assigned_to = %s, 
+       updated_at = NOW() WHERE case_id = %s""", 
+    (assign_to_id, case_id) 
+  ) 
+  cursor.execute( 
+    """INSERT INTO case_audit_log 
+       (case_id, user_id, action, field_name, old_value, new_value) 
+       VALUES (%s,%s,'assigned','assigned_to',%s,%s)""", 
+    (case_id, user['id'], str(old_assigned), str(assign_to_id)) 
+  ) 
+  conn.commit() 
+  conn.close() 
+  return {"case_id": case_id, "assigned_to": assign_to_id} 
+ 
+@app.patch("/cases/{case_id}/outcome") 
+def set_outcome( 
+  case_id: str, 
+  body: dict, 
+  user = Depends(require_role('admin','investigator')) 
+): 
+  outcome = body.get("outcome") 
+  valid = ['Legitimate Access','Policy Violation','Training Required','Termination Recommended','No Action'] 
+  if outcome not in valid: 
+    raise HTTPException(400, f"Invalid outcome") 
+  case_logic.set_case_outcome(case_id, outcome, user['id']) 
+  return {"case_id": case_id, "outcome": outcome} 
+ 
+@app.get("/cases/{case_id}/export") 
+def export_case( 
+  case_id: str, 
+  user = Depends(require_role('admin','investigator','auditor')) 
+): 
+  conn = get_connection() 
+  cursor = conn.cursor() 
+  cursor.execute( 
+    "SELECT * FROM cases WHERE case_id = %s", (case_id,) 
+  ) 
+  case = cursor.fetchone() 
+  if not case: 
+    raise HTTPException(404, "Case not found") 
+  
+  cursor.execute( 
+    """SELECT * FROM case_audit_log 
+       WHERE case_id = %s ORDER BY timestamp""", 
+    (case_id,) 
+  ) 
+  audit_log = [dict(r) for r in cursor.fetchall()] 
+  
+  cursor.execute( 
+    """INSERT INTO case_audit_log 
+       (case_id, user_id, action, note) 
+       VALUES (%s,%s,'exported','OCR export generated')""", 
+    (case_id, user['id']) 
+  ) 
+  conn.commit() 
+  conn.close() 
+  
+  export = { 
+    "export_generated_at": datetime.utcnow().isoformat(), 
+    "export_generated_by": user['username'], 
+    "case": dict(case), 
+    "audit_trail": audit_log, 
+    "record_count": len(audit_log) 
+  } 
+  return export 
+ 
+@app.post("/alerts/{alert_id}/create-case") 
+def create_case_from_alert( 
+  alert_id: int, 
+  user = Depends(require_role('admin','investigator')) 
+): 
+  case_id = case_logic.process_new_alert(alert_id) 
+  if not case_id: 
+    raise HTTPException(400, "Could not create case") 
+  return {"alert_id": alert_id, "case_id": case_id, "created": True} 
 
 # ─── SERVER STARTUP ─────────────────────────────────────────
 if __name__ == "__main__":
