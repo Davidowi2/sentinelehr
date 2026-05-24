@@ -101,6 +101,33 @@ export default function AppV2() {
   const [digest, setDigest] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
 
+  const [alerts, setAlerts] = useState([]) 
+  const [alertsTotal, setAlertsTotal] = useState(0) 
+  const [alertsLoading, setAlertsLoading] = useState(false) 
+  const [alertSeverity, setAlertSeverity] = useState('') 
+  const [alertStatus, setAlertStatus] = useState('') 
+  const [alertsOffset, setAlertsOffset] = useState(0) 
+  const [selectedAlert, setSelectedAlert] = useState(null) 
+  const [alertDetail, setAlertDetail] = useState(null) 
+  const [alertNote, setAlertNote] = useState('') 
+  const [alertStatusUpdate, setAlertStatusUpdate] = useState('') 
+  const [savingAlert, setSavingAlert] = useState(false) 
+  
+  const [cases, setCases] = useState([]) 
+  const [casesTotal, setCasesTotal] = useState(0) 
+  const [casesLoading, setCasesLoading] = useState(false) 
+  const [caseStatusFilter, setCaseStatusFilter] = useState('Open') 
+  const [casePriorityFilter, setCasePriorityFilter] = useState('') 
+  const [casesOffset, setCasesOffset] = useState(0) 
+  const [selectedCase, setSelectedCase] = useState(null) 
+  const [caseDetail, setCaseDetail] = useState(null) 
+  const [caseNote, setCaseNote] = useState('') 
+  const [caseStatusUpdate, setCaseStatusUpdate] = useState('') 
+  const [caseOutcome, setCaseOutcome] = useState('') 
+  const [savingCase, setSavingCase] = useState(false) 
+  
+  const LIMIT = 50 
+
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
 
@@ -165,11 +192,146 @@ export default function AppV2() {
     setDataLoading(false) 
   };
   
+  const fetchAlerts = async () => { 
+    if (!token) return 
+    setAlertsLoading(true) 
+    try { 
+      const query = new URLSearchParams({ 
+        limit: LIMIT, 
+        offset: alertsOffset, 
+        severity: alertSeverity, 
+        status: alertStatus 
+      }) 
+      const res = await fetch(`${API_BASE}/alerts?${query}`, { 
+        headers: authHeaders() 
+      }) 
+      if (res.ok) { 
+        const data = await res.json() 
+        setAlerts(data.alerts || []) 
+        setAlertsTotal(data.total || 0) 
+      } 
+    } catch(e) { console.error(e) } 
+    setAlertsLoading(false) 
+  } 
+  
+  const fetchAlertDetail = async (id) => { 
+    try { 
+      const res = await fetch(`${API_BASE}/alerts/${id}`, { 
+        headers: authHeaders() 
+      }) 
+      if (res.ok) { 
+        const data = await res.json() 
+        setAlertDetail(data) 
+        setAlertStatusUpdate(data.status) 
+        setAlertNote(data.reviewer_notes || '') 
+      } 
+    } catch(e) { console.error(e) } 
+  } 
+  
+  const saveAlertUpdate = async () => { 
+    if (!selectedAlert) return 
+    setSavingAlert(true) 
+    try { 
+      const res = await fetch(`${API_BASE}/alerts/${selectedAlert}/status`, { 
+        method: 'PATCH', 
+        headers: authHeaders(), 
+        body: JSON.stringify({ 
+          status: alertStatusUpdate, 
+          reviewer_notes: alertNote 
+        }) 
+      }) 
+      if (res.ok) { 
+        await fetchAlertDetail(selectedAlert) 
+        fetchAlerts() 
+      } 
+    } catch(e) { console.error(e) } 
+    setSavingAlert(false) 
+  } 
+  
+  const fetchCases = async () => { 
+    if (!token) return 
+    setCasesLoading(true) 
+    try { 
+      const query = new URLSearchParams({ 
+        limit: LIMIT, 
+        offset: casesOffset, 
+        status: caseStatusFilter, 
+        priority: casePriorityFilter 
+      }) 
+      const res = await fetch(`${API_BASE}/cases?${query}`, { 
+        headers: authHeaders() 
+      }) 
+      if (res.ok) { 
+        const data = await res.json() 
+        setCases(data.cases || []) 
+        setCasesTotal(data.total || 0) 
+      } 
+    } catch(e) { console.error(e) } 
+    setCasesLoading(false) 
+  } 
+  
+  const fetchCaseDetail = async (id) => { 
+    try { 
+      const res = await fetch(`${API_BASE}/cases/${id}`, { 
+        headers: authHeaders() 
+      }) 
+      if (res.ok) { 
+        const data = await res.json() 
+        setCaseDetail(data) 
+        setCaseStatusUpdate(data.status) 
+        setCaseOutcome(data.outcome || '') 
+        setCaseNote('') 
+      } 
+    } catch(e) { console.error(e) } 
+  } 
+  
+  const saveCaseUpdate = async () => { 
+    if (!selectedCase) return 
+    setSavingCase(true) 
+    try { 
+      if (caseStatusUpdate !== caseDetail.status) { 
+        await fetch(`${API_BASE}/cases/${selectedCase}/status`, { 
+          method: 'PATCH', 
+          headers: authHeaders(), 
+          body: JSON.stringify({ 
+            status: caseStatusUpdate, 
+            note: caseNote || 'Status updated' 
+          }) 
+        }) 
+      } 
+      if (caseOutcome && caseOutcome !== caseDetail.outcome) { 
+        await fetch(`${API_BASE}/cases/${selectedCase}/outcome`, { 
+          method: 'PATCH', 
+          headers: authHeaders(), 
+          body: JSON.stringify({ outcome: caseOutcome }) 
+        }) 
+      } 
+      if (caseNote.trim()) { 
+        await fetch(`${API_BASE}/cases/${selectedCase}/notes`, { 
+          method: 'POST', 
+          headers: authHeaders(), 
+          body: JSON.stringify({ note: caseNote }) 
+        }) 
+      } 
+      await fetchCaseDetail(selectedCase) 
+      fetchCases() 
+    } catch(e) { console.error(e) } 
+    setSavingCase(false) 
+  } 
+  
   useEffect(() => { 
     if (token && activeView === 'overview') { 
       fetchOverviewData() 
     } 
   }, [token, activeView]);
+
+  useEffect(() => { 
+    if (token && activeView === 'alerts') fetchAlerts() 
+  }, [token, activeView, alertSeverity, alertStatus, alertsOffset]) 
+  
+  useEffect(() => { 
+    if (token && activeView === 'cases') fetchCases() 
+  }, [token, activeView, caseStatusFilter, casePriorityFilter, casesOffset]) 
 
   useEffect(() => { 
     if (!digest.length || !chartRef.current) return 
@@ -277,6 +439,122 @@ export default function AppV2() {
       } 
     } 
   }, [digest]);
+
+  const SeverityBadge = ({ severity }) => { 
+    const colors = { 
+      'Critical': { main: 'var(--critical)', bg: 'var(--critical-bg)' }, 
+      'High': { main: 'var(--high)', bg: 'var(--high-bg)' }, 
+      'Medium': { main: 'var(--medium)', bg: 'var(--medium-bg)' }, 
+      'Low': { main: 'var(--text-muted)', bg: 'var(--bg-elevated)' } 
+    }[severity] || { main: 'var(--text-muted)', bg: 'var(--bg-elevated)' }; 
+    return ( 
+      <span style={{ 
+        padding: '2px 8px', borderRadius: '20px', fontSize: '11px', 
+        fontWeight: '600', textTransform: 'uppercase', 
+        color: colors.main, background: colors.bg, 
+        border: `1px solid ${colors.main}40` 
+      }}>{severity}</span> 
+    ); 
+  }; 
+  
+  const FilterBar = ({ children, count, total }) => ( 
+    <div style={{ 
+      background: 'var(--bg-surface)', borderRadius: '10px', 
+      border: '1px solid var(--border)', padding: '16px 20px', 
+      marginBottom: '16px', display: 'flex', alignItems: 'flex-end', gap: '20px' 
+    }}> 
+      {children} 
+      <div style={{ 
+        marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', 
+        fontFamily: "'IBM Plex Mono', monospace" 
+      }}>{count} of {total}</div> 
+    </div> 
+  ); 
+  
+  const FilterLabel = ({ label, children }) => ( 
+    <div> 
+      <div style={{ 
+        fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', 
+        textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' 
+      }}>{label}</div> 
+      {children} 
+    </div> 
+  ); 
+  
+  const Select = (props) => ( 
+    <select {...props} style={{ 
+      background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+      borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
+      color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+      outline: 'none', minWidth: '140px' 
+    }} /> 
+  ); 
+  
+  const TableCard = ({ children }) => ( 
+    <div style={{ 
+      background: 'var(--bg-surface)', borderRadius: '10px', 
+      border: '1px solid var(--border)', boxShadow: 'var(--shadow)', 
+      overflow: 'hidden' 
+    }}>{children}</div> 
+  ); 
+  
+  const TH = ({ children }) => ( 
+    <th style={{ 
+      padding: '12px 16px', textAlign: 'left', fontSize: '10px', 
+      fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', 
+      color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' 
+    }}>{children}</th> 
+  ); 
+  
+  const Drawer = ({ title, subtitle, id, onClose, children, loading }) => ( 
+    <> 
+      <div onClick={onClose} style={{ 
+        position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.5)', 
+        backdropFilter: 'blur(4px)', zIndex: 100 
+      }} /> 
+      <div style={{ 
+        position: 'fixed', top: 0, right: 0, width: '480px', height: '100vh', 
+        background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', 
+        boxShadow: '-8px 0 40px rgba(0,0,0,0.4)', zIndex: 101, overflowY: 'auto', 
+        display: 'flex', flexDirection: 'column' 
+      }}> 
+        <div style={{ 
+          background: 'var(--bg-elevated)', padding: '24px', 
+          borderBottom: '1px solid var(--border)', flexShrink: 0 
+        }}> 
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}> 
+            <div> 
+              <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>{title}</div> 
+              <div style={{ fontSize: '22px', fontWeight: '700', fontFamily: "'IBM Plex Mono', monospace", color: 'var(--accent)' }}>{id}</div> 
+              {subtitle && <div style={{ marginTop: '8px' }}>{subtitle}</div>} 
+            </div> 
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><LogOut size={20} /></button> 
+          </div> 
+        </div> 
+        <div style={{ padding: '24px', flex: 1 }}> 
+          {loading ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading...</div> : children} 
+        </div> 
+      </div> 
+    </> 
+  ); 
+  
+  const StatusButtons = ({ options, current, onChange }) => ( 
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}> 
+      {options.map(s => { 
+        const isActive = current === s; 
+        return ( 
+          <button key={s} onClick={() => onChange(s)} style={{ 
+            padding: '6px 14px', borderRadius: '20px', fontSize: '12px', 
+            fontWeight: '600', cursor: 'pointer', 
+            border: isActive ? `2px solid var(--accent)` : '1px solid var(--border)', 
+            background: isActive ? 'var(--accent-subtle)' : 'var(--bg-elevated)', 
+            color: isActive ? 'var(--accent)' : 'var(--text-secondary)', 
+            transition: 'all 0.2s' 
+          }}>{s}</button> 
+        ); 
+      })} 
+    </div> 
+  ); 
 
   if (!token) {
     return (
@@ -894,14 +1172,223 @@ export default function AppV2() {
             </div> 
           )} 
           
-          {activeView !== 'overview' && ( 
+          {activeView === 'alerts' && ( 
+            <div> 
+              <FilterBar count={alerts.length} total={alertsTotal}> 
+                <FilterLabel label="Severity"> 
+                  <Select value={alertSeverity} onChange={e => {setAlertSeverity(e.target.value); setAlertsOffset(0)}}> 
+                    <option value="">All</option> 
+                    <option value="Critical">Critical</option> 
+                    <option value="High">High</option> 
+                    <option value="Medium">Medium</option> 
+                  </Select> 
+                </FilterLabel> 
+                <FilterLabel label="Status"> 
+                  <Select value={alertStatus} onChange={e => {setAlertStatus(e.target.value); setAlertsOffset(0)}}> 
+                    <option value="">All</option> 
+                    <option value="open">Open</option> 
+                    <option value="investigating">Investigating</option> 
+                    <option value="resolved">Resolved</option> 
+                  </Select> 
+                </FilterLabel> 
+              </FilterBar> 
+        
+              <TableCard> 
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+                  <thead> 
+                    <tr style={{ background: 'var(--bg-elevated)' }}> 
+                      <TH>#</TH> 
+                      <TH>Severity</TH> 
+                      <TH>Employee</TH> 
+                      <TH>Rules</TH> 
+                      <TH>Score</TH> 
+                      <TH>Date</TH> 
+                      <TH>Explanation</TH> 
+                      <TH>Action</TH> 
+                    </tr> 
+                  </thead> 
+                  <tbody> 
+                    {alertsLoading ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading alerts...</td></tr> : 
+                     alerts.map(a => ( 
+                      <tr key={a.alert_id} style={{ borderBottom: '1px solid var(--border)' }}> 
+                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}>{a.priority_rank}</td> 
+                        <td style={{ padding: '12px 16px' }}><SeverityBadge severity={a.adjusted_severity} /></td> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{a.emp_id}</td> 
+                        <td style={{ padding: '12px 16px' }}> 
+                          {a.rules_triggered.split(',').map(r => ( 
+                            <span key={r} style={{ fontSize: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', marginRight: '4px', color: 'var(--text-secondary)' }}>{r}</span> 
+                          ))} 
+                        </td> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}>{a.anomaly_score.toFixed(2)}</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
+                        <td style={{ padding: '12px 16px' }}> 
+                          <button onClick={() => {setSelectedAlert(a.alert_id); fetchAlertDetail(a.alert_id)}} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>REVIEW</button> 
+                        </td> 
+                      </tr> 
+                    ))} 
+                  </tbody> 
+                </table> 
+                {alertsTotal > LIMIT && ( 
+                  <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px' }}> 
+                    <button onClick={() => setAlertsOffset(Math.max(0, alertsOffset - LIMIT))} disabled={alertsOffset === 0} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: alertsOffset === 0 ? 0.5 : 1 }}>Previous</button> 
+                    <button onClick={() => setAlertsOffset(alertsOffset + LIMIT)} disabled={alertsOffset + LIMIT >= alertsTotal} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: alertsOffset + LIMIT >= alertsTotal ? 0.5 : 1 }}>Next</button> 
+                  </div> 
+                )} 
+              </TableCard> 
+        
+              {selectedAlert && ( 
+                <Drawer title="Alert Review" id={`ALT-${selectedAlert}`} onClose={() => setSelectedAlert(null)} loading={!alertDetail}> 
+                  {alertDetail && ( 
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}> 
+                      <div> 
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Explanation</div> 
+                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', background: 'var(--bg-elevated)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>{alertDetail.explanation}</div> 
+                      </div> 
+                      <div> 
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div> 
+                        <StatusButtons options={['open', 'investigating', 'resolved']} current={alertStatusUpdate} onChange={setAlertStatusUpdate} /> 
+                      </div> 
+                      <div> 
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Notes</div> 
+                        <textarea value={alertNote} onChange={e => setAlertNote(e.target.value)} style={{ width: '100%', minHeight: '100px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }} placeholder="Add investigation notes..." /> 
+                      </div> 
+                      <button onClick={saveAlertUpdate} disabled={savingAlert} style={{ width: '100%', padding: '14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', opacity: savingAlert ? 0.7 : 1 }}> 
+                        {savingAlert ? 'Saving...' : 'Save Changes'} 
+                      </button> 
+                    </div> 
+                  )} 
+                </Drawer> 
+              )} 
+            </div> 
+          )} 
+        
+          {activeView === 'cases' && ( 
+            <div> 
+              <FilterBar count={cases.length} total={casesTotal}> 
+                <FilterLabel label="Status"> 
+                  <Select value={caseStatusFilter} onChange={e => {setCaseStatusFilter(e.target.value); setCasesOffset(0)}}> 
+                    <option value="">All</option> 
+                    <option value="Open">Open</option> 
+                    <option value="Under Investigation">Under Investigation</option> 
+                    <option value="Pending HR">Pending HR</option> 
+                    <option value="Resolved">Resolved</option> 
+                  </Select> 
+                </FilterLabel> 
+                <FilterLabel label="Priority"> 
+                  <Select value={casePriorityFilter} onChange={e => {setCasePriorityFilter(e.target.value); setCasesOffset(0)}}> 
+                    <option value="">All</option> 
+                    <option value="Critical">Critical</option> 
+                    <option value="High">High</option> 
+                    <option value="Medium">Medium</option> 
+                  </Select> 
+                </FilterLabel> 
+              </FilterBar> 
+        
+              <TableCard> 
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+                  <thead> 
+                    <tr style={{ background: 'var(--bg-elevated)' }}> 
+                      <TH>Case ID</TH> 
+                      <TH>Employee</TH> 
+                      <TH>Priority</TH> 
+                      <TH>Status</TH> 
+                      <TH>Days Open</TH> 
+                      <TH>Alerts</TH> 
+                      <TH>Window</TH> 
+                      <TH>Assigned</TH> 
+                    </tr> 
+                  </thead> 
+                  <tbody> 
+                    {casesLoading ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading cases...</td></tr> : 
+                     cases.map(c => ( 
+                      <tr key={c.case_id} onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.case_id}</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{c.emp_id}</td> 
+                        <td style={{ padding: '12px 16px' }}><SeverityBadge severity={c.priority} /></td> 
+                        <td style={{ padding: '12px 16px' }}> 
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: c.status === 'Open' ? 'var(--critical)' : c.status === 'Resolved' ? 'var(--success)' : 'var(--warning)' }} /> 
+                            {c.status} 
+                          </span> 
+                        </td> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.days_open || 0}d</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                          {new Date(c.window_start).toLocaleDateString()}<br/> 
+                          to {new Date(c.window_end).toLocaleDateString()} 
+                        </td> 
+                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)' }}>{c.assigned_to_name || '—'}</td> 
+                      </tr> 
+                    ))} 
+                  </tbody> 
+                </table> 
+                {casesTotal > LIMIT && ( 
+                  <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px' }}> 
+                    <button onClick={() => setCasesOffset(Math.max(0, casesOffset - LIMIT))} disabled={casesOffset === 0} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: casesOffset === 0 ? 0.5 : 1 }}>Previous</button> 
+                    <button onClick={() => setCasesOffset(casesOffset + LIMIT)} disabled={casesOffset + LIMIT >= casesTotal} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: casesOffset + LIMIT >= casesTotal ? 0.5 : 1 }}>Next</button> 
+                  </div> 
+                )} 
+              </TableCard> 
+        
+              {selectedCase && ( 
+                <Drawer title="Case Investigation" id={selectedCase} onClose={() => setSelectedCase(null)} loading={!caseDetail} subtitle={caseDetail && <SeverityBadge severity={caseDetail.priority} />}> 
+                  {caseDetail && ( 
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}> 
+                      <div> 
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div> 
+                        <StatusButtons options={['Open', 'Under Investigation', 'Pending HR', 'Resolved']} current={caseStatusUpdate} onChange={setCaseStatusUpdate} /> 
+                      </div> 
+                      <div> 
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Outcome</div> 
+                        <Select value={caseOutcome} onChange={e => setCaseOutcome(e.target.value)} style={{ width: '100%' }}> 
+                          <option value="">— Not set —</option> 
+                          <option>Legitimate Access</option> 
+                          <option>Policy Violation</option> 
+                          <option>Training Required</option> 
+                          <option>Termination Recommended</option> 
+                        </Select> 
+                      </div> 
+                      <div> 
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Add Note</div> 
+                        <textarea value={caseNote} onChange={e => setCaseNote(e.target.value)} style={{ width: '100%', minHeight: '80px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }} placeholder="Add investigation notes..." /> 
+                      </div> 
+                      <button onClick={saveCaseUpdate} disabled={savingCase} style={{ width: '100%', padding: '14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', opacity: savingCase ? 0.7 : 1 }}> 
+                        {savingCase ? 'Saving...' : 'Save Changes'} 
+                      </button> 
+        
+                      {caseDetail.audit_log && caseDetail.audit_log.length > 0 && ( 
+                        <div style={{ marginTop: '12px' }}> 
+                          <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Audit Trail</div> 
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}> 
+                            {caseDetail.audit_log.map((log, i) => ( 
+                              <div key={i} style={{ padding: '12px', background: 'var(--bg-elevated)', borderRadius: '8px', borderLeft: '3px solid var(--border)', fontSize: '12px' }}> 
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}> 
+                                  <span style={{ fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', fontSize: '10px' }}>{log.action}</span> 
+                                  <span style={{ color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>{new Date(log.timestamp).toLocaleString()}</span> 
+                                </div> 
+                                <div style={{ color: 'var(--text-secondary)' }}>{log.note}</div> 
+                                <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>by {log.changed_by_name}</div> 
+                              </div> 
+                            ))} 
+                          </div> 
+                        </div> 
+                      )} 
+                    </div> 
+                  )} 
+                </Drawer> 
+              )} 
+            </div> 
+          )} 
+        
+          {(activeView === 'investigate' || activeView === 'settings') && ( 
             <div style={{ 
               display:'flex', alignItems:'center', 
               justifyContent:'center', height:'60vh', 
               color:'var(--text-muted)', fontSize:'13px', 
               fontFamily:"'IBM Plex Mono',monospace" 
             }}> 
-              {activeView} — coming in Phase 3 
+              {activeView} — coming in Phase 4 
             </div> 
           )}
         </div>
