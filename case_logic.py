@@ -41,8 +41,21 @@ def create_case(
     now = datetime.now()
     year = now.year
     case_id = generate_case_id(year)
-    window_start = now
-    window_end = now + timedelta(days=30)
+    # Fetch the alert's actual date 
+    conn2 = get_connection() 
+    cur2 = conn2.cursor() 
+    cur2.execute( 
+      "SELECT alert_date FROM alerts WHERE alert_id = %s", 
+      (alert_id,) 
+    ) 
+    alert_row = cur2.fetchone() 
+    conn2.close() 
+    alert_dt = alert_row['alert_date'] if alert_row else datetime.now() 
+    if isinstance(alert_dt, str): 
+      from datetime import datetime as dt 
+      alert_dt = dt.fromisoformat(alert_dt) 
+    window_start = alert_dt 
+    window_end = alert_dt + timedelta(days=30) 
     
     conn = get_connection()
     cursor = conn.cursor()
