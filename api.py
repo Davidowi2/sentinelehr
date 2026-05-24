@@ -472,7 +472,9 @@ def list_users(
 # CASE MANAGEMENT 
  
 @app.get("/cases") 
+@limiter.limit("60/minute") 
 def list_cases( 
+  request: Request, 
   status: str = None, 
   priority: str = None, 
   assigned_to: int = None, 
@@ -490,7 +492,7 @@ def list_cases(
   if priority: 
     conditions.append("priority = %s") 
     params.append(priority) 
-  if assigned_to: 
+  if assigned_to is not None: 
     conditions.append("assigned_to = %s") 
     params.append(assigned_to) 
   
@@ -504,8 +506,9 @@ def list_cases(
         ORDER BY 
           CASE priority 
             WHEN 'Critical' THEN 1 
-            WHEN 'Medium' THEN 2 
-            WHEN 'Low' THEN 3 
+            WHEN 'High' THEN 2 
+            WHEN 'Medium' THEN 3 
+            WHEN 'Low' THEN 4 
           END, 
           created_at ASC 
         LIMIT %s OFFSET %s""", 

@@ -3,6 +3,7 @@ import os
 import bcrypt
 from datetime import datetime, timedelta
 from db import get_connection
+from breach_risk_scorer import calculate_breach_risk
 
 def generate_case_id(year: int) -> str:
     conn = get_connection()
@@ -57,13 +58,49 @@ def create_case(
     window_start = alert_dt 
     window_end = alert_dt + timedelta(days=30) 
     
+    # HIPAA 4-Factor Risk Scoring
+    conn_audit = get_connection()
+    cur_audit = conn_audit.cursor()
+    # Fetch most significant event for this alert to score risk
+    # We join with audit_events to get action_c, is_sensitive_access and is_vip_access
+    cur_audit.execute("""
+        SELECT e.action_c, e.is_sensitive_access, e.is_vip_access, a.rules_triggered
+        FROM alerts a
+        JOIN audit_events e ON a.emp_id = e.emp_id AND a.alert_date = e.action_datetime::date
+        WHERE a.alert_id = %s
+        ORDER BY e.is_sensitive_access DESC, e.is_vip_access DESC, e.action_c DESC
+        LIMIT 1
+    """, (alert_id,))
+    audit_row = cur_audit.fetchone()
+    conn_audit.close()
+    
+    ocr_score = 0.0
+    requires_ocr = 0
+    
+    if audit_row:
+        # Determine primary anomaly type from rules_triggered
+        rules = audit_row['rules_triggered']
+        anomaly_type = "OTHER"
+        if "R_SENSITIVE" in rules: anomaly_type = "SENSITIVE_SNOOP"
+        elif "R4" in rules: anomaly_type = "VIP_SNOOP"
+        elif "R2" in rules: anomaly_type = "BULK_EXPORT"
+        elif "R3" in rules: anomaly_type = "OFF_HOURS"
+        
+        ocr_score, requires_review = calculate_breach_risk(
+            anomaly_type=anomaly_type,
+            action_c=audit_row['action_c'],
+            is_sensitive_access=audit_row['is_sensitive_access'],
+            is_vip=audit_row['is_vip_access']
+        )
+        requires_ocr = 1 if requires_review else 0
+
     conn = get_connection()
     cursor = conn.cursor()
     
     cursor.execute("""
-        INSERT INTO cases (case_id, emp_id, alert_ids, priority, department, patient_ids, window_start, window_end)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    """, (case_id, emp_id, json.dumps([alert_id]), priority, department, json.dumps(patient_ids), window_start, window_end))
+        INSERT INTO cases (case_id, emp_id, alert_ids, priority, department, patient_ids, window_start, window_end, ocr_risk_score, requires_ocr_review)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (case_id, emp_id, json.dumps([alert_id]), priority, department, json.dumps(patient_ids), window_start, window_end, ocr_score, requires_ocr))
     
     cursor.execute("""
         INSERT INTO case_audit_log (case_id, action, note)
