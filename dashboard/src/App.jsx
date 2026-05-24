@@ -15,6 +15,7 @@ const App = () => {
   const [loginForm, setLoginForm] = useState( 
     { username: '', password: '' } 
   ) 
+  const [appLoading, setAppLoading] = useState(false) 
 
   const handleLogin = async (e) => { 
     e.preventDefault() 
@@ -30,6 +31,8 @@ const App = () => {
         localStorage.setItem('sentinel_token', 
           data.access_token) 
         setToken(data.access_token) 
+        setAppLoading(true) 
+        setTimeout(() => setAppLoading(false), 2000) 
         setLoginError('') 
       } else { 
         setLoginError('Incorrect username or password') 
@@ -73,6 +76,7 @@ const App = () => {
   const [caseStatusFilter, setCaseStatusFilter] = useState('Open') 
   const [casePriorityFilter, setCasePriorityFilter] = useState('') 
   const [casesOffset, setCasesOffset] = useState(0) 
+  const [casesError, setCasesError] = useState(null) 
   const CASES_LIMIT = 50 
 
   // Health check & Summary
@@ -179,6 +183,7 @@ const App = () => {
 
   const fetchCases = async () => { 
     setCasesLoading(true) 
+    setCasesError(null)
     try { 
       let url = `${API_BASE}/cases?limit=${CASES_LIMIT}&offset=${casesOffset}` 
       if (caseStatusFilter) url += `&status=${encodeURIComponent(caseStatusFilter)}` 
@@ -186,11 +191,19 @@ const App = () => {
       const res = await fetch(url, { 
         headers: { 'Authorization': `Bearer ${token}` } 
       }) 
+      if (!res.ok) { 
+        console.error('Cases API error:', res.status) 
+        setCasesError(res.status)
+        setCasesData([]) 
+        setCasesLoading(false) 
+        return 
+      } 
       const data = await res.json() 
       setCasesData(data.cases || []) 
       setCasesTotal(data.total_count || 0) 
     } catch(e) { 
       console.error('Cases fetch failed', e) 
+      setCasesError('Connection Failed')
     } 
     setCasesLoading(false) 
   } 
@@ -229,7 +242,7 @@ const App = () => {
           background: '#fff', 
           borderRadius: '12px', 
           border: '1px solid #E2E8F4', 
-          boxShadow: '0 4px 24px rgba(15,23,42,0.10)', 
+          boxShadow: '0 1px 3px rgba(15,23,42,0.08), 0 4px 16px rgba(15,23,42,0.06)', 
           padding: '40px', 
           width: '360px' 
         }}> 
@@ -359,6 +372,22 @@ const App = () => {
       </div> 
     ) 
   }
+
+  if (appLoading) return ( 
+    <div style={{minHeight:'100vh', 
+      background:'#EEF2FF', display:'flex', 
+      alignItems:'center', justifyContent:'center', 
+      flexDirection:'column', gap:'16px'}}> 
+      <div style={{width:'40px', height:'40px', 
+        border:'3px solid #E2E8F4', 
+        borderTop:'3px solid #E11D48', 
+        borderRadius:'50%', 
+        animation:'spin 1s linear infinite'}}/> 
+      <p style={{color:'#94A3B8', fontSize:'13px', 
+        fontFamily:'IBM Plex Mono, monospace'}}> 
+        Connecting to SentinelEHR...</p> 
+    </div> 
+  )
 
   return (
     <div className="app-container">
@@ -885,6 +914,13 @@ const App = () => {
                   </tr> 
                 </thead> 
                 <tbody> 
+                  {casesError && ( 
+                    <tr><td colSpan={8} style={{ 
+                      padding:'40px', textAlign:'center', 
+                      color:'#E11D48', fontSize:'13px', 
+                      fontFamily:'IBM Plex Mono, monospace' 
+                    }}>API error {casesError} — check server connection</td></tr> 
+                  )} 
                   {casesLoading ? ( 
                     <tr><td colSpan={8} style={{ 
                       padding:'40px', textAlign:'center', 
@@ -919,9 +955,9 @@ const App = () => {
                     return ( 
                       <tr key={c.case_id} 
                         style={{borderBottom:'1px solid #E2E8F4', 
-                          cursor:'pointer'}} 
+                          cursor:'pointer', transition:'background 0.1s ease'}} 
                         onMouseEnter={e => 
-                          e.currentTarget.style.background='#F8FAFF'} 
+                          e.currentTarget.style.background='#F1F5FF'} 
                         onMouseLeave={e => 
                           e.currentTarget.style.background='#fff'} 
                       > 
