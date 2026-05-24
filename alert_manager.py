@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from db import get_connection
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from email_service import send_critical_alert_email
 
 load_dotenv()
 
@@ -109,6 +110,16 @@ def run_alert_manager():
     """)
     
     conn.commit()
+    
+    # Trigger emails for new critical alerts
+    critical_alerts = df[df['adjusted_severity'] == 'Critical']
+    for _, row in critical_alerts.iterrows():
+        send_critical_alert_email(
+            alert_id=int(row['alert_id']),
+            anomaly_type=row['rules_triggered'],
+            emp_id=int(row['emp_id']),
+            score=float(row['anomaly_score'])
+        )
     
     # Final Summary
     counts = df['adjusted_severity'].value_counts()
