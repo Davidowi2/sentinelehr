@@ -111,8 +111,8 @@ app.add_middleware(
       "http://localhost:3000" 
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 @app.exception_handler(Exception) 
@@ -480,6 +480,8 @@ def list_cases(
   offset: int = 0, 
   user = Depends(get_current_user) 
 ): 
+  conn = get_connection() 
+  case_logic.flag_overdue_cases(conn) 
   conditions = [] 
   params = [] 
   if status: 
@@ -494,7 +496,6 @@ def list_cases(
   
   where = "WHERE " + " AND ".join(conditions) if conditions else "" 
   
-  conn = get_connection() 
   cursor = conn.cursor() 
   cursor.execute( 
     f"""SELECT *, 
@@ -522,6 +523,7 @@ def get_case(
   user = Depends(get_current_user) 
 ): 
   conn = get_connection() 
+  case_logic.flag_overdue_cases(conn) 
   cursor = conn.cursor() 
   cursor.execute( 
     """SELECT c.*, EXTRACT(DAY FROM NOW() - c.window_start) as days_open 
@@ -630,6 +632,7 @@ def export_case(
   user = Depends(require_role('admin','investigator','auditor')) 
 ): 
   conn = get_connection() 
+  case_logic.flag_overdue_cases(conn) 
   cursor = conn.cursor() 
   cursor.execute( 
     "SELECT * FROM cases WHERE case_id = %s", (case_id,) 

@@ -225,6 +225,36 @@ def set_case_outcome(case_id: str, outcome: str, user_id: int) -> None:
     conn.commit()
     conn.close()
 
+def flag_overdue_cases(conn) -> int:
+    cursor = conn.cursor()
+    # SELECT all cases where status NOT IN ('Resolved', 'Closed') AND created_at < NOW() - INTERVAL '90 days'
+    cursor.execute("""
+        SELECT case_id FROM cases 
+        WHERE status NOT IN ('Resolved', 'Closed', 'overdue') 
+        AND created_at < NOW() - INTERVAL '90 days'
+    """)
+    overdue_rows = cursor.fetchall()
+    
+    count = 0
+    for row in overdue_rows:
+        case_id = row['case_id']
+        # UPDATE them: status='overdue'
+        # Since 'notes' column doesn't exist in 'cases' table, we add the note to case_audit_log
+        cursor.execute("""
+            UPDATE cases SET status = 'overdue', updated_at = NOW() 
+            WHERE case_id = %s
+        """, (case_id,))
+        
+        cursor.execute("""
+            INSERT INTO case_audit_log (case_id, action, note) 
+            VALUES (%s, 'status_changed', 'Auto-flagged: exceeded 90-day resolution window')
+        """, (case_id,))
+        count += 1
+        
+    if count > 0:
+        conn.commit()
+    return count
+
 def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
 
