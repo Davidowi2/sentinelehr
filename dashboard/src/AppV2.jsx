@@ -126,6 +126,10 @@ export default function AppV2() {
   const [caseOutcome, setCaseOutcome] = useState('') 
   const [savingCase, setSavingCase] = useState(false) 
   
+  const [investigateQuery, setInvestigateQuery] = useState('') 
+  const [investigateResults, setInvestigateResults] = useState(null) 
+  const [investigating, setInvestigating] = useState(false) 
+  
   const LIMIT = 50 
 
   const chartRef = useRef(null);
@@ -318,6 +322,26 @@ export default function AppV2() {
     } catch(e) { console.error(e) } 
     setSavingCase(false) 
   } 
+
+  const handleInvestigate = async (e) => { 
+    e.preventDefault(); 
+    if (!investigateQuery) return; 
+    setInvestigating(true); 
+    try { 
+      const res = await fetch(`${API_BASE}/investigate?emp_id=${investigateQuery}`, { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      }); 
+      if (res.ok) { 
+        setInvestigateResults(await res.json()); 
+      } else { 
+        setInvestigateResults({ error: "No data found for this employee." }); 
+      } 
+    } catch(e) { 
+      console.error(e); 
+      setInvestigateResults({ error: "Failed to connect to investigation service." });
+    } 
+    setInvestigating(false); 
+  };
   
   useEffect(() => { 
     if (token && activeView === 'overview') { 
@@ -1381,7 +1405,88 @@ export default function AppV2() {
             </div> 
           )} 
         
-          {(activeView === 'investigate' || activeView === 'settings') && ( 
+          {activeView === 'investigate' && ( 
+            <div> 
+              <FilterBar count={investigateResults?.events?.length || 0} total={investigateResults?.total_count || 0}> 
+                <form onSubmit={handleInvestigate} style={{ display: 'flex', gap: '12px', flex: 1 }}> 
+                  <FilterLabel label="Employee ID"> 
+                    <input 
+                      type="text" 
+                      value={investigateQuery} 
+                      onChange={e => setInvestigateQuery(e.target.value)} 
+                      placeholder="Enter EMP-ID (e.g. 10042)" 
+                      style={{ 
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+                        borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
+                        color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+                        outline: 'none', width: '240px' 
+                      }} 
+                    /> 
+                  </FilterLabel> 
+                  <button 
+                    type="submit" 
+                    disabled={investigating} 
+                    style={{ 
+                      alignSelf: 'flex-end', padding: '10px 20px', background: 'var(--accent)', 
+                      color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', 
+                      fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', 
+                      cursor: investigating ? 'default' : 'pointer', opacity: investigating ? 0.7 : 1 
+                    }} 
+                  > 
+                    {investigating ? 'Searching...' : 'Run Query'} 
+                  </button> 
+                </form> 
+              </FilterBar> 
+        
+              {investigateResults?.error && ( 
+                <div style={{ padding: '24px', background: 'var(--critical-bg)', color: 'var(--critical)', borderRadius: '10px', border: '1px solid var(--critical)', fontSize: '14px', marginBottom: '24px' }}> 
+                  {investigateResults.error} 
+                </div> 
+              )} 
+        
+              {investigateResults?.events && ( 
+                <TableCard> 
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+                    <thead> 
+                      <tr style={{ background: 'var(--bg-elevated)' }}> 
+                        <TH>Time</TH> 
+                        <TH>Action</TH> 
+                        <TH>Patient ID</TH> 
+                        <TH>Anomaly Type</TH> 
+                        <TH>Workstation</TH> 
+                      </tr> 
+                    </thead> 
+                    <tbody> 
+                      {investigateResults.events.map((ev, i) => ( 
+                        <tr key={i} style={{ 
+                          borderBottom: '1px solid var(--border)', 
+                          background: ev.anomaly_type ? 'var(--critical-bg)' : 'transparent' 
+                        }}> 
+                          <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                            {new Date(ev.action_datetime).toLocaleString()} 
+                          </td> 
+                          <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}> 
+                            {ev.action_name || `Code ${ev.action_c}`} 
+                          </td> 
+                          <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                            PAT-{ev.pat_id} 
+                          </td> 
+                          <td style={{ padding: '10px 16px' }}> 
+                            {ev.anomaly_type ? <SeverityBadge severity="Critical" /> : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Normal</span>} 
+                          </td> 
+                          <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                            {ev.workstation_id} 
+                          </td> 
+                        </tr> 
+                      ))} 
+                    </tbody> 
+                  </table> 
+                </TableCard> 
+              )} 
+            </div> 
+          )} 
+        
+          {activeView === 'settings' && ( 
             <div style={{ 
               display:'flex', alignItems:'center', 
               justifyContent:'center', height:'60vh', 
