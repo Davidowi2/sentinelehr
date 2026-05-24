@@ -16,45 +16,6 @@ const App = () => {
     { username: '', password: '' } 
   ) 
   const [appLoading, setAppLoading] = useState(false) 
-
-  const handleLogin = async (e) => { 
-    e.preventDefault() 
-    setLoggingIn(true) 
-    try { 
-      const res = await fetch(`${API_BASE}/login`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(loginForm) 
-      }) 
-      if (res.ok) { 
-        const data = await res.json() 
-        localStorage.setItem('sentinel_token', 
-          data.access_token) 
-        setToken(data.access_token) 
-        setAppLoading(true) 
-        setTimeout(() => setAppLoading(false), 2000) 
-        setLoginError('') 
-      } else { 
-        setLoginError('Incorrect username or password') 
-      } 
-    } catch { 
-      setLoginError('Cannot connect to server') 
-    } 
-    setLoggingIn(false) 
-  } 
-
-  useEffect(() => { 
-    if (!token) { 
-      fetch(`${API_BASE}/health`) 
-        .catch(() => {}) 
-    } 
-  }, [token]) 
-
-  const handleLogout = () => { 
-    localStorage.removeItem('sentinel_token') 
-    setToken(null) 
-  } 
-
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [apiStatus, setApiStatus] = useState('connecting');
   const [summary, setSummary] = useState(null);
@@ -69,7 +30,6 @@ const App = () => {
   const [profile, setProfile] = useState(null);
   const [profileAlerts, setProfileAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [casesData, setCasesData] = useState([]) 
   const [casesTotal, setCasesTotal] = useState(0) 
   const [casesLoading, setCasesLoading] = useState(false) 
@@ -78,6 +38,17 @@ const App = () => {
   const [casesOffset, setCasesOffset] = useState(0) 
   const [casesError, setCasesError] = useState(null) 
   const CASES_LIMIT = 50 
+
+  const chartRef = useRef(null)
+  const chartInstance = useRef(null)
+
+  // Token health check
+  useEffect(() => { 
+    if (!token) { 
+      fetch(`${API_BASE}/health`) 
+        .catch(() => {}) 
+    } 
+  }, [token]) 
 
   // Health check & Summary
   useEffect(() => {
@@ -124,6 +95,158 @@ const App = () => {
       fetchAlerts(true);
     }
   }, [activeTab, filters]);
+
+  // Chart
+  useEffect(() => {
+    if (!digest.length || !chartRef.current) return
+
+    const last30 = [...digest].reverse().slice(-30)
+    const labels = last30.map(d => {
+      const date = new Date(d.alert_date)
+      return date.toLocaleDateString('en-US',
+        { month: 'short', day: 'numeric' })
+    })
+
+    if (chartInstance.current) {
+      chartInstance.current.destroy()
+    }
+
+    const ctx = chartRef.current.getContext('2d')
+    chartInstance.current = new window.Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Critical',
+            data: last30.map(d => d.critical_count || 0),
+            borderColor: '#e11d48',
+            backgroundColor: 'rgba(225, 29, 72, 0.04)',
+            borderWidth: 2.5,
+            fill: true,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#e11d48',
+            tension: 0.15
+          },
+          {
+            label: 'High',
+            data: last30.map(d => d.high_count || 0),
+            borderColor: '#f97316',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#f97316',
+            tension: 0.15
+          },
+          {
+            label: 'Medium',
+            data: last30.map(d => d.medium_count || 0),
+            borderColor: '#3b82f6',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#3b82f6',
+            tension: 0.15
+          },
+          {
+            label: 'Threshold',
+            data: last30.map(() => 3),
+            borderColor: '#cbd5e1',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#fff',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            titleColor: '#0f172a',
+            bodyColor: '#475569',
+            padding: 10,
+            bodySpacing: 6
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { color: '#e2e8f0' },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 11 },
+              maxTicksLimit: 8
+            }
+          },
+          y: {
+            min: 0,
+            suggestedMax: 16,
+            grid: { color: '#f1f5f9' },
+            border: { display: false },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 11 },
+              stepSize: 2
+            }
+          }
+        }
+      }
+    })
+
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+    }
+  }, [digest])
+
+  // Cases
+  useEffect(() => { 
+    if (activeTab === 'cases') fetchCases() 
+  }, [activeTab, caseStatusFilter, casePriorityFilter, casesOffset, token]) 
+
+  const handleLogin = async (e) => { 
+    e.preventDefault() 
+    setLoggingIn(true) 
+    try { 
+      const res = await fetch(`${API_BASE}/login`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(loginForm) 
+      }) 
+      if (res.ok) { 
+        const data = await res.json() 
+        localStorage.setItem('sentinel_token', 
+          data.access_token) 
+        setToken(data.access_token) 
+        setAppLoading(true) 
+        setTimeout(() => setAppLoading(false), 2000) 
+        setLoginError('') 
+      } else { 
+        setLoginError('Incorrect username or password') 
+      } 
+    } catch { 
+      setLoginError('Cannot connect to server') 
+    } 
+    setLoggingIn(false) 
+  } 
+
+  const handleLogout = () => { 
+    localStorage.removeItem('sentinel_token') 
+    setToken(null) 
+  } 
 
   const fetchAlerts = async (reset = false) => {
     if (!token) return;
@@ -207,10 +330,6 @@ const App = () => {
     } 
     setCasesLoading(false) 
   } 
-  
-  useEffect(() => { 
-    if (activeTab === 'cases') fetchCases() 
-  }, [activeTab, caseStatusFilter, casePriorityFilter, casesOffset, token]) 
 
   const getSeverityColors = (severity) => {
     switch (severity?.toLowerCase()) {
@@ -466,248 +585,126 @@ const App = () => {
               })}
             </div>
 
-            {(() => { 
-              const chartRef = useRef(null) 
-              const chartInstance = useRef(null) 
-             
-              useEffect(() => { 
-                if (!digest.length || !chartRef.current) return 
-                 
-                const last30 = [...digest].reverse().slice(-30) 
-                const labels = last30.map(d => { 
-                  const date = new Date(d.alert_date) 
-                  return date.toLocaleDateString('en-US',  
-                    { month: 'short', day: 'numeric' }) 
-                }) 
-                 
-                if (chartInstance.current) { 
-                  chartInstance.current.destroy() 
-                } 
-                 
-                const ctx = chartRef.current.getContext('2d') 
-                chartInstance.current = new window.Chart(ctx, { 
-                  type: 'line', 
-                  data: { 
-                    labels, 
-                    datasets: [ 
-                      { 
-                        label: 'Critical', 
-                        data: last30.map(d => d.critical_count || 0), 
-                        borderColor: '#e11d48', 
-                        backgroundColor: 'rgba(225, 29, 72, 0.04)', 
-                        borderWidth: 2.5, 
-                        fill: true,
-                        pointRadius: 0, 
-                        pointHoverRadius: 4, 
-                        pointHoverBackgroundColor: '#e11d48', 
-                        tension: 0.15 
-                      }, 
-                      { 
-                        label: 'High', 
-                        data: last30.map(d => d.high_count || 0), 
-                        borderColor: '#f97316', 
-                        backgroundColor: 'transparent', 
-                        borderWidth: 2.5, 
-                        pointRadius: 0, 
-                        pointHoverRadius: 4, 
-                        pointHoverBackgroundColor: '#f97316', 
-                        tension: 0.15 
-                      }, 
-                      { 
-                        label: 'Medium', 
-                        data: last30.map(d => d.medium_count || 0), 
-                        borderColor: '#3b82f6', 
-                        backgroundColor: 'transparent', 
-                        borderWidth: 2.5, 
-                        pointRadius: 0, 
-                        pointHoverRadius: 4, 
-                        pointHoverBackgroundColor: '#3b82f6', 
-                        tension: 0.15 
-                      }, 
-                      { 
-                        label: 'Threshold', 
-                        data: last30.map(() => 3), 
-                        borderColor: '#cbd5e1', 
-                        backgroundColor: 'transparent', 
-                        borderWidth: 1.5, 
-                        borderDash: [6, 4], 
-                        pointRadius: 0, 
-                        pointHoverRadius: 0, 
-                        tension: 0 
-                      } 
-                    ] 
-                  }, 
-                  options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    interaction: { mode: 'index', intersect: false }, 
-                    plugins: { 
-                      legend: { display: false }, 
-                      tooltip: { 
-                        backgroundColor: '#fff', 
-                        borderColor: '#e2e8f0', 
-                        borderWidth: 1, 
-                        titleColor: '#0f172a', 
-                        bodyColor: '#475569', 
-                        padding: 10, 
-                        bodySpacing: 6 
-                      } 
-                    }, 
-                    scales: { 
-                      x: { 
-                        grid: { display: false }, 
-                        border: { color: '#e2e8f0' }, 
-                        ticks: { 
-                          color: '#94a3b8', 
-                          font: { size: 11 }, 
-                          maxTicksLimit: 8 
-                        } 
-                      }, 
-                      y: { 
-                        min: 0, 
-                        suggestedMax: 16,
-                        grid: { color: '#f1f5f9' }, 
-                        border: { display: false }, 
-                        ticks: { 
-                          color: '#94a3b8', 
-                          font: { size: 11 }, 
-                          stepSize: 2 
-                        } 
-                      } 
-                    } 
-                  } 
-                }) 
-                 
-                return () => { 
-                  if (chartInstance.current) { 
-                    chartInstance.current.destroy() 
-                  } 
-                } 
-              }, [digest]) 
-             
-              return ( 
-                <div style={{ 
-                  background: '#fff', 
-                  borderRadius: '12px', 
-                  border: '1px solid #E2E8F4', 
-                  boxShadow: '0 1px 4px rgba(15,23,42,0.06)', 
-                  padding: '28px 32px', 
-                  margin: '0 32px 24px' 
-                }}> 
+            <div style={{ 
+              background: '#fff', 
+              borderRadius: '12px', 
+              border: '1px solid #E2E8F4', 
+              boxShadow: '0 1px 4px rgba(15,23,42,0.06)', 
+              padding: '28px 32px', 
+              margin: '0 32px 24px' 
+            }}> 
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'flex-start', 
+                marginBottom: '20px' 
+              }}> 
+                <div> 
                   <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'flex-start', 
-                    marginBottom: '20px' 
-                  }}> 
-                    <div> 
-                      <div style={{ 
-                        fontSize: '11px', 
-                        fontWeight: '600', 
-                        letterSpacing: '0.08em', 
-                        textTransform: 'uppercase', 
-                        color: '#94a3b8', 
-                        marginBottom: '4px' 
-                      }}>Alert Trend</div> 
-                      <div style={{ 
-                        fontSize: '20px', 
-                        fontWeight: '700', 
-                        color: '#0f172a' 
-                      }}>Last 30 days</div> 
-                    </div> 
-                    <div style={{ 
+                    fontSize: '11px', 
+                    fontWeight: '600', 
+                    letterSpacing: '0.08em', 
+                    textTransform: 'uppercase', 
+                    color: '#94a3b8', 
+                    marginBottom: '4px' 
+                  }}>Alert Trend</div> 
+                  <div style={{ 
+                    fontSize: '20px', 
+                    fontWeight: '700', 
+                    color: '#0f172a' 
+                  }}>Last 30 days</div> 
+                </div> 
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '20px', 
+                  fontSize: '12px', 
+                  color: '#475569' 
+                }}> 
+                  {[ 
+                    { color: '#e11d48', label: 'Critical' }, 
+                    { color: '#f97316', label: 'High' }, 
+                    { color: '#3b82f6', label: 'Medium' } 
+                  ].map(item => ( 
+                    <span key={item.label} style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: '20px', 
-                      fontSize: '12px', 
-                      color: '#475569' 
+                      gap: '6px' 
                     }}> 
-                      {[ 
-                        { color: '#e11d48', label: 'Critical' }, 
-                        { color: '#f97316', label: 'High' }, 
-                        { color: '#3b82f6', label: 'Medium' } 
-                      ].map(item => ( 
-                        <span key={item.label} style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '6px' 
-                        }}> 
-                          <span style={{ 
-                            display: 'inline-block', 
-                            width: '20px', 
-                            height: '3px', 
-                            background: item.color, 
-                            borderRadius: '2px' 
-                          }}></span> 
-                          {item.label} 
-                        </span> 
-                      ))} 
                       <span style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px' 
-                      }}> 
-                        <span style={{ 
-                          display: 'inline-block', 
-                          width: '20px', 
-                          height: '0', 
-                          borderTop: '2px dashed #94a3b8' 
-                        }}></span> 
-                        Threshold 
-                      </span> 
-                    </div> 
-                  </div> 
-             
-                  <div style={{ position: 'relative', height: '260px' }}> 
-                    <canvas 
-                      ref={chartRef} 
-                      role="img" 
-                      aria-label="Alert trend over last 30 days" 
-                    /> 
-                  </div> 
-             
-                  <div style={{ 
-                    borderTop: '1px solid #e2e8f0', 
-                    marginTop: '20px', 
-                    paddingTop: '14px', 
+                        display: 'inline-block', 
+                        width: '20px', 
+                        height: '3px', 
+                        background: item.color, 
+                        borderRadius: '2px' 
+                      }}></span> 
+                      {item.label} 
+                    </span> 
+                  ))} 
+                  <span style={{ 
                     display: 'flex', 
-                    alignItems: 'center' 
+                    alignItems: 'center', 
+                    gap: '6px' 
                   }}> 
-                    {[ 
-                      { label: 'Monitoring', value: ORG_NAME }, 
-                      { label: 'Employees',  
-                        value: summary?.total_employees_monitored || 80 }, 
-                      { label: 'Active signals',  
-                        value: summary?.total_active || 799 }, 
-                      { label: 'Range',  
-                        value: summary ?  
-                          `${new Date(summary.date_range?.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –  
-                           ${new Date(summary.date_range?.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :  
-                          'Jan 1 – Mar 31' } 
-                    ].map((item, i, arr) => ( 
-                      <div key={item.label} style={{ 
-                        flex: 1, 
-                        textAlign: 'center', 
-                        padding: '0 16px', 
-                        borderRight: i < arr.length - 1 ?  
-                          '1px solid #e2e8f0' : 'none' 
-                      }}> 
-                        <div style={{ 
-                          fontSize: '11px', 
-                          color: '#94a3b8', 
-                          marginBottom: '2px' 
-                        }}>{item.label}</div> 
-                        <div style={{ 
-                          fontSize: '11px', 
-                          fontWeight: '600', 
-                          color: '#475569' 
-                        }}>{item.value}</div> 
-                      </div> 
-                    ))} 
-                  </div> 
+                    <span style={{ 
+                      display: 'inline-block', 
+                      width: '20px', 
+                      height: '0', 
+                      borderTop: '2px dashed #94a3b8' 
+                    }}></span> 
+                    Threshold 
+                  </span> 
                 </div> 
-              ) 
-            })()} 
+              </div> 
+            
+              <div style={{ position: 'relative', height: '260px' }}> 
+                <canvas 
+                  ref={chartRef} 
+                  role="img" 
+                  aria-label="Alert trend over last 30 days" 
+                /> 
+              </div> 
+            
+              <div style={{ 
+                borderTop: '1px solid #e2e8f0', 
+                marginTop: '20px', 
+                paddingTop: '14px', 
+                display: 'flex', 
+                alignItems: 'center' 
+              }}> 
+                {[ 
+                  { label: 'Monitoring', value: ORG_NAME }, 
+                  { label: 'Employees',  
+                    value: summary?.total_employees_monitored || 80 }, 
+                  { label: 'Active signals',  
+                    value: summary?.total_active || 799 }, 
+                  { label: 'Range',  
+                    value: summary ?  
+                      `${new Date(summary.date_range?.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –  
+                       ${new Date(summary.date_range?.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :  
+                      'Jan 1 – Mar 31' } 
+                ].map((item, i, arr) => ( 
+                  <div key={item.label} style={{ 
+                    flex: 1, 
+                    textAlign: 'center', 
+                    padding: '0 16px', 
+                    borderRight: i < arr.length - 1 ?  
+                      '1px solid #e2e8f0' : 'none' 
+                  }}> 
+                    <div style={{ 
+                      fontSize: '11px', 
+                      color: '#94a3b8', 
+                      marginBottom: '2px' 
+                    }}>{item.label}</div> 
+                    <div style={{ 
+                      fontSize: '11px', 
+                      fontWeight: '600', 
+                      color: '#475569' 
+                    }}>{item.value}</div> 
+                  </div> 
+                ))} 
+              </div> 
+            </div>
           </div>
         )}
 
