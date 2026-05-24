@@ -148,11 +148,16 @@ def run_anomaly_detector():
     print(f"Updating audit_events for {len(top_anomalies)} anomalous user-days...")
     cursor = conn.cursor()
     for _, row in top_anomalies.iterrows():
+        # Check for sensitive snoop profile
+        anomaly_type = 'ML_ANOMALY'
+        if row['f10'] > 0: # is_sensitive_out_of_panel > 0
+            anomaly_type = 'SENSITIVE_SNOOP'
+            
         cursor.execute("""
             UPDATE audit_events 
-            SET anomaly_type = 'ML_ANOMALY' 
+            SET anomaly_type = %s 
             WHERE emp_id = %s AND action_datetime::date = %s
-        """, (int(row['emp_id']), row['score_date']))
+        """, (anomaly_type, int(row['emp_id']), row['score_date']))
     conn.commit()
     
     # False Positive Reduction calculation

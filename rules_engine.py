@@ -108,9 +108,12 @@ def run_rules_engine():
     # R4
     daily['R4'] = daily['is_vip_out_of_panel'] >= 1
     
-    # R5
-    r5_thresh = daily['cross_dept_rate'] * daily['total_events'] * 2 * float_mult
-    daily['R5'] = (daily['is_cross_dept'] >= 3) & (daily['is_cross_dept'] > r5_thresh)
+    # R5 (Old CROSS_DEPT rule, now SENSITIVE_SNOOP for v2)
+    # Threshold 3 accounts for accidental access. 
+    # In real Epic, extra access controls reduce 
+    # accidental sensitive hits significantly. 
+    # 3+ hits in one day indicates intent, not accident. 
+    daily['R_SENSITIVE'] = daily['is_sensitive_out_of_panel'] >= 3
     
     # R6
     r6_thresh = daily['export_print_rate'] * daily['total_events'] * 2
@@ -121,14 +124,10 @@ def run_rules_engine():
     daily['R7'] = (daily['is_break_glass'] >= 2) & (daily['is_break_glass'] > r7_thresh)
     
     # R8 - SENSITIVE RECORD ACCESS (HARD RULE)
-    # Threshold 3 accounts for accidental access. 
-    # In real Epic, extra access controls reduce 
-    # accidental sensitive hits significantly. 
-    # 3+ hits in one day indicates intent, not accident. 
-    daily['R8'] = daily['is_sensitive_out_of_panel'] >= 3
+    daily['R8'] = daily['is_sensitive_out_of_panel'] >= 1
     
     # Calculate severity and explanation
-    rules = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']
+    rules = ['R1', 'R2', 'R3', 'R4', 'R_SENSITIVE', 'R6', 'R7', 'R8']
     daily['rule_count'] = daily[rules].sum(axis=1)
     
     # Filter only triggered
@@ -140,7 +139,10 @@ def run_rules_engine():
         return
 
     def get_severity(row):
-        # R4 and R8 are HARD RULES - fire standalone
+        # R4, R8 and R_SENSITIVE are HARD RULES - fire standalone
+        if row['R_SENSITIVE']:
+            return "CRITICAL"
+        
         if row['R8']:
             # R8 alone -> High, R8 + any other -> Critical
             return "Critical" if row['rule_count'] > 1 else "High"
@@ -164,7 +166,7 @@ def run_rules_engine():
         if row['R2']: expl.append(f"Accessed {row['total_events']} records (volume spike)")
         if row['R3']: expl.append(f"{row['is_off_hours']} off-hours accesses")
         if row['R4']: expl.append(f"Accessed {row['is_vip_out_of_panel']} VIP records")
-        if row['R5']: expl.append(f"{row['is_cross_dept']} cross-dept accesses")
+        if row['R_SENSITIVE']: expl.append("Out-of-panel access to highly sensitive patient record")
         if row['R6']: expl.append(f"{row['is_export_print']} export/print events")
         if row['R7']: expl.append(f"{row['is_break_glass']} break-glass events")
         if row['R8']: expl.append(f"{row['is_sensitive_out_of_panel']} accesses to sensitive records (HIV/behavioral health) with no documented care relationship")
