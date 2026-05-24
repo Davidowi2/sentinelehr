@@ -1008,8 +1008,12 @@ const App = () => {
                       c.status === 'Under Investigation' ? '#D97706' : 
                       c.status === 'Pending HR' ? '#7C3AED' : 
                       c.status === 'Resolved' ? '#059669' : '#64748B' 
-                    const daysOpen = Math.round( 
-                      c.days_open || 0) 
+                    const daysOpen = c.days_open 
+                      ? Math.round(Number(c.days_open)) 
+                      : Math.round( 
+                          (new Date() - new Date(c.window_start)) 
+                          / (1000 * 60 * 60 * 24) 
+                        ) 
                     const alertCount = Array.isArray(c.alert_ids) 
                       ? c.alert_ids.length 
                       : (c.alert_ids 

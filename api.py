@@ -498,7 +498,7 @@ def list_cases(
   cursor = conn.cursor() 
   cursor.execute( 
     f"""SELECT *, 
-        EXTRACT(DAY FROM NOW() - created_at) as days_open 
+        EXTRACT(DAY FROM NOW() - window_start) as days_open 
         FROM cases {where} 
         ORDER BY 
           CASE priority 
@@ -524,7 +524,7 @@ def get_case(
   conn = get_connection() 
   cursor = conn.cursor() 
   cursor.execute( 
-    """SELECT c.*, EXTRACT(DAY FROM NOW() - c.created_at) as days_open 
+    """SELECT c.*, EXTRACT(DAY FROM NOW() - c.window_start) as days_open 
        FROM cases c WHERE c.case_id = %s""", 
     (case_id,) 
   ) 
