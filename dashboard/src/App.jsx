@@ -1114,10 +1114,10 @@ const App = () => {
               <span className="search-label" style={{ marginBottom: '12px' }}>FLAGGED EMPLOYEES</span>
               <div className="flagged-grid">
                 {[
-                  { id: '1061', severity: 'critical', role: 'Physician · Dept 7', anomaly: 'BULK EXPORT', score: '0.83' },
-                  { id: '1022', severity: 'critical', role: 'MA · Dept 2', anomaly: 'VIP SNOOP', score: '0.66' },
-                  { id: '1052', severity: 'high', role: 'MA · Dept 5', anomaly: 'OFF HOURS', score: '0.61' },
-                  { id: '1067', severity: 'high', role: 'Physician · Dept 12', anomaly: 'CROSS DEPT', score: '0.53' }
+                  { id: '10036', severity: 'critical', role: 'Float_Nurse · Dept 10', anomaly: 'BULK EXPORT', score: '0.957' },
+                  { id: '10065', severity: 'critical', role: 'Scheduler · Dept 9', anomaly: 'SENSITIVE SNOOP', score: '0.692' },
+                  { id: '10042', severity: 'high', role: 'Float_Nurse · Dept 10', anomaly: 'OFF HOURS', score: '0.527' },
+                  { id: '10050', severity: 'high', role: 'MA · Dept 2', anomaly: 'VIP SNOOP', score: '0.479' }
                 ].map(emp => {
                   const colors = getSeverityColors(emp.severity);
                   return (
