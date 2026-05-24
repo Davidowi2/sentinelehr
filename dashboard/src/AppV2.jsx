@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutGrid, 
   Bell, 
@@ -97,6 +97,12 @@ export default function AppV2() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState('overview');
+  const [summary, setSummary] = useState(null);
+  const [digest, setDigest] = useState([]);
+  const [dataLoading, setDataLoading] = useState(false);
+
+  const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
 
   useEffect(() => {
     applyTheme(theme);
@@ -134,6 +140,143 @@ export default function AppV2() {
     localStorage.removeItem('sentinel_token');
     setToken(null);
   };
+
+  const authHeaders = () => ({ 
+    'Authorization': `Bearer ${token}`, 
+    'Content-Type': 'application/json' 
+  });
+  
+  const fetchOverviewData = async () => { 
+    if (!token) return 
+    setDataLoading(true) 
+    try { 
+      const [sumRes, digRes] = await Promise.all([ 
+        fetch(`${API_BASE}/summary`, 
+          {headers: authHeaders()}), 
+        fetch(`${API_BASE}/digest?days=30`, 
+          {headers: authHeaders()}) 
+      ]) 
+      if (sumRes.ok) setSummary(await sumRes.json()) 
+      if (digRes.ok) { 
+        const d = await digRes.json() 
+        setDigest(Array.isArray(d) ? d : []) 
+      } 
+    } catch(e) { console.error(e) } 
+    setDataLoading(false) 
+  };
+  
+  useEffect(() => { 
+    if (token && activeView === 'overview') { 
+      fetchOverviewData() 
+    } 
+  }, [token, activeView]);
+
+  useEffect(() => { 
+    if (!digest.length || !chartRef.current) return 
+    if (chartInstanceRef.current) { 
+      chartInstanceRef.current.destroy() 
+    } 
+    const ctx = chartRef.current.getContext('2d') 
+    const labels = digest.slice(-30).map(d => { 
+      const date = new Date(d.alert_date) 
+      return date.toLocaleDateString('en-US', 
+        {month:'short', day:'numeric'}) 
+    }) 
+    const last30 = digest.slice(-30) 
+    chartInstanceRef.current = new window.Chart(ctx, { 
+      type: 'line', 
+      data: { 
+        labels, 
+        datasets: [ 
+          { 
+            label:'Critical', 
+            data: last30.map(d => d.critical_count||0), 
+            borderColor: '#E11D48', 
+            backgroundColor: 'rgba(225,29,72,0.06)', 
+            borderWidth: 2, 
+            fill: true, 
+            tension: 0.15, 
+            pointRadius: 0, 
+            pointHoverRadius: 4 
+          }, 
+          { 
+            label:'High', 
+            data: last30.map(d => d.high_count||0), 
+            borderColor: '#F59E0B', 
+            backgroundColor: 'transparent', 
+            borderWidth: 2, 
+            tension: 0.15, 
+            pointRadius: 0, 
+            pointHoverRadius: 4 
+          }, 
+          { 
+            label:'Medium', 
+            data: last30.map(d => d.medium_count||0), 
+            borderColor: '#3B82F6', 
+            backgroundColor: 'transparent', 
+            borderWidth: 1.5, 
+            tension: 0.15, 
+            pointRadius: 0, 
+            pointHoverRadius: 4 
+          }, 
+          { 
+            label:'Threshold', 
+            data: last30.map(() => 3), 
+            borderColor: 'rgba(100,116,139,0.3)', 
+            borderWidth: 1, 
+            borderDash: [6,4], 
+            pointRadius: 0, 
+            fill: false, 
+            tension: 0 
+          } 
+        ] 
+      }, 
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        interaction: {mode:'index', intersect:false}, 
+        plugins: { 
+          legend: {display: false}, 
+          tooltip: { 
+            backgroundColor: 'var(--bg-elevated)', 
+            borderColor: 'var(--border)', 
+            borderWidth: 1, 
+            titleColor: 'var(--text-primary)', 
+            bodyColor: 'var(--text-secondary)', 
+            padding: 10 
+          } 
+        }, 
+        scales: { 
+          x: { 
+            grid: {display:false}, 
+            border: { 
+              color:'var(--border)' 
+            }, 
+            ticks: { 
+              color:'var(--text-muted)', 
+              font:{size:10}, 
+              maxTicksLimit:8 
+            } 
+          }, 
+          y: { 
+            min: 0, 
+            grid: {color:'var(--border-subtle)'}, 
+            border: {display:false}, 
+            ticks: { 
+              color:'var(--text-muted)', 
+              font:{size:10}, 
+              stepSize:2 
+            } 
+          } 
+        } 
+      } 
+    }) 
+    return () => { 
+      if (chartInstanceRef.current) { 
+        chartInstanceRef.current.destroy() 
+      } 
+    } 
+  }, [digest]);
 
   if (!token) {
     return (
@@ -561,17 +704,206 @@ export default function AppV2() {
 
         {/* Content Area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-          <div style={{ 
-            height: '100%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            color: 'var(--text-muted)',
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: '14px'
-          }}>
-            {activeView} — content loading in Phase 2
-          </div>
+          {activeView === 'overview' && ( 
+            <div style={{maxWidth:'1200px'}}> 
+          
+              {/* Stat cards */} 
+              <div style={{ 
+                display:'grid', 
+                gridTemplateColumns:'repeat(4, 1fr)', 
+                gap:'16px', marginBottom:'24px' 
+              }}> 
+                {[ 
+                  { 
+                    label:'CRITICAL THREATS', 
+                    value: summary?.critical ?? '—', 
+                    sub:'Require immediate action', 
+                    color:'var(--critical)', 
+                    bg:'var(--critical-bg)' 
+                  }, 
+                  { 
+                    label:'HIGH RISK', 
+                    value: summary?.high ?? '—', 
+                    sub:'ML-elevated alerts', 
+                    color:'var(--high)', 
+                    bg:'var(--high-bg)' 
+                  }, 
+                  { 
+                    label:'MEDIUM RISK', 
+                    value: summary?.medium ?? '—', 
+                    sub:'Under observation', 
+                    color:'var(--medium)', 
+                    bg:'var(--medium-bg)' 
+                  }, 
+                  { 
+                    label:'ML PEAK SCORE', 
+                    value: summary?.top_anomaly_score 
+                      ? summary.top_anomaly_score.toFixed(2) 
+                      : '—', 
+                    sub:'90-day highest anomaly', 
+                    color:'var(--text-primary)', 
+                    bg:'var(--bg-elevated)' 
+                  } 
+                ].map(card => ( 
+                  <div key={card.label} style={{ 
+                    background:'var(--bg-surface)', 
+                    border:'1px solid var(--border)', 
+                    borderRadius:'10px', 
+                    padding:'20px', 
+                    boxShadow:'var(--shadow-sm)', 
+                    position:'relative', 
+                    overflow:'hidden' 
+                  }}> 
+                    <div style={{ 
+                      position:'absolute', left:0, 
+                      top:0, bottom:0, width:'3px', 
+                      background: card.color, 
+                      borderRadius:'10px 0 0 10px' 
+                    }}/> 
+                    <div style={{ 
+                      fontSize:'10px', fontWeight:'600', 
+                      letterSpacing:'0.1em', 
+                      textTransform:'uppercase', 
+                      color:'var(--text-muted)', 
+                      marginBottom:'8px' 
+                    }}>{card.label}</div> 
+                    <div style={{ 
+                      fontSize:'40px', fontWeight:'700', 
+                      color: card.color, lineHeight:1, 
+                      fontFamily:"'IBM Plex Mono',monospace", 
+                      letterSpacing:'-0.02em', 
+                      marginBottom:'8px' 
+                    }}>{card.value}</div> 
+                    <div style={{ 
+                      fontSize:'12px', 
+                      color:'var(--text-muted)' 
+                    }}>{card.sub}</div> 
+                  </div> 
+                ))} 
+              </div> 
+          
+              {/* Chart card */} 
+              <div style={{ 
+                background:'var(--bg-surface)', 
+                border:'1px solid var(--border)', 
+                borderRadius:'10px', 
+                boxShadow:'var(--shadow-sm)', 
+                overflow:'hidden' 
+              }}> 
+                <div style={{ 
+                  padding:'20px 24px 0', 
+                  display:'flex', 
+                  justifyContent:'space-between', 
+                  alignItems:'flex-start' 
+                }}> 
+                  <div> 
+                    <div style={{ 
+                      fontSize:'10px', fontWeight:'600', 
+                      letterSpacing:'0.1em', 
+                      textTransform:'uppercase', 
+                      color:'var(--text-muted)', 
+                      marginBottom:'4px' 
+                    }}>ALERT TREND</div> 
+                    <div style={{ 
+                      fontSize:'18px', fontWeight:'700', 
+                      color:'var(--text-primary)', 
+                      letterSpacing:'-0.02em' 
+                    }}>Last 30 days</div> 
+                  </div> 
+                  <div style={{ 
+                    display:'flex', gap:'20px', 
+                    alignItems:'center' 
+                  }}> 
+                    {[ 
+                      {c:'var(--critical)',l:'Critical'}, 
+                      {c:'var(--high)',l:'High'}, 
+                      {c:'var(--medium)',l:'Medium'}, 
+                    ].map(item => ( 
+                      <span key={item.l} style={{ 
+                        display:'flex', alignItems:'center', 
+                        gap:'6px', fontSize:'12px', 
+                        color:'var(--text-secondary)' 
+                      }}> 
+                        <span style={{ 
+                          display:'inline-block', 
+                          width:'20px', height:'2px', 
+                          background: item.c, 
+                          borderRadius:'2px' 
+                        }}/> 
+                        {item.l} 
+                      </span> 
+                    ))} 
+                  </div> 
+                </div> 
+          
+                <div style={{ 
+                  padding:'16px 24px', 
+                  height:'220px', position:'relative' 
+                }}> 
+                  {digest.length === 0 ? ( 
+                    <div style={{ 
+                      display:'flex', alignItems:'center', 
+                      justifyContent:'center', height:'100%', 
+                      color:'var(--text-muted)', fontSize:'13px' 
+                    }}>Loading chart data...</div> 
+                  ) : ( 
+                    <canvas ref={chartRef} 
+                      style={{width:'100%', height:'100%'}}/> 
+                  )} 
+                </div> 
+          
+                <div style={{ 
+                  borderTop:'1px solid var(--border)', 
+                  padding:'12px 24px', 
+                  display:'grid', 
+                  gridTemplateColumns:'repeat(4,1fr)' 
+                }}> 
+                  {[ 
+                    {label:'Monitoring', 
+                     value:'SentinelEHR Demo'}, 
+                    {label:'Employees', 
+                     value: summary 
+                       ?.total_employees_monitored ?? 80}, 
+                    {label:'Active Signals', 
+                     value: summary?.total_active ?? '—'}, 
+                    {label:'Range', 
+                     value: summary?.date_range 
+                       ? `${summary.date_range.start} – ${summary.date_range.end}` 
+                       : 'Jan 5 – Mar 31'} 
+                  ].map(s => ( 
+                    <div key={s.label} style={{ 
+                      textAlign:'center', 
+                      borderRight:'1px solid var(--border)', 
+                      padding:'0 16px', 
+                      '&:last-child': {borderRight:'none'} 
+                    }}> 
+                      <div style={{ 
+                        fontSize:'11px', 
+                        color:'var(--text-muted)', 
+                        marginBottom:'2px' 
+                      }}>{s.label}</div> 
+                      <div style={{ 
+                        fontSize:'12px', fontWeight:'600', 
+                        color:'var(--text-secondary)', 
+                        fontFamily:"'IBM Plex Mono',monospace" 
+                      }}>{s.value}</div> 
+                    </div> 
+                  ))} 
+                </div> 
+              </div> 
+            </div> 
+          )} 
+          
+          {activeView !== 'overview' && ( 
+            <div style={{ 
+              display:'flex', alignItems:'center', 
+              justifyContent:'center', height:'60vh', 
+              color:'var(--text-muted)', fontSize:'13px', 
+              fontFamily:"'IBM Plex Mono',monospace" 
+            }}> 
+              {activeView} — coming in Phase 3 
+            </div> 
+          )}
         </div>
       </main>
 
