@@ -37,6 +37,13 @@ const App = () => {
   const [casePriorityFilter, setCasePriorityFilter] = useState('') 
   const [casesOffset, setCasesOffset] = useState(0) 
   const [casesError, setCasesError] = useState(null) 
+  const [selectedCase, setSelectedCase] = useState(null) 
+  const [caseDetail, setCaseDetail] = useState(null) 
+  const [caseDetailLoading, setCaseDetailLoading] = useState(false) 
+  const [caseNoteText, setCaseNoteText] = useState('') 
+  const [caseStatusUpdate, setCaseStatusUpdate] = useState('') 
+  const [caseOutcome, setCaseOutcome] = useState('') 
+  const [caseSaving, setCaseSaving] = useState(false) 
   const CASES_LIMIT = 50 
 
   const chartRef = useRef(null)
@@ -329,6 +336,70 @@ const App = () => {
       setCasesError('Connection Failed')
     } 
     setCasesLoading(false) 
+  } 
+
+  const fetchCaseDetail = async (caseId) => { 
+    setCaseDetailLoading(true) 
+    try { 
+      const res = await fetch(`${API_BASE}/cases/${caseId}`, { 
+        headers: {'Authorization': `Bearer ${token}`} 
+      }) 
+      const data = await res.json() 
+      setCaseDetail(data) 
+      setCaseStatusUpdate(data.status) 
+      setCaseOutcome(data.outcome || '') 
+    } catch(e) { console.error(e) } 
+    setCaseDetailLoading(false) 
+  } 
+
+  const saveCaseUpdate = async () => { 
+    if (!selectedCase) return 
+    setCaseSaving(true) 
+    try { 
+      if (caseStatusUpdate !== caseDetail.status) { 
+        await fetch( 
+          `${API_BASE}/cases/${selectedCase}/status`, 
+          { method: 'PATCH', 
+            headers: { 
+              'Authorization': `Bearer ${token}`, 
+              'Content-Type': 'application/json' 
+            }, 
+            body: JSON.stringify({ 
+              status: caseStatusUpdate, 
+              note: caseNoteText || 'Status updated' 
+            }) 
+          } 
+        ) 
+      } 
+      if (caseOutcome && caseOutcome !== caseDetail.outcome) { 
+        await fetch( 
+          `${API_BASE}/cases/${selectedCase}/outcome`, 
+          { method: 'PATCH', 
+            headers: { 
+              'Authorization': `Bearer ${token}`, 
+              'Content-Type': 'application/json' 
+            }, 
+            body: JSON.stringify({outcome: caseOutcome}) 
+          } 
+        ) 
+      } 
+      if (caseNoteText.trim()) { 
+        await fetch( 
+          `${API_BASE}/cases/${selectedCase}/notes`, 
+          { method: 'POST', 
+            headers: { 
+              'Authorization': `Bearer ${token}`, 
+              'Content-Type': 'application/json' 
+            }, 
+            body: JSON.stringify({note: caseNoteText}) 
+          } 
+        ) 
+      } 
+      await fetchCaseDetail(selectedCase) 
+      setCaseNoteText('') 
+      fetchCases() 
+    } catch(e) { console.error(e) } 
+    setCaseSaving(false) 
   } 
 
   const getSeverityColors = (severity) => {
@@ -951,6 +1022,10 @@ const App = () => {
         
                     return ( 
                       <tr key={c.case_id} 
+                        onClick={() => { 
+                          setSelectedCase(c.case_id) 
+                          fetchCaseDetail(c.case_id) 
+                        }} 
                         style={{borderBottom:'1px solid #E2E8F4', 
                           cursor:'pointer', transition:'background 0.1s ease'}} 
                         onMouseEnter={e => 
@@ -1092,6 +1167,267 @@ const App = () => {
               )} 
             </div> 
           </div> 
+        )}
+
+        {selectedCase && ( 
+          <> 
+            {/* Backdrop */} 
+            <div onClick={() => setSelectedCase(null)} 
+              style={{position:'fixed', inset:0, 
+                background:'rgba(15,23,42,0.35)', 
+                backdropFilter:'blur(2px)', 
+                zIndex:100}}/> 
+        
+            {/* Drawer */} 
+            <div style={{position:'fixed', top:0, right:0, 
+              width:'480px', height:'100vh', 
+              background:'#fff', 
+              borderLeft:'1px solid #E2E8F4', 
+              boxShadow:'-8px 0 40px rgba(15,23,42,0.12)', 
+              zIndex:101, overflowY:'auto', 
+              display:'flex', flexDirection:'column'}}> 
+        
+              {/* Header */} 
+              <div style={{background:'#F8FAFF', 
+                padding:'20px 24px', 
+                borderBottom:'1px solid #E2E8F4', 
+                flexShrink:0}}> 
+                <div style={{display:'flex', 
+                  justifyContent:'space-between', 
+                  alignItems:'flex-start'}}> 
+                  <div> 
+                    <div style={{fontSize:'11px', 
+                      fontWeight:'600', 
+                      letterSpacing:'0.08em', 
+                      textTransform:'uppercase', 
+                      color:'#94A3B8', 
+                      marginBottom:'4px'}}> 
+                      Case Investigation 
+                    </div> 
+                    <div style={{fontSize:'22px', 
+                      fontWeight:'700', 
+                      fontFamily:'IBM Plex Mono, monospace', 
+                      color:'#E11D48'}}> 
+                      {selectedCase} 
+                    </div> 
+                    {caseDetail && ( 
+                      <div style={{marginTop:'8px', 
+                        display:'flex', gap:'8px', 
+                        alignItems:'center'}}> 
+                        <span style={{ 
+                          fontFamily:'IBM Plex Mono, monospace', 
+                          fontSize:'13px', fontWeight:'600', 
+                          color:'#0F172A'}}> 
+                          EMP-{caseDetail.emp_id} 
+                        </span> 
+                        <span style={{ 
+                          padding:'2px 8px', 
+                          borderRadius:'20px', 
+                          fontSize:'11px', 
+                          fontWeight:'500', 
+                          textTransform:'uppercase', 
+                          color: caseDetail.priority==='Critical' 
+                            ? '#E11D48' : '#D97706', 
+                          background: caseDetail.priority==='Critical' 
+                            ? '#FFF1F3' : '#FFFBEB', 
+                          border:`1px solid ${ 
+                            caseDetail.priority==='Critical' 
+                            ? '#E11D4840' : '#D9770640'}` 
+                        }}>{caseDetail.priority}</span> 
+                      </div> 
+                    )} 
+                  </div> 
+                  <button onClick={() => setSelectedCase(null)} 
+                    style={{background:'transparent', 
+                      border:'none', fontSize:'20px', 
+                      color:'#94A3B8', cursor:'pointer', 
+                      padding:'4px', lineHeight:1}}>×</button> 
+                </div> 
+              </div> 
+        
+              {caseDetailLoading ? ( 
+                <div style={{padding:'40px', 
+                  textAlign:'center', color:'#94A3B8', 
+                  fontSize:'13px'}}> 
+                  Loading case details... 
+                </div> 
+              ) : caseDetail ? ( 
+                <div style={{padding:'24px', flex:1}}> 
+        
+                  {/* Status buttons */} 
+                  <div style={{marginBottom:'20px'}}> 
+                    <div style={{fontSize:'11px', 
+                      fontWeight:'600', 
+                      letterSpacing:'0.08em', 
+                      textTransform:'uppercase', 
+                      color:'#64748B', marginBottom:'8px'}}> 
+                      Status 
+                    </div> 
+                    <div style={{display:'flex', gap:'8px', 
+                      flexWrap:'wrap'}}> 
+                      {['Open','Under Investigation', 
+                        'Pending HR','Resolved'].map(s => ( 
+                        <button key={s} 
+                          onClick={() => setCaseStatusUpdate(s)} 
+                          style={{ 
+                            padding:'6px 14px', 
+                            borderRadius:'20px', 
+                            fontSize:'12px', 
+                            fontWeight:'500', 
+                            cursor:'pointer', 
+                            border: caseStatusUpdate===s 
+                              ? `2px solid ${ 
+                                  s==='Open' ? '#E11D48' 
+                                  : s==='Under Investigation' 
+                                  ? '#D97706' 
+                                  : s==='Pending HR' ? '#7C3AED' 
+                                  : '#059669'}` 
+                              : '1px solid #E2E8F4', 
+                            background: caseStatusUpdate===s 
+                              ? (s==='Open' ? '#FFF1F3' 
+                                : s==='Under Investigation' 
+                                ? '#FFFBEB' 
+                                : s==='Pending HR' ? '#F5F3FF' 
+                                : '#ECFDF5') 
+                              : '#fff', 
+                            color: caseStatusUpdate===s 
+                              ? (s==='Open' ? '#E11D48' 
+                                : s==='Under Investigation' 
+                                ? '#D97706' 
+                                : s==='Pending HR' ? '#7C3AED' 
+                                : '#059669') 
+                              : '#64748B' 
+                          }}>{s}</button> 
+                      ))} 
+                    </div> 
+                  </div> 
+        
+                  {/* Outcome */} 
+                  <div style={{marginBottom:'20px'}}> 
+                    <div style={{fontSize:'11px', 
+                      fontWeight:'600', 
+                      letterSpacing:'0.08em', 
+                      textTransform:'uppercase', 
+                      color:'#64748B', marginBottom:'8px'}}> 
+                      Outcome 
+                    </div> 
+                    <select value={caseOutcome} 
+                      onChange={e => setCaseOutcome(e.target.value)} 
+                      style={{width:'100%', 
+                        padding:'10px 12px', 
+                        border:'1px solid #E2E8F4', 
+                        borderRadius:'8px', 
+                        fontSize:'13px', color:'#0F172A', 
+                        background:'#FAFBFF'}}> 
+                      <option value=''>— Not set —</option> 
+                      <option>Legitimate Access</option> 
+                      <option>Policy Violation</option> 
+                      <option>Training Required</option> 
+                      <option>Termination Recommended</option> 
+                      <option>No Action</option> 
+                    </select> 
+                  </div> 
+        
+                  {/* Notes */} 
+                  <div style={{marginBottom:'20px'}}> 
+                    <div style={{fontSize:'11px', 
+                      fontWeight:'600', 
+                      letterSpacing:'0.08em', 
+                      textTransform:'uppercase', 
+                      color:'#64748B', marginBottom:'8px'}}> 
+                      Add Note 
+                    </div> 
+                    <textarea value={caseNoteText} 
+                      onChange={e => setCaseNoteText(e.target.value)} 
+                      placeholder="Investigation notes..." 
+                      style={{width:'100%', minHeight:'80px', 
+                        padding:'10px 12px', 
+                        border:'1px solid #E2E8F4', 
+                        borderRadius:'8px', 
+                        fontSize:'13px', color:'#0F172A', 
+                        background:'#FAFBFF', 
+                        resize:'vertical', 
+                        fontFamily:'DM Sans, sans-serif', 
+                        boxSizing:'border-box'}}/> 
+                  </div> 
+        
+                  {/* Save button */} 
+                  <button onClick={saveCaseUpdate} 
+                    disabled={caseSaving} 
+                    style={{width:'100%', padding:'12px', 
+                      background: caseSaving ? '#94A3B8':'#E11D48', 
+                      color:'#fff', border:'none', 
+                      borderRadius:'8px', fontSize:'12px', 
+                      fontWeight:'600', 
+                      letterSpacing:'0.08em', 
+                      textTransform:'uppercase', 
+                      cursor: caseSaving ? 'default':'pointer', 
+                      marginBottom:'24px'}}> 
+                    {caseSaving ? 'Saving...' : 'Save Changes'} 
+                  </button> 
+        
+                  {/* Audit log */} 
+                  {caseDetail.audit_log && 
+                   caseDetail.audit_log.length > 0 && ( 
+                    <div> 
+                      <div style={{fontSize:'11px', 
+                        fontWeight:'600', 
+                        letterSpacing:'0.08em', 
+                        textTransform:'uppercase', 
+                        color:'#64748B', marginBottom:'12px'}}> 
+                        Audit Trail 
+                      </div> 
+                      <div style={{display:'flex', 
+                        flexDirection:'column', gap:'8px'}}> 
+                        {caseDetail.audit_log.map((entry, i) => ( 
+                          <div key={i} style={{ 
+                            padding:'10px 12px', 
+                            background:'#F8FAFF', 
+                            borderRadius:'6px', 
+                            borderLeft:'3px solid #E2E8F4', 
+                            fontSize:'12px'}}> 
+                            <div style={{ 
+                              display:'flex', 
+                              justifyContent:'space-between', 
+                              marginBottom:'2px'}}> 
+                              <span style={{ 
+                                fontWeight:'600', 
+                                color:'#475569', 
+                                textTransform:'uppercase', 
+                                fontSize:'10px', 
+                                letterSpacing:'0.06em'}}> 
+                                {entry.action} 
+                              </span> 
+                              <span style={{ 
+                                color:'#94A3B8', 
+                                fontFamily:'IBM Plex Mono, monospace', 
+                                fontSize:'10px'}}> 
+                                {entry.timestamp 
+                                  ? entry.timestamp.slice(0,16) 
+                                  : ''} 
+                              </span> 
+                            </div> 
+                            {entry.note && ( 
+                              <div style={{color:'#475569', 
+                                marginTop:'2px'}}> 
+                                {entry.note} 
+                              </div> 
+                            )} 
+                            {entry.changed_by_name && ( 
+                              <div style={{color:'#94A3B8', 
+                                fontSize:'11px', marginTop:'2px'}}> 
+                                by {entry.changed_by_name} 
+                              </div> 
+                            )} 
+                          </div> 
+                        ))} 
+                      </div> 
+                    </div> 
+                  )} 
+                </div> 
+              ) : null} 
+            </div> 
+          </> 
         )}
 
         {activeTab === 'INVESTIGATE' && (
