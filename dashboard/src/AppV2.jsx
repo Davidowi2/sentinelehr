@@ -424,15 +424,18 @@ export default function AppV2() {
         plugins: { 
           legend: {display: false}, 
           tooltip: { 
-            backgroundColor: 'var(--bg-elevated)', 
-            borderColor: 'var(--border)', 
-            borderWidth: 1, 
-            titleColor: 'var(--text-primary)', 
-            bodyColor: 'var(--text-secondary)', 
-            padding: 10,
             callbacks: { 
-              label: (ctx) => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y 
-            } 
+              title: (items) => items[0]?.label || '', 
+              label: (ctx) => { 
+                return '  ' + ctx.dataset.label + ': ' + ctx.parsed.y 
+              } 
+            }, 
+            backgroundColor: '#1A2235', 
+            borderColor: '#1E2D45', 
+            borderWidth: 1, 
+            titleColor: '#F1F5F9', 
+            bodyColor: '#7A8EA8', 
+            padding: 10 
           } 
         }, 
         scales: { 
