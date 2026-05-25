@@ -184,7 +184,7 @@ export default function AppV2() {
       const [sumRes, digRes] = await Promise.all([ 
         fetch(`${API_BASE}/summary`, 
           {headers: authHeaders()}), 
-        fetch(`${API_BASE}/digest?days=30`, 
+        fetch(`${API_BASE}/digest?days=180`, 
           {headers: authHeaders()}) 
       ]) 
       if (sumRes.ok) setSummary(await sumRes.json()) 
@@ -365,12 +365,12 @@ export default function AppV2() {
       chartInstanceRef.current.destroy() 
     } 
     const ctx = chartRef.current.getContext('2d') 
-    const labels = digest.slice(-30).map(d => { 
+    const labels = digest.slice(-180).map(d => { 
       const date = new Date(d.alert_date) 
       return date.toLocaleDateString('en-US', 
         {month:'short', day:'numeric'}) 
     }) 
-    const last30 = digest.slice(-30) 
+    const last180 = digest.slice(-180) 
     chartInstanceRef.current = new window.Chart(ctx, { 
       type: 'line', 
       data: { 
@@ -378,7 +378,7 @@ export default function AppV2() {
         datasets: [ 
           { 
             label:'Critical', 
-            data: last30.map(d => d.critical_count||0), 
+            data: last180.map(d => d.critical_count||0), 
             borderColor: '#E11D48', 
             backgroundColor: 'rgba(225,29,72,0.06)', 
             borderWidth: 2, 
@@ -389,7 +389,7 @@ export default function AppV2() {
           }, 
           { 
             label:'High', 
-            data: last30.map(d => d.high_count||0), 
+            data: last180.map(d => d.high_count||0), 
             borderColor: '#F59E0B', 
             backgroundColor: 'transparent', 
             borderWidth: 2, 
@@ -399,7 +399,7 @@ export default function AppV2() {
           }, 
           { 
             label:'Medium', 
-            data: last30.map(d => d.medium_count||0), 
+            data: last180.map(d => d.medium_count||0), 
             borderColor: '#3B82F6', 
             backgroundColor: 'transparent', 
             borderWidth: 1.5, 
@@ -409,7 +409,7 @@ export default function AppV2() {
           }, 
           { 
             label:'Threshold', 
-            data: last30.map(() => 3), 
+            data: last180.map(() => 3), 
             borderColor: 'rgba(100,116,139,0.3)', 
             borderWidth: 1, 
             borderDash: [6,4], 
@@ -1111,13 +1111,13 @@ export default function AppV2() {
                     <div style={{ 
                       fontSize:'18px', fontWeight:'700', 
                       color:'var(--text-primary)', 
-                      letterSpacing:'-0.02em' 
-                    }}>Last 30 days</div> 
-                  </div> 
-                  <div style={{ 
-                    display:'flex', gap:'20px', 
-                    alignItems:'center' 
-                  }}> 
+             letterSpacing:'-0.02em' 
+           }}>Last 180 days</div> 
+         </div> 
+         <div style={{ 
+           display:'flex', gap:'20px', 
+           alignItems:'center' 
+         }}> 
                     {[ 
                       {c:'var(--critical)',l:'Critical'}, 
                       {c:'var(--high)',l:'High'}, 
@@ -1155,7 +1155,7 @@ export default function AppV2() {
               display:'flex', alignItems:'center', 
               justifyContent:'center', height:'100%', 
               color:'var(--text-muted)', fontSize:'13px' 
-            }}>No activity detected in the last 30 days.</div> 
+            }}>No activity detected in the last 180 days.</div> 
           ) : ( 
             <canvas ref={chartRef} 
               style={{width:'100%', height:'100%'}}/> 
