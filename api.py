@@ -367,39 +367,47 @@ def get_employee_profile(request: Request, emp_id: int, user: str = Depends(veri
         conn = get_db()
         cursor = conn.cursor()
         
-        # Employee info
-        cursor.execute("SELECT * FROM employees WHERE emp_id = %s", (emp_id,))
+        # 1. Employee info
+        cursor.execute("SELECT role, dept_id, is_float FROM employees WHERE emp_id = %s", (emp_id,))
         emp = cursor.fetchone()
         if not emp:
             conn.close()
             raise HTTPException(status_code=404, detail={"error": "Employee not found"})
             
-        # Baseline info
-        cursor.execute("SELECT * FROM user_baselines WHERE emp_id = %s", (emp_id,))
-        baseline = cursor.fetchone()
-        
-        # Alert summary
+        # 2. Top anomaly score
+        cursor.execute("SELECT MAX(anomaly_score) as top_score FROM anomaly_scores WHERE emp_id = %s", (emp_id,))
+        score_row = cursor.fetchone()
+        top_score = float(score_row['top_score']) if score_row and score_row['top_score'] is not None else 0.0
+
+        # 3. Last 20 alerts
         cursor.execute("""
-            SELECT 
-                COUNT(*) as total_alerts,
-                SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END) as critical_count,
-                SUM(CASE WHEN adjusted_severity = 'High' THEN 1 ELSE 0 END) as high_count,
-                SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium_count,
-                MAX(anomaly_score) as max_anomaly_score
+            SELECT alert_id, alert_date, adjusted_severity, rules_triggered, anomaly_score
             FROM alerts
-            WHERE emp_id = %s AND adjusted_severity != 'Suppressed'
+            WHERE emp_id = %s
+            ORDER BY alert_date DESC
+            LIMIT 20
         """, (emp_id,))
-        alert_summary = cursor.fetchone()
+        alerts = [dict(row) for row in cursor.fetchall()]
+
+        # 4. Open cases
+        cursor.execute("""
+            SELECT case_id, status, priority, window_start, window_end, created_at, 
+                   (EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400)::int as days_open
+            FROM cases
+            WHERE emp_id = %s AND status != 'Resolved' AND status != 'Closed'
+        """, (emp_id,))
+        cases = [dict(row) for row in cursor.fetchall()]
         
         conn.close()
         
         return {
-            "emp_id": emp["emp_id"],
+            "emp_id": emp_id,
             "role": emp["role"],
             "dept_id": emp["dept_id"],
             "is_float": emp["is_float"],
-            "baseline": dict(baseline) if baseline else None,
-            "alert_summary": dict(alert_summary)
+            "top_score": top_score,
+            "alerts": alerts,
+            "cases": cases
         }
     except HTTPException:
         raise
