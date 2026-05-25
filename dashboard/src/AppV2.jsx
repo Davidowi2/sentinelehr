@@ -1486,10 +1486,10 @@ export default function AppV2() {
                       <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Aggregate Anomaly Score</div>
                       <div style={{ 
                         fontSize: '32px', fontWeight: '700', 
-                        color: investigateResults.anomaly_score > 0.7 ? 'var(--critical)' : investigateResults.anomaly_score > 0.4 ? 'var(--high)' : 'var(--success)', 
+                        color: (investigateResults.top_score ?? 0) > 0.7 ? 'var(--critical)' : (investigateResults.top_score ?? 0) > 0.4 ? 'var(--high)' : 'var(--success)', 
                         fontFamily: "'IBM Plex Mono', monospace" 
                       }}>
-                        {investigateResults.anomaly_score.toFixed(3)}
+                        {(investigateResults.top_score ?? 0).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -1528,7 +1528,7 @@ export default function AppV2() {
                                   </div>
                                 </td> 
                                 <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                                  {a.anomaly_score.toFixed(2)} 
+                                  {(a.anomaly_score ?? 0).toFixed(2)} 
                                 </td> 
                               </tr> 
                             ))
