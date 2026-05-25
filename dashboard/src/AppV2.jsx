@@ -330,13 +330,13 @@ export default function AppV2() {
     if (!investigateQuery) return; 
     setInvestigating(true); 
     try { 
-      const res = await fetch(`${API_BASE}/investigate?emp_id=${investigateQuery}`, { 
+      const res = await fetch(`${API_BASE}/employees/${investigateQuery}/profile`, { 
         headers: authHeaders() 
       }); 
       if (res.ok) { 
         setInvestigateResults(await res.json()); 
       } else { 
-        setInvestigateResults({ error: "No data found for this employee." }); 
+        setInvestigateResults({ error: "Employee profile not found. Please verify the ID." }); 
       } 
     } catch(e) { 
       console.error(e); 
@@ -1419,7 +1419,7 @@ export default function AppV2() {
         
           {activeView === 'investigate' && ( 
             <div> 
-              <FilterBar count={investigateResults?.events?.length || 0} total={investigateResults?.total_count || 0}> 
+              <FilterBar count={investigateResults?.alerts?.length || 0} total={investigateResults?.alerts?.length || 0}> 
                 <form onSubmit={handleInvestigate} style={{ display: 'flex', gap: '12px', flex: 1 }}> 
                   <FilterLabel label="Employee ID"> 
                     <input 
@@ -1451,71 +1451,131 @@ export default function AppV2() {
               </FilterBar> 
         
               {investigateResults?.error && ( 
-                <div style={{ padding: '24px', background: 'var(--critical-bg)', color: 'var(--critical)', borderRadius: '10px', border: '1px solid var(--critical)', fontSize: '14px', marginBottom: '24px' }}> 
-                  {investigateResults.error} 
+                <div style={{ 
+                  padding: '24px', background: 'var(--critical-bg)', color: 'var(--critical)', 
+                  borderRadius: '10px', border: '1px solid var(--critical)', fontSize: '14px', 
+                  marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' 
+                }}> 
+                  <LogOut size={20} />
+                  <span>{investigateResults.error}</span> 
                 </div> 
               )} 
         
-              {investigateResults?.events && ( 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {/* Employee Summary Card */}
+              {investigateResults && !investigateResults.error && ( 
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                  {/* Profile Card */}
                   <div style={{ 
                     background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-                    borderRadius: '10px', padding: '24px', display: 'flex', gap: '40px',
-                    boxShadow: 'var(--shadow-sm)'
+                    borderRadius: '12px', padding: '28px', display: 'flex', gap: '48px',
+                    boxShadow: 'var(--shadow)', position: 'relative', overflow: 'hidden'
                   }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: 'var(--accent)' }} />
+                    
                     <div>
-                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>EMPLOYEE</div>
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{investigateResults.emp_id}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{investigateResults.role} · Dept {investigateResults.dept_id}</div>
+                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
+                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{investigateResults.employee_id}</div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>{investigateResults.role}</div>
                     </div>
+
                     <div>
-                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>TOTAL ALERTS</div>
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{investigateResults.total_alerts}</div>
+                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Department</div>
+                      <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>{investigateResults.department}</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>OCR RISK SCORE</div>
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: investigateResults.ocr_risk_score >= 6 ? 'var(--critical)' : 'var(--success)', fontFamily: "'IBM Plex Mono', monospace" }}>{investigateResults.ocr_risk_score.toFixed(1)}</div>
+
+                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Aggregate Anomaly Score</div>
+                      <div style={{ 
+                        fontSize: '32px', fontWeight: '700', 
+                        color: investigateResults.anomaly_score > 0.7 ? 'var(--critical)' : investigateResults.anomaly_score > 0.4 ? 'var(--high)' : 'var(--success)', 
+                        fontFamily: "'IBM Plex Mono', monospace" 
+                      }}>
+                        {investigateResults.anomaly_score.toFixed(3)}
+                      </div>
                     </div>
                   </div>
 
-                  <TableCard> 
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
-                      <thead> 
-                        <tr style={{ background: 'var(--bg-elevated)' }}> 
-                          <TH>Time</TH> 
-                          <TH>Action</TH> 
-                          <TH>Patient ID</TH> 
-                          <TH>Anomaly Type</TH> 
-                          <TH>Workstation</TH> 
-                        </tr> 
-                      </thead> 
-                      <tbody> 
-                        {investigateResults.events.map((ev, i) => ( 
-                          <tr key={i} style={{ 
-                            borderBottom: '1px solid var(--border)', 
-                            background: ev.anomaly_type ? 'var(--critical-bg)' : 'transparent' 
-                          }}> 
-                            <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                              {new Date(ev.action_datetime).toLocaleString()} 
-                            </td> 
-                            <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}> 
-                              {ev.action_name || `Code ${ev.action_c}`} 
-                            </td> 
-                            <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                              PAT-{ev.pat_id} 
-                            </td> 
-                            <td style={{ padding: '10px 16px' }}> 
-                              {ev.anomaly_type ? <SeverityBadge severity="Critical" /> : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Normal</span>} 
-                            </td> 
-                            <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                              {ev.workstation_id} 
-                            </td> 
+                  {/* Alert History */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <Bell size={18} color="var(--accent)" />
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent Alert History</h3>
+                    </div>
+                    <TableCard> 
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+                        <thead> 
+                          <tr style={{ background: 'var(--bg-elevated)' }}> 
+                            <TH>Date</TH> 
+                            <TH>Severity</TH> 
+                            <TH>Rules Triggered</TH> 
+                            <TH>Score</TH> 
                           </tr> 
-                        ))} 
-                      </tbody> 
-                    </table> 
-                  </TableCard> 
+                        </thead> 
+                        <tbody> 
+                          {investigateResults.alerts?.length > 0 ? (
+                            investigateResults.alerts.slice(0, 20).map((a, i) => ( 
+                              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
+                                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                                  {new Date(a.alert_date).toLocaleDateString()} 
+                                </td> 
+                                <td style={{ padding: '12px 16px' }}> 
+                                  <SeverityBadge severity={a.adjusted_severity} /> 
+                                </td> 
+                                <td style={{ padding: '12px 16px' }}> 
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                    {a.rules_triggered.split(',').map(r => ( 
+                                      <span key={r} style={{ fontSize: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-secondary)' }}>{r}</span> 
+                                    ))} 
+                                  </div>
+                                </td> 
+                                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                                  {a.anomaly_score.toFixed(2)} 
+                                </td> 
+                              </tr> 
+                            ))
+                          ) : (
+                            <tr><td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No alert history found for this employee.</td></tr>
+                          )} 
+                        </tbody> 
+                      </table> 
+                    </TableCard>
+                  </div>
+
+                  {/* Open Cases */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <Folder size={18} color="var(--accent)" />
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Cases</h3>
+                    </div>
+                    <TableCard> 
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+                        <thead> 
+                          <tr style={{ background: 'var(--bg-elevated)' }}> 
+                            <TH>Case ID</TH> 
+                            <TH>Status</TH> 
+                            <TH>Days Open</TH> 
+                          </tr> 
+                        </thead> 
+                        <tbody> 
+                          {investigateResults.cases?.length > 0 ? (
+                            investigateResults.cases.filter(c => c.status !== 'Resolved').map((c, i) => ( 
+                              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
+                                <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.case_id}</td> 
+                                <td style={{ padding: '12px 16px' }}> 
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
+                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warning)' }} /> 
+                                    {c.status} 
+                                  </span> 
+                                </td> 
+                                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.days_open}d</td> 
+                              </tr> 
+                            ))
+                          ) : (
+                            <tr><td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No active cases found for this employee.</td></tr>
+                          )} 
+                        </tbody> 
+                      </table> 
+                    </TableCard>
+                  </div>
                 </div>
               )} 
             </div> 
