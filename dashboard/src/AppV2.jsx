@@ -192,6 +192,8 @@ export default function AppV2() {
         const d = await digRes.json() 
         setDigest(Array.isArray(d) ? d : []) 
       } 
+      // Also fetch alerts for overview stats
+      fetchAlerts();
     } catch(e) { console.error(e) } 
     setDataLoading(false) 
   };
@@ -329,7 +331,7 @@ export default function AppV2() {
     setInvestigating(true); 
     try { 
       const res = await fetch(`${API_BASE}/investigate?emp_id=${investigateQuery}`, { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+        headers: authHeaders() 
       }); 
       if (res.ok) { 
         setInvestigateResults(await res.json()); 
@@ -1139,40 +1141,46 @@ export default function AppV2() {
                 </div> 
           
                 <div style={{ 
-                  padding:'16px 24px', 
-                  height:'220px', position:'relative' 
-                }}> 
-                  {digest.length === 0 ? ( 
-                    <div style={{ 
-                      display:'flex', alignItems:'center', 
-                      justifyContent:'center', height:'100%', 
-                      color:'var(--text-muted)', fontSize:'13px' 
-                    }}>Loading chart data...</div> 
-                  ) : ( 
-                    <canvas ref={chartRef} 
-                      style={{width:'100%', height:'100%'}}/> 
-                  )} 
-                </div> 
-          
-                <div style={{ 
-                  borderTop:'1px solid var(--border)', 
-                  padding:'12px 24px', 
-                  display:'grid', 
-                  gridTemplateColumns:'repeat(4,1fr)' 
-                }}> 
-                  {[ 
-                    {label:'Monitoring', 
-                     value:'SentinelEHR Demo'}, 
-                    {label:'Employees', 
-                     value: summary 
-                       ?.total_employees_monitored ?? 80}, 
-                    {label:'Active Signals', 
-                     value: summary?.total_active ?? '—'}, 
-                    {label:'Range', 
-                     value: summary?.date_range 
-                       ? `${summary.date_range.start} – ${summary.date_range.end}` 
-                       : 'Jan 5 – Mar 31'} 
-                  ].map(s => ( 
+          padding:'16px 24px', 
+          height:'220px', position:'relative' 
+        }}> 
+          {dataLoading ? (
+            <div style={{ 
+              display:'flex', alignItems:'center', 
+              justifyContent:'center', height:'100%', 
+              color:'var(--text-muted)', fontSize:'13px' 
+            }}>Loading chart data...</div> 
+          ) : digest.length === 0 ? ( 
+            <div style={{ 
+              display:'flex', alignItems:'center', 
+              justifyContent:'center', height:'100%', 
+              color:'var(--text-muted)', fontSize:'13px' 
+            }}>No activity detected in the last 30 days.</div> 
+          ) : ( 
+            <canvas ref={chartRef} 
+              style={{width:'100%', height:'100%'}}/> 
+          )} 
+        </div> 
+
+        <div style={{ 
+          borderTop:'1px solid var(--border)', 
+          padding:'12px 24px', 
+          display:'grid', 
+          gridTemplateColumns:'repeat(4,1fr)' 
+        }}> 
+          {[ 
+            {label:'Monitoring', 
+             value:'SentinelEHR Demo'}, 
+            {label:'Employees', 
+             value: summary 
+               ?.total_employees_monitored ?? 80}, 
+            {label:'Active Signals', 
+             value: summary?.total_active ?? alertsTotal ?? '—'}, 
+            {label:'Range', 
+             value: summary?.date_range 
+               ? `${summary.date_range.start} – ${summary.date_range.end}` 
+               : 'Jan 5 – Mar 31'} 
+          ].map(s => ( 
                     <div key={s.label} style={{ 
                       textAlign:'center', 
                       borderRight:'1px solid var(--border)', 
