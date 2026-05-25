@@ -173,7 +173,7 @@ export default function AppV2() {
   };
 
   const authHeaders = () => ({ 
-    'Authorization': `Bearer ${token}`, 
+    'Authorization': `Bearer ${token || localStorage.getItem('sentinel_token')}`, 
     'Content-Type': 'application/json' 
   });
   
@@ -346,9 +346,7 @@ export default function AppV2() {
   };
   
   useEffect(() => { 
-    if (token && activeView === 'overview') { 
-      fetchOverviewData() 
-    } 
+    if (token && activeView === 'overview') fetchOverviewData() 
   }, [token, activeView]);
 
   useEffect(() => { 
@@ -1112,7 +1110,7 @@ export default function AppV2() {
                       fontSize:'18px', fontWeight:'700', 
                       color:'var(--text-primary)', 
              letterSpacing:'-0.02em' 
-           }}>Last 180 days</div> 
+           }}>Last 30 days</div> 
          </div> 
          <div style={{ 
            display:'flex', gap:'20px', 
@@ -1155,7 +1153,7 @@ export default function AppV2() {
               display:'flex', alignItems:'center', 
               justifyContent:'center', height:'100%', 
               color:'var(--text-muted)', fontSize:'13px' 
-            }}>No activity detected in the last 180 days.</div> 
+            }}>No activity detected in the last 30 days.</div> 
           ) : ( 
             <canvas ref={chartRef} 
               style={{width:'100%', height:'100%'}}/> 
