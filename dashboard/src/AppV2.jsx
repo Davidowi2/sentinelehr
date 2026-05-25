@@ -78,7 +78,7 @@ const applyTheme = (themeName) => {
   });
 };
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://sentinelehr-api.onrender.com';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
@@ -1018,21 +1018,21 @@ export default function AppV2() {
                 {[ 
                   { 
                     label:'CRITICAL THREATS', 
-                    value: summary?.critical ?? '—', 
+                    value: summary?.critical ?? alerts.filter(a => a.adjusted_severity === 'Critical').length, 
                     sub:'Require immediate action', 
                     color:'var(--critical)', 
                     bg:'var(--critical-bg)' 
                   }, 
                   { 
                     label:'HIGH RISK', 
-                    value: summary?.high ?? '—', 
+                    value: summary?.high ?? alerts.filter(a => a.adjusted_severity === 'High').length, 
                     sub:'ML-elevated alerts', 
                     color:'var(--high)', 
                     bg:'var(--high-bg)' 
                   }, 
                   { 
                     label:'MEDIUM RISK', 
-                    value: summary?.medium ?? '—', 
+                    value: summary?.medium ?? alerts.filter(a => a.adjusted_severity === 'Medium').length, 
                     sub:'Under observation', 
                     color:'var(--medium)', 
                     bg:'var(--medium-bg)' 
@@ -1041,7 +1041,7 @@ export default function AppV2() {
                     label:'ML PEAK SCORE', 
                     value: summary?.top_anomaly_score 
                       ? summary.top_anomaly_score.toFixed(2) 
-                      : '—', 
+                      : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), 
                     sub:'90-day highest anomaly', 
                     color:'var(--text-primary)', 
                     bg:'var(--bg-elevated)' 
@@ -1445,43 +1445,66 @@ export default function AppV2() {
               )} 
         
               {investigateResults?.events && ( 
-                <TableCard> 
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
-                    <thead> 
-                      <tr style={{ background: 'var(--bg-elevated)' }}> 
-                        <TH>Time</TH> 
-                        <TH>Action</TH> 
-                        <TH>Patient ID</TH> 
-                        <TH>Anomaly Type</TH> 
-                        <TH>Workstation</TH> 
-                      </tr> 
-                    </thead> 
-                    <tbody> 
-                      {investigateResults.events.map((ev, i) => ( 
-                        <tr key={i} style={{ 
-                          borderBottom: '1px solid var(--border)', 
-                          background: ev.anomaly_type ? 'var(--critical-bg)' : 'transparent' 
-                        }}> 
-                          <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                            {new Date(ev.action_datetime).toLocaleString()} 
-                          </td> 
-                          <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}> 
-                            {ev.action_name || `Code ${ev.action_c}`} 
-                          </td> 
-                          <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                            PAT-{ev.pat_id} 
-                          </td> 
-                          <td style={{ padding: '10px 16px' }}> 
-                            {ev.anomaly_type ? <SeverityBadge severity="Critical" /> : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Normal</span>} 
-                          </td> 
-                          <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                            {ev.workstation_id} 
-                          </td> 
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {/* Employee Summary Card */}
+                  <div style={{ 
+                    background: 'var(--bg-surface)', border: '1px solid var(--border)', 
+                    borderRadius: '10px', padding: '24px', display: 'flex', gap: '40px',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>EMPLOYEE</div>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{investigateResults.emp_id}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{investigateResults.role} · Dept {investigateResults.dept_id}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>TOTAL ALERTS</div>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{investigateResults.total_alerts}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>OCR RISK SCORE</div>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: investigateResults.ocr_risk_score >= 6 ? 'var(--critical)' : 'var(--success)', fontFamily: "'IBM Plex Mono', monospace" }}>{investigateResults.ocr_risk_score.toFixed(1)}</div>
+                    </div>
+                  </div>
+
+                  <TableCard> 
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+                      <thead> 
+                        <tr style={{ background: 'var(--bg-elevated)' }}> 
+                          <TH>Time</TH> 
+                          <TH>Action</TH> 
+                          <TH>Patient ID</TH> 
+                          <TH>Anomaly Type</TH> 
+                          <TH>Workstation</TH> 
                         </tr> 
-                      ))} 
-                    </tbody> 
-                  </table> 
-                </TableCard> 
+                      </thead> 
+                      <tbody> 
+                        {investigateResults.events.map((ev, i) => ( 
+                          <tr key={i} style={{ 
+                            borderBottom: '1px solid var(--border)', 
+                            background: ev.anomaly_type ? 'var(--critical-bg)' : 'transparent' 
+                          }}> 
+                            <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                              {new Date(ev.action_datetime).toLocaleString()} 
+                            </td> 
+                            <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}> 
+                              {ev.action_name || `Code ${ev.action_c}`} 
+                            </td> 
+                            <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                              PAT-{ev.pat_id} 
+                            </td> 
+                            <td style={{ padding: '10px 16px' }}> 
+                              {ev.anomaly_type ? <SeverityBadge severity="Critical" /> : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Normal</span>} 
+                            </td> 
+                            <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                              {ev.workstation_id} 
+                            </td> 
+                          </tr> 
+                        ))} 
+                      </tbody> 
+                    </table> 
+                  </TableCard> 
+                </div>
               )} 
             </div> 
           )} 

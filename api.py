@@ -418,6 +418,69 @@ def get_digest(request: Request, days: int = 30, user: str = Depends(verify_toke
     except Exception as e:
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
+@app.get("/investigate")
+@limiter.limit("30/minute")
+def investigate_employee(request: Request, emp_id: int, user: str = Depends(verify_token)):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Get employee info
+        cursor.execute("SELECT * FROM employees WHERE emp_id = %s", (emp_id,))
+        emp = cursor.fetchone()
+        if not emp:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Employee not found")
+            
+        # Get audit events for this employee
+        cursor.execute("""
+            SELECT action_datetime, pat_id, workstation_id, anomaly_type, action_c
+            FROM audit_events
+            WHERE emp_id = %s
+            ORDER BY action_datetime DESC
+            LIMIT 500
+        """, (emp_id,))
+        rows = cursor.fetchall()
+        
+        # Map action codes to names
+        action_names = {
+            1: "In Chart", 2: "Chart Review", 3: "Open Chart", 
+            4: "Print Chart", 5: "Export Data", 6: "Break Glass", 
+            7: "Search", 8: "Edit Note", 9: "Sign Order", 
+            10: "View Result", 11: "Chart Close"
+        }
+        
+        events = []
+        for row in rows:
+            ev = dict(row)
+            ev['action_name'] = action_names.get(ev['action_c'], f"Action {ev['action_c']}")
+            events.append(ev)
+        
+        # Get total alerts count
+        cursor.execute("SELECT COUNT(*) FROM alerts WHERE emp_id = %s", (emp_id,))
+        total_alerts = cursor.fetchone()['count']
+        
+        # Get max OCR risk score from cases
+        cursor.execute("SELECT MAX(ocr_risk_score) as max_ocr FROM cases WHERE emp_id = %s", (emp_id,))
+        max_ocr_row = cursor.fetchone()
+        max_ocr = float(max_ocr_row['max_ocr']) if max_ocr_row and max_ocr_row['max_ocr'] is not None else 0.0
+        
+        conn.close()
+        
+        return {
+            "emp_id": emp_id,
+            "role": emp["role"],
+            "dept_id": emp["dept_id"],
+            "total_count": len(events),
+            "total_alerts": total_alerts,
+            "ocr_risk_score": max_ocr,
+            "events": events
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # USER MANAGEMENT (admin only) 
  
 @app.post("/users") 
