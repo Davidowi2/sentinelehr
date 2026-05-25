@@ -214,7 +214,7 @@ export default function AppV2() {
       if (res.ok) { 
         const data = await res.json() 
         setAlerts(data.alerts || []) 
-        setAlertsTotal(data.total || 0) 
+        setAlertsTotal(data.total_count || data.total || (data.alerts?.length || 0)) 
       } 
     } catch(e) { console.error(e) } 
     setAlertsLoading(false) 
@@ -429,7 +429,10 @@ export default function AppV2() {
             borderWidth: 1, 
             titleColor: 'var(--text-primary)', 
             bodyColor: 'var(--text-secondary)', 
-            padding: 10 
+            padding: 10,
+            callbacks: { 
+              label: (ctx) => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y 
+            } 
           } 
         }, 
         scales: { 
