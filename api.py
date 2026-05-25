@@ -223,6 +223,7 @@ def get_summary(request: Request, user: str = Depends(verify_token)):
                 SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium,
                 MAX(anomaly_score) as top_anomaly_score
             FROM active_alerts
+            WHERE alert_date >= NOW() - INTERVAL '180 days'
         """)
         alert_stats = cursor.fetchone()
         
@@ -269,7 +270,7 @@ def get_alerts(
         conn = get_db()
         cursor = conn.cursor()
         
-        query = "SELECT * FROM alerts WHERE 1=1"
+        query = "SELECT * FROM alerts WHERE alert_date >= NOW() - INTERVAL '180 days'"
         params = []
         
         if severity:
@@ -407,7 +408,7 @@ def get_employee_profile(request: Request, emp_id: int, user: str = Depends(veri
 
 @app.get("/digest")
 @limiter.limit("30/minute") 
-def get_digest(request: Request, days: int = 30, user: str = Depends(verify_token)):
+def get_digest(request: Request, days: int = 180, user: str = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
