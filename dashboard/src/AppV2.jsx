@@ -89,6 +89,16 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
 ];
 
+const RULE_DESCRIPTIONS = {
+  'R1': 'Volume Spike',
+  'R2': 'Off-Hours Access',
+  'R3': 'Cross-Department',
+  'R4': 'VIP Record Access',
+  'R7': 'Rapid Access Pattern',
+  'R8': 'Sensitive Record Access',
+  'R_SENSITIVE': 'Sensitive Record Flag'
+};
+
 export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   const [token, setToken] = useState(localStorage.getItem('sentinel_token') || null);
@@ -1252,7 +1262,22 @@ export default function AppV2() {
                         <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{a.emp_id}</td> 
                         <td style={{ padding: '12px 16px' }}> 
                           {a.rules_triggered.split(',').map(r => ( 
-                            <span key={r} style={{ fontSize: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', marginRight: '4px', color: 'var(--text-secondary)' }}>{r}</span> 
+                            <span 
+                              key={r} 
+                              title={RULE_DESCRIPTIONS[r.trim()] || r}
+                              style={{ 
+                                fontSize: '10px', 
+                                background: 'var(--bg-elevated)', 
+                                border: '1px solid var(--border)', 
+                                padding: '2px 6px', 
+                                borderRadius: '4px', 
+                                marginRight: '4px', 
+                                color: 'var(--text-secondary)',
+                                cursor: 'help'
+                              }}
+                            >
+                              {r}
+                            </span> 
                           ))} 
                         </td> 
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}>{a.anomaly_score.toFixed(2)}</td> 
@@ -1589,7 +1614,21 @@ export default function AppV2() {
                                 <td style={{ padding: '12px 16px' }}> 
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                     {a.rules_triggered.split(',').map(r => ( 
-                                      <span key={r} style={{ fontSize: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-secondary)' }}>{r}</span> 
+                                      <span 
+                                        key={r} 
+                                        title={RULE_DESCRIPTIONS[r.trim()] || r}
+                                        style={{ 
+                                          fontSize: '10px', 
+                                          background: 'var(--bg-elevated)', 
+                                          border: '1px solid var(--border)', 
+                                          padding: '2px 6px', 
+                                          borderRadius: '4px', 
+                                          color: 'var(--text-secondary)',
+                                          cursor: 'help'
+                                        }}
+                                      >
+                                        {r}
+                                      </span> 
                                     ))} 
                                   </div>
                                 </td> 
