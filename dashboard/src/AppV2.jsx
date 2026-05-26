@@ -99,6 +99,306 @@ const RULE_DESCRIPTIONS = {
   'R_SENSITIVE': 'Sensitive Record Flag'
 };
 
+const SeverityBadge = ({ severity }) => { 
+  const colors = { 
+    'Critical': { main: 'var(--critical)', bg: 'var(--critical-bg)' }, 
+    'High': { main: 'var(--high)', bg: 'var(--high-bg)' }, 
+    'Medium': { main: 'var(--medium)', bg: 'var(--medium-bg)' }, 
+    'Low': { main: 'var(--text-muted)', bg: 'var(--bg-elevated)' } 
+  }[severity] || { main: 'var(--text-muted)', bg: 'var(--bg-elevated)' }; 
+  return ( 
+    <span style={{ 
+      padding: '2px 8px', borderRadius: '20px', fontSize: '11px', 
+      fontWeight: '600', textTransform: 'uppercase', 
+      color: colors.main, background: colors.bg, 
+      border: `1px solid ${colors.main}40` 
+    }}>{severity}</span> 
+  ); 
+}; 
+
+const FilterBar = ({ children, count, total }) => ( 
+  <div style={{ 
+    background: 'var(--bg-surface)', borderRadius: '10px', 
+    border: '1px solid var(--border)', padding: '16px 20px', 
+    marginBottom: '16px', display: 'flex', alignItems: 'flex-end', gap: '20px' 
+  }}> 
+    {children} 
+    <div style={{ 
+      marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', 
+      fontFamily: "'IBM Plex Mono', monospace" 
+    }}>{count} of {total}</div> 
+  </div> 
+); 
+
+const FilterLabel = ({ label, children }) => ( 
+  <div> 
+    <div style={{ 
+      fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', 
+      textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' 
+    }}>{label}</div> 
+    {children} 
+  </div> 
+); 
+
+const Select = (props) => ( 
+  <select {...props} style={{ 
+    background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+    borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
+    color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+    outline: 'none', minWidth: '140px' 
+  }} /> 
+); 
+
+const TableCard = ({ children }) => ( 
+  <div style={{ 
+    background: 'var(--bg-surface)', borderRadius: '10px', 
+    border: '1px solid var(--border)', boxShadow: 'var(--shadow)', 
+    overflow: 'hidden' 
+  }}>{children}</div> 
+); 
+
+const TH = ({ children }) => ( 
+  <th style={{ 
+    padding: '12px 16px', textAlign: 'left', fontSize: '10px', 
+    fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', 
+    color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' 
+  }}>{children}</th> 
+); 
+
+const Drawer = ({ title, subtitle, id, onClose, children, loading }) => ( 
+  <> 
+    <div onClick={onClose} style={{ 
+      position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.5)', 
+      backdropFilter: 'blur(4px)', zIndex: 100 
+    }} /> 
+    <div style={{ 
+      position: 'fixed', top: 0, right: 0, width: '480px', height: '100vh', 
+      background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', 
+      boxShadow: '-8px 0 40px rgba(0,0,0,0.4)', zIndex: 101, overflowY: 'auto', 
+      display: 'flex', flexDirection: 'column' 
+    }}> 
+      <div style={{ 
+        background: 'var(--bg-elevated)', padding: '24px', 
+        borderBottom: '1px solid var(--border)', flexShrink: 0 
+      }}> 
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}> 
+          <div> 
+            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>{title}</div> 
+            <div style={{ fontSize: '22px', fontWeight: '700', fontFamily: "'IBM Plex Mono', monospace", color: 'var(--accent)' }}>{id}</div> 
+            {subtitle && <div style={{ marginTop: '8px' }}>{subtitle}</div>} 
+          </div> 
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><LogOut size={20} /></button> 
+        </div> 
+      </div> 
+      <div style={{ padding: '24px', flex: 1 }}> 
+        {loading ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading...</div> : children} 
+      </div> 
+    </div> 
+  </> 
+); 
+
+const StatusButtons = ({ options, current, onChange }) => ( 
+  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}> 
+    {options.map(s => { 
+      const isActive = current === s; 
+      return ( 
+        <button key={s} onClick={() => onChange(s)} style={{ 
+          padding: '6px 14px', borderRadius: '20px', fontSize: '12px', 
+          fontWeight: '600', cursor: 'pointer', 
+          border: isActive ? `2px solid var(--accent)` : '1px solid var(--border)', 
+          background: isActive ? 'var(--accent-subtle)' : 'var(--bg-elevated)', 
+          color: isActive ? 'var(--accent)' : 'var(--text-secondary)', 
+          transition: 'all 0.2s' 
+        }}>{s}</button> 
+      ); 
+    })} 
+  </div> 
+); 
+
+const InvestigateResults = React.memo(({ results }) => {
+  if (!results || results.error) return null;
+
+  const alerts = results.alerts || [];
+  const totalAlerts = alerts.length;
+  let daysMonitored = 0;
+  if (totalAlerts > 0) {
+    const dates = alerts.map(a => new Date(a.alert_date).getTime());
+    const minDate = Math.min(...dates);
+    const maxDate = Math.max(...dates);
+    daysMonitored = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
+  }
+  const topScore = results.top_score ?? 0;
+  const outOfPanelAlerts = alerts.filter(a => a.rules_triggered.includes('R4') || a.rules_triggered.includes('R8')).length;
+  const outOfPanelPct = totalAlerts > 0 ? (outOfPanelAlerts / totalAlerts * 100).toFixed(1) : '0.0';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      {/* Profile Card */}
+      <div style={{ 
+        background: 'var(--bg-surface)', border: '1px solid var(--border)', 
+        borderRadius: '12px', padding: '28px', display: 'flex', gap: '48px',
+        boxShadow: 'var(--shadow)', position: 'relative', overflow: 'hidden'
+      }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: 'var(--accent)' }} />
+        
+        <div>
+          <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{results.emp_id}</div>
+          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>{results.role}</div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Department</div>
+          <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>Dept {results.dept_id}</div>
+        </div>
+
+        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+          <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Aggregate Anomaly Score</div>
+          <div style={{ 
+            fontSize: '32px', fontWeight: '700', 
+            color: topScore > 0.7 ? 'var(--critical)' : topScore > 0.4 ? 'var(--high)' : 'var(--success)', 
+            fontFamily: "'IBM Plex Mono', monospace" 
+          }}>
+            {topScore.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      {/* Why Flagged Section */}
+      <div style={{ 
+        background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+        borderRadius: '10px', padding: '20px'
+      }}>
+        <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>Investigation Insight</div>
+        <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: '500' }}>
+          This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
+          with an aggregate risk score of {topScore.toFixed(2)} — 
+          {topScore > 0.5 ? ' significantly above' : ' near'} the 0.5 threshold for investigation.
+        </div>
+      </div>
+
+      {/* Risk Summary Bar */}
+      <div style={{ 
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px'
+      }}>
+        {[
+          { label: 'Total Alerts', value: totalAlerts, icon: <Bell size={16} /> },
+          { label: 'Days Monitored', value: daysMonitored || 1, icon: <LayoutGrid size={16} /> },
+          { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: <Shield size={16} /> }
+        ].map(stat => (
+          <div key={stat.label} style={{ 
+            background: 'var(--bg-surface)', border: '1px solid var(--border)', 
+            borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px'
+          }}>
+            <div style={{ color: 'var(--accent)' }}>{stat.icon}</div>
+            <div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>{stat.value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Alert History */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <Bell size={18} color="var(--accent)" />
+          <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent Alert History</h3>
+        </div>
+        <TableCard> 
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+            <thead> 
+              <tr style={{ background: 'var(--bg-elevated)' }}> 
+                <TH>Date</TH> 
+                <TH>Severity</TH> 
+                <TH>Rules Triggered</TH> 
+                <TH>Score</TH> 
+              </tr> 
+            </thead> 
+            <tbody> 
+              {alerts.length > 0 ? (
+                alerts.slice(0, 20).map((a, i) => ( 
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                      {new Date(a.alert_date).toLocaleDateString()} 
+                    </td> 
+                    <td style={{ padding: '12px 16px' }}> 
+                      <SeverityBadge severity={a.adjusted_severity} /> 
+                    </td> 
+                    <td style={{ padding: '12px 16px' }}> 
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {a.rules_triggered.split(',').map(r => ( 
+                          <span 
+                            key={r} 
+                            title={RULE_DESCRIPTIONS[r.trim()] || r}
+                            style={{ 
+                              fontSize: '10px', 
+                              background: 'var(--bg-elevated)', 
+                              border: '1px solid var(--border)', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px', 
+                              color: 'var(--text-secondary)',
+                              cursor: 'help'
+                            }}
+                          >
+                            {r}
+                          </span> 
+                        ))} 
+                      </div>
+                    </td> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                      {(a.anomaly_score ?? 0).toFixed(2)} 
+                    </td> 
+                  </tr> 
+                ))
+              ) : (
+                <tr><td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No alert history found for this employee.</td></tr>
+              )} 
+            </tbody> 
+          </table> 
+        </TableCard>
+      </div>
+
+      {/* Open Cases */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <Folder size={18} color="var(--accent)" />
+          <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Cases</h3>
+        </div>
+        <TableCard> 
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+            <thead> 
+              <tr style={{ background: 'var(--bg-elevated)' }}> 
+                <TH>Case ID</TH> 
+                <TH>Status</TH> 
+                <TH>Days Open</TH> 
+              </tr> 
+            </thead> 
+            <tbody> 
+              {results.cases?.length > 0 ? (
+                results.cases.filter(c => c.status !== 'Resolved').map((c, i) => ( 
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.case_id}</td> 
+                    <td style={{ padding: '12px 16px' }}> 
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warning)' }} /> 
+                        {c.status} 
+                      </span> 
+                    </td> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.days_open}d</td> 
+                  </tr> 
+                ))
+              ) : (
+                <tr><td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No active cases found for this employee.</td></tr>
+              )} 
+            </tbody> 
+          </table> 
+        </TableCard>
+      </div>
+    </div>
+  );
+});
+
 export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   const [token, setToken] = useState(localStorage.getItem('sentinel_token') || null);
@@ -136,7 +436,7 @@ export default function AppV2() {
   const [caseOutcome, setCaseOutcome] = useState('') 
   const [savingCase, setSavingCase] = useState(false) 
   
-  const [investigateQuery, setInvestigateQuery] = useState('') 
+  const [investigateId, setInvestigateId] = useState('') 
   const [investigateResults, setInvestigateResults] = useState(null) 
   const [investigating, setInvestigating] = useState(false) 
   
@@ -337,10 +637,10 @@ export default function AppV2() {
 
   const handleInvestigate = async (e) => { 
     e.preventDefault(); 
-    if (!investigateQuery) return; 
+    if (!investigateId) return; 
     setInvestigating(true); 
     try { 
-      const res = await fetch(`${API_BASE}/employees/${investigateQuery}/profile`, { 
+      const res = await fetch(`${API_BASE}/employees/${investigateId}/profile`, { 
         headers: authHeaders() 
       }); 
       if (res.ok) { 
@@ -479,122 +779,6 @@ export default function AppV2() {
       } 
     } 
   }, [digest]);
-
-  const SeverityBadge = ({ severity }) => { 
-    const colors = { 
-      'Critical': { main: 'var(--critical)', bg: 'var(--critical-bg)' }, 
-      'High': { main: 'var(--high)', bg: 'var(--high-bg)' }, 
-      'Medium': { main: 'var(--medium)', bg: 'var(--medium-bg)' }, 
-      'Low': { main: 'var(--text-muted)', bg: 'var(--bg-elevated)' } 
-    }[severity] || { main: 'var(--text-muted)', bg: 'var(--bg-elevated)' }; 
-    return ( 
-      <span style={{ 
-        padding: '2px 8px', borderRadius: '20px', fontSize: '11px', 
-        fontWeight: '600', textTransform: 'uppercase', 
-        color: colors.main, background: colors.bg, 
-        border: `1px solid ${colors.main}40` 
-      }}>{severity}</span> 
-    ); 
-  }; 
-  
-  const FilterBar = ({ children, count, total }) => ( 
-    <div style={{ 
-      background: 'var(--bg-surface)', borderRadius: '10px', 
-      border: '1px solid var(--border)', padding: '16px 20px', 
-      marginBottom: '16px', display: 'flex', alignItems: 'flex-end', gap: '20px' 
-    }}> 
-      {children} 
-      <div style={{ 
-        marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', 
-        fontFamily: "'IBM Plex Mono', monospace" 
-      }}>{count} of {total}</div> 
-    </div> 
-  ); 
-  
-  const FilterLabel = ({ label, children }) => ( 
-    <div> 
-      <div style={{ 
-        fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', 
-        textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' 
-      }}>{label}</div> 
-      {children} 
-    </div> 
-  ); 
-  
-  const Select = (props) => ( 
-    <select {...props} style={{ 
-      background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
-      borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
-      color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
-      outline: 'none', minWidth: '140px' 
-    }} /> 
-  ); 
-  
-  const TableCard = ({ children }) => ( 
-    <div style={{ 
-      background: 'var(--bg-surface)', borderRadius: '10px', 
-      border: '1px solid var(--border)', boxShadow: 'var(--shadow)', 
-      overflow: 'hidden' 
-    }}>{children}</div> 
-  ); 
-  
-  const TH = ({ children }) => ( 
-    <th style={{ 
-      padding: '12px 16px', textAlign: 'left', fontSize: '10px', 
-      fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', 
-      color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' 
-    }}>{children}</th> 
-  ); 
-  
-  const Drawer = ({ title, subtitle, id, onClose, children, loading }) => ( 
-    <> 
-      <div onClick={onClose} style={{ 
-        position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.5)', 
-        backdropFilter: 'blur(4px)', zIndex: 100 
-      }} /> 
-      <div style={{ 
-        position: 'fixed', top: 0, right: 0, width: '480px', height: '100vh', 
-        background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', 
-        boxShadow: '-8px 0 40px rgba(0,0,0,0.4)', zIndex: 101, overflowY: 'auto', 
-        display: 'flex', flexDirection: 'column' 
-      }}> 
-        <div style={{ 
-          background: 'var(--bg-elevated)', padding: '24px', 
-          borderBottom: '1px solid var(--border)', flexShrink: 0 
-        }}> 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}> 
-            <div> 
-              <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>{title}</div> 
-              <div style={{ fontSize: '22px', fontWeight: '700', fontFamily: "'IBM Plex Mono', monospace", color: 'var(--accent)' }}>{id}</div> 
-              {subtitle && <div style={{ marginTop: '8px' }}>{subtitle}</div>} 
-            </div> 
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><LogOut size={20} /></button> 
-          </div> 
-        </div> 
-        <div style={{ padding: '24px', flex: 1 }}> 
-          {loading ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading...</div> : children} 
-        </div> 
-      </div> 
-    </> 
-  ); 
-  
-  const StatusButtons = ({ options, current, onChange }) => ( 
-    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}> 
-      {options.map(s => { 
-        const isActive = current === s; 
-        return ( 
-          <button key={s} onClick={() => onChange(s)} style={{ 
-            padding: '6px 14px', borderRadius: '20px', fontSize: '12px', 
-            fontWeight: '600', cursor: 'pointer', 
-            border: isActive ? `2px solid var(--accent)` : '1px solid var(--border)', 
-            background: isActive ? 'var(--accent-subtle)' : 'var(--bg-elevated)', 
-            color: isActive ? 'var(--accent)' : 'var(--text-secondary)', 
-            transition: 'all 0.2s' 
-          }}>{s}</button> 
-        ); 
-      })} 
-    </div> 
-  ); 
 
   if (!token) {
     return (
@@ -1449,8 +1633,8 @@ export default function AppV2() {
                   <FilterLabel label="Employee ID"> 
                     <input 
                       type="text" 
-                      value={investigateQuery} 
-                      onChange={e => setInvestigateQuery(e.target.value)} 
+                      value={investigateId} 
+                      onChange={e => setInvestigateId(e.target.value)} 
                       placeholder="Enter EMP-ID (e.g. 10042)" 
                       style={{ 
                         background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
@@ -1486,203 +1670,7 @@ export default function AppV2() {
                 </div> 
               )} 
         
-              {investigateResults && !investigateResults.error && ( 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                  {/* Profile Card */}
-                  <div style={{ 
-                    background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-                    borderRadius: '12px', padding: '28px', display: 'flex', gap: '48px',
-                    boxShadow: 'var(--shadow)', position: 'relative', overflow: 'hidden'
-                  }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: 'var(--accent)' }} />
-                    
-                    <div>
-                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
-                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{investigateResults.emp_id}</div>
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>{investigateResults.role}</div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Department</div>
-                      <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>Dept {investigateResults.dept_id}</div>
-                    </div>
-
-                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                      <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Aggregate Anomaly Score</div>
-                      <div style={{ 
-                        fontSize: '32px', fontWeight: '700', 
-                        color: (investigateResults.top_score ?? 0) > 0.7 ? 'var(--critical)' : (investigateResults.top_score ?? 0) > 0.4 ? 'var(--high)' : 'var(--success)', 
-                        fontFamily: "'IBM Plex Mono', monospace" 
-                      }}>
-                        {(investigateResults.top_score ?? 0).toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Why Flagged Section */}
-                  {(() => {
-                    const alerts = investigateResults.alerts || [];
-                    const totalAlerts = alerts.length;
-                    let daysMonitored = 0;
-                    if (totalAlerts > 0) {
-                      const dates = alerts.map(a => new Date(a.alert_date).getTime());
-                      const minDate = Math.min(...dates);
-                      const maxDate = Math.max(...dates);
-                      daysMonitored = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
-                    }
-                    const topScore = investigateResults.top_score ?? 0;
-                    
-                    return (
-                      <div style={{ 
-                        background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
-                        borderRadius: '10px', padding: '20px'
-                      }}>
-                        <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>Investigation Insight</div>
-                        <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: '500' }}>
-                          This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
-                          with an aggregate risk score of {topScore.toFixed(2)} — 
-                          {topScore > 0.5 ? ' significantly above' : ' near'} the 0.5 threshold for investigation.
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Risk Summary Bar */}
-                  {(() => {
-                    const alerts = investigateResults.alerts || [];
-                    const totalAlerts = alerts.length;
-                    let daysMonitored = 0;
-                    if (totalAlerts > 0) {
-                      const dates = alerts.map(a => new Date(a.alert_date).getTime());
-                      const minDate = Math.min(...dates);
-                      const maxDate = Math.max(...dates);
-                      daysMonitored = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
-                    }
-                    const outOfPanelAlerts = alerts.filter(a => a.rules_triggered.includes('R4') || a.rules_triggered.includes('R8')).length;
-                    const outOfPanelPct = totalAlerts > 0 ? (outOfPanelAlerts / totalAlerts * 100).toFixed(1) : '0.0';
-
-                    return (
-                      <div style={{ 
-                        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px'
-                      }}>
-                        {[
-                          { label: 'Total Alerts', value: totalAlerts, icon: <Bell size={16} /> },
-                          { label: 'Days Monitored', value: daysMonitored || 1, icon: <LayoutGrid size={16} /> },
-                          { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: <Shield size={16} /> }
-                        ].map(stat => (
-                          <div key={stat.label} style={{ 
-                            background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-                            borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px'
-                          }}>
-                            <div style={{ color: 'var(--accent)' }}>{stat.icon}</div>
-                            <div>
-                              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
-                              <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>{stat.value}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Alert History */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                      <Bell size={18} color="var(--accent)" />
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent Alert History</h3>
-                    </div>
-                    <TableCard> 
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
-                        <thead> 
-                          <tr style={{ background: 'var(--bg-elevated)' }}> 
-                            <TH>Date</TH> 
-                            <TH>Severity</TH> 
-                            <TH>Rules Triggered</TH> 
-                            <TH>Score</TH> 
-                          </tr> 
-                        </thead> 
-                        <tbody> 
-                          {investigateResults.alerts?.length > 0 ? (
-                            investigateResults.alerts.slice(0, 20).map((a, i) => ( 
-                              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
-                                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                                  {new Date(a.alert_date).toLocaleDateString()} 
-                                </td> 
-                                <td style={{ padding: '12px 16px' }}> 
-                                  <SeverityBadge severity={a.adjusted_severity} /> 
-                                </td> 
-                                <td style={{ padding: '12px 16px' }}> 
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                    {a.rules_triggered.split(',').map(r => ( 
-                                      <span 
-                                        key={r} 
-                                        title={RULE_DESCRIPTIONS[r.trim()] || r}
-                                        style={{ 
-                                          fontSize: '10px', 
-                                          background: 'var(--bg-elevated)', 
-                                          border: '1px solid var(--border)', 
-                                          padding: '2px 6px', 
-                                          borderRadius: '4px', 
-                                          color: 'var(--text-secondary)',
-                                          cursor: 'help'
-                                        }}
-                                      >
-                                        {r}
-                                      </span> 
-                                    ))} 
-                                  </div>
-                                </td> 
-                                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}> 
-                                  {(a.anomaly_score ?? 0).toFixed(2)} 
-                                </td> 
-                              </tr> 
-                            ))
-                          ) : (
-                            <tr><td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No alert history found for this employee.</td></tr>
-                          )} 
-                        </tbody> 
-                      </table> 
-                    </TableCard>
-                  </div>
-
-                  {/* Open Cases */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                      <Folder size={18} color="var(--accent)" />
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Cases</h3>
-                    </div>
-                    <TableCard> 
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
-                        <thead> 
-                          <tr style={{ background: 'var(--bg-elevated)' }}> 
-                            <TH>Case ID</TH> 
-                            <TH>Status</TH> 
-                            <TH>Days Open</TH> 
-                          </tr> 
-                        </thead> 
-                        <tbody> 
-                          {investigateResults.cases?.length > 0 ? (
-                            investigateResults.cases.filter(c => c.status !== 'Resolved').map((c, i) => ( 
-                              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
-                                <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.case_id}</td> 
-                                <td style={{ padding: '12px 16px' }}> 
-                                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
-                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warning)' }} /> 
-                                    {c.status} 
-                                  </span> 
-                                </td> 
-                                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.days_open}d</td> 
-                              </tr> 
-                            ))
-                          ) : (
-                            <tr><td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No active cases found for this employee.</td></tr>
-                          )} 
-                        </tbody> 
-                      </table> 
-                    </TableCard>
-                  </div>
-                </div>
-              )} 
+              <InvestigateResults results={investigateResults} />
             </div> 
           )} 
         
