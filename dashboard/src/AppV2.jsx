@@ -1473,13 +1473,13 @@ export default function AppV2() {
                     
                     <div>
                       <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
-                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{investigateResults.employee_id}</div>
+                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{investigateResults.emp_id}</div>
                       <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>{investigateResults.role}</div>
                     </div>
 
                     <div>
                       <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Department</div>
-                      <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>{investigateResults.department}</div>
+                      <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>Dept {investigateResults.dept_id}</div>
                     </div>
 
                     <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
@@ -1493,6 +1493,72 @@ export default function AppV2() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Why Flagged Section */}
+                  {(() => {
+                    const alerts = investigateResults.alerts || [];
+                    const totalAlerts = alerts.length;
+                    let daysMonitored = 0;
+                    if (totalAlerts > 0) {
+                      const dates = alerts.map(a => new Date(a.alert_date).getTime());
+                      const minDate = Math.min(...dates);
+                      const maxDate = Math.max(...dates);
+                      daysMonitored = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
+                    }
+                    const topScore = investigateResults.top_score ?? 0;
+                    
+                    return (
+                      <div style={{ 
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+                        borderRadius: '10px', padding: '20px'
+                      }}>
+                        <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>Investigation Insight</div>
+                        <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: '500' }}>
+                          This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
+                          with an aggregate risk score of {topScore.toFixed(2)} — 
+                          {topScore > 0.5 ? ' significantly above' : ' near'} the 0.5 threshold for investigation.
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Risk Summary Bar */}
+                  {(() => {
+                    const alerts = investigateResults.alerts || [];
+                    const totalAlerts = alerts.length;
+                    let daysMonitored = 0;
+                    if (totalAlerts > 0) {
+                      const dates = alerts.map(a => new Date(a.alert_date).getTime());
+                      const minDate = Math.min(...dates);
+                      const maxDate = Math.max(...dates);
+                      daysMonitored = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
+                    }
+                    const outOfPanelAlerts = alerts.filter(a => a.rules_triggered.includes('R4') || a.rules_triggered.includes('R8')).length;
+                    const outOfPanelPct = totalAlerts > 0 ? (outOfPanelAlerts / totalAlerts * 100).toFixed(1) : '0.0';
+
+                    return (
+                      <div style={{ 
+                        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px'
+                      }}>
+                        {[
+                          { label: 'Total Alerts', value: totalAlerts, icon: <Bell size={16} /> },
+                          { label: 'Days Monitored', value: daysMonitored || 1, icon: <LayoutGrid size={16} /> },
+                          { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: <Shield size={16} /> }
+                        ].map(stat => (
+                          <div key={stat.label} style={{ 
+                            background: 'var(--bg-surface)', border: '1px solid var(--border)', 
+                            borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px'
+                          }}>
+                            <div style={{ color: 'var(--accent)' }}>{stat.icon}</div>
+                            <div>
+                              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
+                              <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>{stat.value}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Alert History */}
                   <div>
