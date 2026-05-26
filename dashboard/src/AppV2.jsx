@@ -935,70 +935,80 @@ export default function AppV2() {
           flexDirection: 'column', 
           justifyContent: 'center', 
           alignItems: 'center',
-          padding: '40px'
+          padding: '40px',
+          borderRight: '1px solid var(--border)'
         }}>
           <div style={{ width: '100%', maxWidth: '380px' }}>
             {/* Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '40px' }}>
-              <Shield size={20} stroke="#E11D48" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
+              <div style={{ background: 'var(--accent-subtle)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Shield size={24} color="var(--accent)" fill="var(--accent)" fillOpacity="0.2" />
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '18px', color: 'var(--text-primary)' }}>SentinelEHR</span>
+                <span style={{ fontWeight: '800', fontSize: '22px', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>SentinelEHR</span>
                 <span style={{ 
-                  fontSize: '10px', 
-                  letterSpacing: '0.1em', 
+                  fontSize: '9px', 
+                  letterSpacing: '0.15em', 
                   textTransform: 'uppercase', 
                   color: 'var(--text-muted)',
-                  fontWeight: '600'
+                  fontWeight: '700'
                 }}>Healthcare Insider Risk</span>
               </div>
             </div>
 
-            <h2 style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>Welcome back</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Sign in to your compliance dashboard</p>
+            <h2 style={{ fontSize: '32px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '12px', letterSpacing: '-0.03em' }}>Welcome back</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', fontSize: '15px' }}>Sign in to your compliance dashboard</p>
 
             <form onSubmit={handleLogin}>
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '24px' }}>
                 <label style={{ 
                   display: 'block', 
-                  fontSize: '12px', 
-                  fontWeight: '600', 
+                  fontSize: '11px', 
+                  fontWeight: '700', 
                   textTransform: 'uppercase', 
                   color: 'var(--text-muted)', 
-                  marginBottom: '8px',
-                  letterSpacing: '0.05em'
+                  marginBottom: '10px',
+                  letterSpacing: '0.08em'
                 }}>Username</label>
                 <input 
                   type="text" 
                   value={loginForm.username}
                   onChange={e => setLoginForm({...loginForm, username: e.target.value})}
                   required
+                  autoComplete="off"
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
+                    padding: '14px 18px',
                     background: 'var(--bg-elevated)',
                     border: '1px solid var(--border)',
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     color: 'var(--text-primary)',
                     fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
-                    transition: 'border-color 0.2s'
+                    transition: 'all 0.2s ease'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#E11D48'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  onFocus={e => {
+                    e.target.style.borderColor = 'var(--accent)';
+                    e.target.style.boxShadow = '0 0 0 4px var(--accent-subtle)';
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = 'var(--border)';
+                    e.target.style.boxShadow = 'none';
+                  }}
                 />
               </div>
 
-              <div style={{ marginBottom: '24px' }}>
+              <div style={{ marginBottom: '32px' }}>
                 <label style={{ 
                   display: 'block', 
-                  fontSize: '12px', 
-                  fontWeight: '600', 
+                  fontSize: '11px', 
+                  fontWeight: '700', 
                   textTransform: 'uppercase', 
                   color: 'var(--text-muted)', 
-                  marginBottom: '8px',
-                  letterSpacing: '0.05em'
+                  marginBottom: '10px',
+                  letterSpacing: '0.08em'
                 }}>Password</label>
                 <input 
                   type="password" 
@@ -1007,32 +1017,42 @@ export default function AppV2() {
                   required
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
+                    padding: '14px 18px',
                     background: 'var(--bg-elevated)',
                     border: '1px solid var(--border)',
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     color: 'var(--text-primary)',
                     fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
-                    transition: 'border-color 0.2s'
+                    transition: 'all 0.2s ease'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#E11D48'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  onFocus={e => {
+                    e.target.style.borderColor = 'var(--accent)';
+                    e.target.style.boxShadow = '0 0 0 4px var(--accent-subtle)';
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = 'var(--border)';
+                    e.target.style.boxShadow = 'none';
+                  }}
                 />
               </div>
 
               {loginError && (
                 <div style={{ 
-                  padding: '12px', 
-                  background: 'rgba(225,29,72,0.1)', 
+                  padding: '14px 18px', 
+                  background: 'var(--critical-bg)', 
                   border: '1px solid rgba(225,29,72,0.2)', 
-                  borderRadius: '8px', 
-                  color: '#E11D48', 
+                  borderRadius: '10px', 
+                  color: 'var(--critical)', 
                   fontSize: '14px', 
-                  marginBottom: '20px' 
+                  marginBottom: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
                 }}>
+                  <AlertTriangle size={18} />
                   {loginError}
                 </div>
               )}
@@ -1042,40 +1062,55 @@ export default function AppV2() {
                 disabled={loggingIn}
                 style={{
                   width: '100%',
-                  padding: '14px',
-                  background: '#E11D48',
+                  padding: '16px',
+                  background: 'var(--accent)',
                   color: '#FFFFFF',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '10px',
                   fontSize: '14px',
-                  fontWeight: '700',
+                  fontWeight: '800',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.1em',
                   cursor: loggingIn ? 'default' : 'pointer',
                   opacity: loggingIn ? 0.7 : 1,
-                  transition: 'background 0.2s'
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(225,29,72,0.2)'
                 }}
+                onMouseEnter={e => !loggingIn && (e.target.style.background = 'var(--accent-hover)')}
+                onMouseLeave={e => !loggingIn && (e.target.style.background = 'var(--accent)')}
               >
-                {loggingIn ? 'Connecting...' : 'Sign In →'}
+                {loggingIn ? 'Authenticating...' : 'Sign In'}
               </button>
             </form>
 
             <button 
               onClick={toggleTheme}
               style={{
-                marginTop: '32px',
+                marginTop: '40px',
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--text-secondary)',
-                fontSize: '14px',
+                color: 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: '600',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--bg-elevated)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-muted)';
               }}
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
             </button>
           </div>
         </div>
@@ -1089,7 +1124,8 @@ export default function AppV2() {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          color: '#FFFFFF'
+          color: '#FFFFFF',
+          padding: '60px'
         }}>
           {/* Grid Overlay */}
           <div style={{
@@ -1101,7 +1137,7 @@ export default function AppV2() {
           }} />
 
           {/* Shield Illustration */}
-          <div style={{ position: 'relative', width: '160px', height: '180px', marginBottom: '40px' }}>
+          <div style={{ position: 'relative', width: '160px', height: '180px', marginBottom: '48px' }}>
             <svg width="160" height="180" viewBox="0 0 160 180" fill="none">
               <defs>
                 <linearGradient id="shieldGrad" x1="80" y1="0" x2="80" y2="180" gradientUnits="userSpaceOnUse">
@@ -1129,42 +1165,41 @@ export default function AppV2() {
             }} />
           </div>
 
-          <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '12px', textAlign: 'center' }}>Healthcare Insider Risk Intelligence</h3>
+          <h3 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '16px', textAlign: 'center', letterSpacing: '-0.02em' }}>Healthcare Insider Risk Intelligence</h3>
           <p style={{ 
-            fontSize: '14px', 
+            fontSize: '15px', 
             color: '#94A3B8', 
             textAlign: 'center', 
-            maxWidth: '400px', 
-            lineHeight: '1.6',
-            marginBottom: '48px'
+            maxWidth: '440px', 
+            lineHeight: '1.7',
+            marginBottom: '56px'
           }}>Real-time behavioral monitoring for Epic EHR. Detect threats before they become breaches.</p>
 
-          <div style={{ display: 'flex', gap: '48px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', gap: '56px', textAlign: 'center', marginBottom: '48px' }}>
             <div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '22px', fontWeight: '700', color: '#E11D48' }}>325K</div>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>Events Monitored</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>325K</div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>Events Monitored</div>
             </div>
             <div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '22px', fontWeight: '700', color: '#E11D48' }}>0</div>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>PHI Stored</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>0</div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>PHI Stored</div>
             </div>
             <div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '22px', fontWeight: '700', color: '#E11D48' }}>86%</div>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px' }}>Alert Precision</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>86%</div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>Alert Precision</div>
             </div>
           </div>
 
           <div style={{ 
-            position: 'absolute', 
-            bottom: '40px', 
-            right: '40px',
-            padding: '6px 16px',
-            border: '1px solid rgba(225,29,72,0.4)',
-            borderRadius: '20px',
-            color: '#E11D48',
-            fontSize: '11px',
+            padding: '8px 20px',
+            border: '1px solid rgba(225,29,72,0.3)',
+            borderRadius: '30px',
+            color: 'var(--accent)',
+            fontSize: '12px',
             fontFamily: "'IBM Plex Mono', monospace",
-            fontWeight: '600'
+            fontWeight: '700',
+            letterSpacing: '0.05em',
+            background: 'rgba(225,29,72,0.05)'
           }}>
             HIPAA §164.312(b) COMPLIANT
           </div>
