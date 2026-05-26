@@ -399,6 +399,54 @@ const InvestigateResults = React.memo(({ results }) => {
   );
 });
 
+const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating }) => (
+  <div> 
+    <FilterBar count={investigateResults?.alerts?.length || 0} total={investigateResults?.alerts?.length || 0}> 
+      <form onSubmit={handleInvestigate} style={{ display: 'flex', gap: '12px', flex: 1 }}> 
+        <FilterLabel label="Employee ID"> 
+          <input 
+            type="text" 
+            value={investigateId} 
+            onChange={e => setInvestigateId(e.target.value)} 
+            placeholder="Enter EMP-ID (e.g. 10042)" 
+            style={{ 
+              background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+              borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
+              color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+              outline: 'none', width: '240px' 
+            }} 
+          /> 
+        </FilterLabel> 
+        <button 
+          type="submit" 
+          disabled={investigating} 
+          style={{ 
+            alignSelf: 'flex-end', padding: '10px 20px', background: 'var(--accent)', 
+            color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', 
+            fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', 
+            cursor: investigating ? 'default' : 'pointer', opacity: investigating ? 0.7 : 1 
+          }} 
+        > 
+          {investigating ? 'Searching...' : 'Run Query'} 
+        </button> 
+      </form> 
+    </FilterBar> 
+
+    {investigateResults?.error && ( 
+      <div style={{ 
+        padding: '24px', background: 'var(--critical-bg)', color: 'var(--critical)', 
+        borderRadius: '10px', border: '1px solid var(--critical)', fontSize: '14px', 
+        marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' 
+      }}> 
+        <LogOut size={20} />
+        <span>{investigateResults.error}</span> 
+      </div> 
+    )} 
+
+    <InvestigateResults results={investigateResults} />
+  </div> 
+);
+
 export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   const [token, setToken] = useState(localStorage.getItem('sentinel_token') || null);
@@ -1627,51 +1675,13 @@ export default function AppV2() {
           )} 
         
           {activeView === 'investigate' && ( 
-            <div> 
-              <FilterBar count={investigateResults?.alerts?.length || 0} total={investigateResults?.alerts?.length || 0}> 
-                <form onSubmit={handleInvestigate} style={{ display: 'flex', gap: '12px', flex: 1 }}> 
-                  <FilterLabel label="Employee ID"> 
-                    <input 
-                      type="text" 
-                      value={investigateId} 
-                      onChange={e => setInvestigateId(e.target.value)} 
-                      placeholder="Enter EMP-ID (e.g. 10042)" 
-                      style={{ 
-                        background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
-                        borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
-                        color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
-                        outline: 'none', width: '240px' 
-                      }} 
-                    /> 
-                  </FilterLabel> 
-                  <button 
-                    type="submit" 
-                    disabled={investigating} 
-                    style={{ 
-                      alignSelf: 'flex-end', padding: '10px 20px', background: 'var(--accent)', 
-                      color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', 
-                      fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', 
-                      cursor: investigating ? 'default' : 'pointer', opacity: investigating ? 0.7 : 1 
-                    }} 
-                  > 
-                    {investigating ? 'Searching...' : 'Run Query'} 
-                  </button> 
-                </form> 
-              </FilterBar> 
-        
-              {investigateResults?.error && ( 
-                <div style={{ 
-                  padding: '24px', background: 'var(--critical-bg)', color: 'var(--critical)', 
-                  borderRadius: '10px', border: '1px solid var(--critical)', fontSize: '14px', 
-                  marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' 
-                }}> 
-                  <LogOut size={20} />
-                  <span>{investigateResults.error}</span> 
-                </div> 
-              )} 
-        
-              <InvestigateResults results={investigateResults} />
-            </div> 
+            <InvestigateTab 
+              investigateId={investigateId} 
+              setInvestigateId={setInvestigateId} 
+              handleInvestigate={handleInvestigate} 
+              investigateResults={investigateResults} 
+              investigating={investigating} 
+            />
           )} 
         
           {activeView === 'settings' && ( 
