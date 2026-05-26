@@ -11,7 +11,11 @@ import {
   Sun, 
   Moon,
   Shield,
-  Check
+  Check,
+  Mail,
+  User,
+  Activity,
+  AlertTriangle
 } from 'lucide-react';
 
 const THEMES = {
@@ -398,6 +402,91 @@ const InvestigateResults = React.memo(({ results }) => {
     </div>
   );
 });
+
+const SettingsSection = ({ title, icon, children }) => (
+  <div style={{ 
+    background: 'var(--bg-surface)', border: '1px solid var(--border)', 
+    borderRadius: '12px', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)'
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+      <div style={{ color: 'var(--accent)' }}>{icon}</div>
+      <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</h3>
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {children}
+    </div>
+  </div>
+);
+
+const SettingsField = ({ label, value, subtext, disabled, type = 'text' }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+    <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+    {type === 'select' ? (
+      <Select value={value} disabled={disabled} style={{ width: '100%', opacity: disabled ? 0.6 : 1 }} />
+    ) : (
+      <input 
+        type="text" 
+        readOnly 
+        value={value} 
+        style={{ 
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
+          borderRadius: '6px', padding: '10px 14px', fontSize: '13px', 
+          color: disabled ? 'var(--text-muted)' : 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+          outline: 'none', width: '100%', cursor: 'default'
+        }} 
+      />
+    )}
+    {subtext && <div style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px', fontWeight: '500' }}>{subtext}</div>}
+  </div>
+);
+
+const SettingsView = () => (
+  <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <SettingsSection title="Monitor Configuration" icon={<Activity size={20} />}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <SettingsField label="Epic Connection Status" value="Demo Mode — Synthetic Data" disabled />
+        <SettingsField label="Monitoring Window" value="2026-01-05 to 2026-03-31" disabled />
+        <SettingsField label="Employees Monitored" value="80" disabled />
+      </div>
+    </SettingsSection>
+
+    <SettingsSection title="Alert Thresholds" icon={<AlertTriangle size={20} />}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+        <SettingsField label="Critical Threshold" value="0.7" subtext="Contact support to adjust thresholds" disabled />
+        <SettingsField label="High Threshold" value="0.4" disabled />
+        <SettingsField label="Medium Threshold" value="0.2" disabled />
+      </div>
+    </SettingsSection>
+
+    <SettingsSection title="Notification Settings" icon={<Mail size={20} />}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600' }}>Email Notifications</div>
+          <div style={{ fontSize: '11px', color: 'var(--accent)' }}>Email notifications require configuration — contact support</div>
+        </div>
+        <div style={{ width: '40px', height: '20px', background: 'var(--text-muted)', borderRadius: '20px', position: 'relative', opacity: 0.4, cursor: 'not-allowed' }}>
+          <div style={{ position: 'absolute', left: '2px', top: '2px', width: '16px', height: '16px', background: '#fff', borderRadius: '50%' }} />
+        </div>
+      </div>
+      <SettingsField label="Notification Frequency" value="Immediate" type="select" disabled />
+    </SettingsSection>
+
+    <SettingsSection title="Account" icon={<User size={20} />}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <SettingsField label="Username" value="demo" disabled />
+        <SettingsField label="Role" value="Compliance Officer" disabled />
+      </div>
+      <button disabled style={{ 
+        marginTop: '8px', padding: '12px', background: 'var(--bg-elevated)', 
+        color: 'var(--text-muted)', border: '1px solid var(--border)', 
+        borderRadius: '8px', fontSize: '12px', fontWeight: '600', 
+        textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'not-allowed'
+      }}>
+        Change Password
+      </button>
+    </SettingsSection>
+  </div>
+);
 
 const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating }) => (
   <div> 
@@ -1684,16 +1773,7 @@ export default function AppV2() {
             />
           )} 
         
-          {activeView === 'settings' && ( 
-            <div style={{ 
-              display:'flex', alignItems:'center', 
-              justifyContent:'center', height:'60vh', 
-              color:'var(--text-muted)', fontSize:'13px', 
-              fontFamily:"'IBM Plex Mono',monospace" 
-            }}> 
-              {activeView} — coming in Phase 4 
-            </div> 
-          )}
+          {activeView === 'settings' && <SettingsView />}
         </div>
       </main>
 
