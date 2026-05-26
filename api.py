@@ -177,7 +177,7 @@ def login(request: Request, body: dict):
         conn = get_connection() 
         cursor = conn.cursor() 
         cursor.execute( 
-            "SELECT user_id, password_hash, role, active FROM users WHERE username = %s", 
+            "SELECT id, password_hash, role, active FROM users WHERE username = %s", 
             (username,) 
         ) 
         user = cursor.fetchone() 
@@ -190,7 +190,7 @@ def login(request: Request, body: dict):
                 "access_token": token, 
                 "token_type": "bearer", 
                 "role": user['role'], 
-                "user_id": user['user_id'] 
+                "user_id": user['id'] 
             } 
     except Exception as e: 
         print(f"Login error: {str(e)}")
