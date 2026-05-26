@@ -15,7 +15,11 @@ import {
   Mail,
   User,
   Activity,
-  AlertTriangle
+  AlertTriangle,
+  Download,
+  FileText,
+  Printer,
+  X
 } from 'lucide-react';
 
 const THEMES = {
@@ -536,6 +540,137 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
   </div> 
 );
 
+const CaseReportModal = ({ report, onClose }) => {
+  if (!report) return null;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div style={{ 
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', 
+      backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', 
+      alignItems: 'center', justifyContent: 'center', padding: '40px'
+    }}>
+      <div style={{ 
+        background: '#fff', color: '#111827', width: '100%', maxWidth: '900px', 
+        height: '90vh', borderRadius: '16px', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.5)', overflow: 'hidden'
+      }}>
+        {/* Modal Header */}
+        <div className="no-print" style={{ 
+          padding: '16px 24px', borderBottom: '1px solid #E5E7EB', 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: '#F9FAFB'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <FileText size={20} color="#E11D48" />
+            <h2 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', color: '#374151' }}>Investigation Report: {report.case_metadata.case_id}</h2>
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button onClick={handlePrint} style={{ 
+              padding: '8px 16px', background: '#374151', color: '#fff', 
+              border: 'none', borderRadius: '6px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600'
+            }}>
+              <Printer size={16} /> Print
+            </button>
+            <button onClick={onClose} style={{ 
+              background: 'transparent', border: 'none', color: '#9CA3AF', cursor: 'pointer', padding: '4px'
+            }}>
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Content */}
+        <div style={{ padding: '48px', overflowY: 'auto', flex: 1 }} id="printable-report">
+          <style>{`
+            @media print {
+              .no-print { display: none !important; }
+              body { background: #fff !important; }
+              #printable-report { padding: 0 !important; }
+            }
+          `}</style>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', borderBottom: '2px solid #111827', paddingBottom: '24px' }}>
+            <div>
+              <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#111827', marginBottom: '4px' }}>SentinelEHR</h1>
+              <p style={{ fontSize: '12px', fontWeight: '700', color: '#E11D48', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Insider Risk Investigation</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Report Generated:</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>{new Date(report.report_generated_at).toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginBottom: '40px' }}>
+            <div>
+              <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#6B7280', textTransform: 'uppercase', marginBottom: '12px', borderBottom: '1px solid #E5E7EB', paddingBottom: '4px' }}>Employee Information</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px', fontSize: '14px' }}>
+                <div style={{ fontWeight: '600', color: '#6B7280' }}>ID:</div>
+                <div style={{ fontWeight: '700', fontFamily: 'monospace' }}>EMP-{report.employee_info?.emp_id}</div>
+                <div style={{ fontWeight: '600', color: '#6B7280' }}>Role:</div>
+                <div style={{ fontWeight: '600' }}>{report.employee_info?.role}</div>
+                <div style={{ fontWeight: '600', color: '#6B7280' }}>Department:</div>
+                <div style={{ fontWeight: '600' }}>Dept {report.employee_info?.dept_id}</div>
+              </div>
+            </div>
+            <div>
+              <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#6B7280', textTransform: 'uppercase', marginBottom: '12px', borderBottom: '1px solid #E5E7EB', paddingBottom: '4px' }}>Case Metadata</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px', fontSize: '14px' }}>
+                <div style={{ fontWeight: '600', color: '#6B7280' }}>Case ID:</div>
+                <div style={{ fontWeight: '700', fontFamily: 'monospace', color: '#E11D48' }}>{report.case_metadata.case_id}</div>
+                <div style={{ fontWeight: '600', color: '#6B7280' }}>Priority:</div>
+                <div style={{ fontWeight: '700' }}>{report.case_metadata.priority}</div>
+                <div style={{ fontWeight: '600', color: '#6B7280' }}>Current Status:</div>
+                <div style={{ fontWeight: '700' }}>{report.case_metadata.status}</div>
+              </div>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#6B7280', textTransform: 'uppercase', marginBottom: '16px', borderBottom: '1px solid #E5E7EB', paddingBottom: '4px' }}>Linked Alerts</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
+            <thead>
+              <tr style={{ background: '#F3F4F6' }}>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>Date</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>Severity</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>Rules Triggered</th>
+                <th style={{ padding: '10px', textAlign: 'right', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.linked_alerts.map((a, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <td style={{ padding: '10px', fontSize: '13px' }}>{new Date(a.alert_date).toLocaleDateString()}</td>
+                  <td style={{ padding: '10px', fontSize: '13px', fontWeight: '600' }}>{a.adjusted_severity}</td>
+                  <td style={{ padding: '10px', fontSize: '12px', color: '#4B5563' }}>{a.rules_triggered}</td>
+                  <td style={{ padding: '10px', fontSize: '13px', textAlign: 'right', fontWeight: '700' }}>{a.anomaly_score.toFixed(3)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 style={{ fontSize: '12px', fontWeight: '800', color: '#6B7280', textTransform: 'uppercase', marginBottom: '16px', borderBottom: '1px solid #E5E7EB', paddingBottom: '4px' }}>Timeline & Notes</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {report.timeline.map((t, i) => (
+              <div key={i} style={{ borderLeft: '2px solid #E5E7EB', paddingLeft: '16px', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '-5px', top: '0', width: '8px', height: '8px', borderRadius: '50%', background: '#E11D48' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#111827' }}>{t.action.toUpperCase()}</span>
+                  <span style={{ fontSize: '11px', color: '#6B7280' }}>{new Date(t.timestamp).toLocaleString()} by {t.actor_name || 'System'}</span>
+                </div>
+                {t.note && <p style={{ fontSize: '13px', color: '#4B5563', margin: 0, fontStyle: 'italic' }}>"{t.note}"</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   const [token, setToken] = useState(localStorage.getItem('sentinel_token') || null);
@@ -576,6 +711,10 @@ export default function AppV2() {
   const [investigateId, setInvestigateId] = useState('') 
   const [investigateResults, setInvestigateResults] = useState(null) 
   const [investigating, setInvestigating] = useState(false) 
+  
+  const [caseReport, setCaseReport] = useState(null)
+  const [generatingReport, setGeneratingReport] = useState(false)
+  const [exportingAlerts, setExportingAlerts] = useState(false)
   
   const LIMIT = 50 
 
@@ -790,6 +929,49 @@ export default function AppV2() {
       setInvestigateResults({ error: "Failed to connect to investigation service." });
     } 
     setInvestigating(false); 
+  };
+
+  const handleExportAlerts = async () => {
+    setExportingAlerts(true);
+    try {
+      const query = new URLSearchParams({
+        severity: alertSeverity,
+        status: alertStatus
+      });
+      const res = await fetch(`${API_BASE}/export/alerts?${query}`, {
+        headers: authHeaders()
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const date = new Date().toISOString().split('T')[0];
+        a.download = `sentinelehr_alerts_${date}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    } catch (e) {
+      console.error('Export failed', e);
+    }
+    setExportingAlerts(false);
+  };
+
+  const handleGenerateReport = async (caseId) => {
+    setGeneratingReport(true);
+    try {
+      const res = await fetch(`${API_BASE}/export/case/${caseId}`, {
+        headers: authHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCaseReport(data);
+      }
+    } catch (e) {
+      console.error('Report generation failed', e);
+    }
+    setGeneratingReport(false);
   };
   
   useEffect(() => { 
@@ -1593,6 +1775,19 @@ export default function AppV2() {
                     <option value="resolved">Resolved</option> 
                   </Select> 
                 </FilterLabel> 
+                <button 
+                  onClick={handleExportAlerts}
+                  disabled={exportingAlerts}
+                  style={{ 
+                    alignSelf: 'flex-end', padding: '10px 16px', background: 'var(--bg-elevated)', 
+                    color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: '6px', 
+                    fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', 
+                    cursor: exportingAlerts ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                  }} 
+                > 
+                  <Download size={16} />
+                  {exportingAlerts ? 'Exporting...' : 'Export CSV'} 
+                </button>
               </FilterBar> 
         
               <TableCard> 
@@ -1714,28 +1909,43 @@ export default function AppV2() {
                       <TH>Alerts</TH> 
                       <TH>Window</TH> 
                       <TH>Assigned</TH> 
+                      <TH>Report</TH>
                     </tr> 
                   </thead> 
                   <tbody> 
-                    {casesLoading ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading cases...</td></tr> : 
+                    {casesLoading ? <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading cases...</td></tr> : 
                      cases.map(c => ( 
-                      <tr key={c.case_id} onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.case_id}</td> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{c.emp_id}</td> 
-                        <td style={{ padding: '12px 16px' }}><SeverityBadge severity={c.priority} /></td> 
-                        <td style={{ padding: '12px 16px' }}> 
+                      <tr key={c.case_id} style={{ borderBottom: '1px solid var(--border)' }}> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', cursor: 'pointer' }}><SeverityBadge severity={c.priority} /></td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', cursor: 'pointer' }}> 
                           <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: c.status === 'Open' ? 'var(--critical)' : c.status === 'Resolved' ? 'var(--success)' : 'var(--warning)' }} /> 
                             {c.status} 
                           </span> 
                         </td> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.days_open || 0}d</td> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
-                        <td style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>{c.days_open || 0}d</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}> 
                           {new Date(c.window_start).toLocaleDateString()}<br/> 
                           to {new Date(c.window_end).toLocaleDateString()} 
                         </td> 
-                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)' }}>{c.assigned_to_name || '—'}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer' }}>{c.assigned_to_name || '—'}</td> 
+                        <td style={{ padding: '12px 16px' }}>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleGenerateReport(c.case_id); }}
+                            style={{ 
+                              background: 'transparent', border: '1px solid var(--border)', 
+                              color: 'var(--text-secondary)', borderRadius: '4px', 
+                              padding: '4px 8px', cursor: 'pointer', fontSize: '11px',
+                              display: 'flex', alignItems: 'center', gap: '4px'
+                            }}
+                          >
+                            <FileText size={12} />
+                            Report
+                          </button>
+                        </td>
                       </tr> 
                     ))} 
                   </tbody> 
@@ -1811,6 +2021,8 @@ export default function AppV2() {
           {activeView === 'settings' && <SettingsView />}
         </div>
       </main>
+
+      <CaseReportModal report={caseReport} onClose={() => setCaseReport(null)} />
 
       <style>{`
         @keyframes pulse {
