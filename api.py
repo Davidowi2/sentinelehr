@@ -5,6 +5,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address 
 from slowapi.errors import RateLimitExceeded 
 import os
+import time
+from collections import defaultdict
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, List
@@ -39,7 +41,26 @@ DEMO_USERS = {
 } 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret") 
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8")) 
- 
+
+# ─── SECURITY HELPERS ───────────────────────────────────────
+# In-memory store for failed login attempts: {ip: [timestamp1, timestamp2, ...]}
+failed_login_attempts = defaultdict(list)
+
+def check_login_rate_limit(ip: str):
+    now = time.time()
+    # Keep only attempts from the last 15 minutes (900 seconds)
+    failed_login_attempts[ip] = [t for t in failed_login_attempts[ip] if now - t < 900]
+    if len(failed_login_attempts[ip]) >= 5:
+        return False
+    return True
+
+def record_failed_login(ip: str):
+    failed_login_attempts[ip].append(time.time())
+
+def audit_log_login(username: str, ip: str, result: str):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] LOGIN ATTEMPT: user={username}, ip={ip}, result={result}")
+
 security = HTTPBearer() 
  
 def create_token(username: str) -> str: 
@@ -135,11 +156,16 @@ class StatusUpdate(BaseModel):
 # ─── ENDPOINTS ──────────────────────────────────────────────
 
 @app.post("/login") 
-@limiter.limit("5/minute") 
+@limiter.limit("10/minute") 
 def login(request: Request, body: dict): 
     username = body.get("username", "") 
     password = body.get("password", "") 
+    ip_address = get_remote_address(request)
     
+    if not check_login_rate_limit(ip_address):
+        audit_log_login(username, ip_address, "BLOCKED (Rate Limit)")
+        raise HTTPException(status_code=429, detail="Too many failed login attempts. Please try again in 15 minutes.")
+
     # First check database users 
     try: 
         conn = get_connection() 
@@ -152,6 +178,7 @@ def login(request: Request, body: dict):
         conn.close() 
         
         if user and user['active'] and case_logic.verify_password(password, user['password_hash']): 
+            audit_log_login(username, ip_address, "SUCCESS (DB)")
             token = create_token(username) 
             return { 
                 "access_token": token, 
@@ -160,11 +187,13 @@ def login(request: Request, body: dict):
                 "is_senior": user['is_senior'], 
                 "user_id": user['id'] 
             } 
-    except: 
+    except Exception as e: 
+        print(f"Login error: {str(e)}")
         pass 
     
     # Fallback to env var admin (for bootstrap) 
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD: 
+        audit_log_login(username, ip_address, "SUCCESS (ADMIN_ENV)")
         token = create_token(username) 
         return { 
             "access_token": token, 
@@ -176,6 +205,7 @@ def login(request: Request, body: dict):
     
     # Also check demo users (existing logic) 
     if username in DEMO_USERS and DEMO_USERS.get(username) == password: 
+        audit_log_login(username, ip_address, "SUCCESS (DEMO)")
         token = create_token(username) 
         return { 
             "access_token": token, 
@@ -185,7 +215,14 @@ def login(request: Request, body: dict):
             "user_id": -1 
         } 
     
+    record_failed_login(ip_address)
+    audit_log_login(username, ip_address, "FAILED")
     raise HTTPException(status_code=401, detail="Incorrect username or password") 
+
+@app.post("/logout")
+def logout(user: str = Depends(verify_token)):
+    # Currently stateless, so just returning success
+    return {"message": "Logged out successfully"}
 
 @app.get("/health")
 def health_check():
