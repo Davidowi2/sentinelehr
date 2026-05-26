@@ -1,11 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler 
 from slowapi.util import get_remote_address 
 from slowapi.errors import RateLimitExceeded 
 import os
 import time
+import csv
+import io
 from collections import defaultdict
 from datetime import datetime
 from pydantic import BaseModel
@@ -771,6 +773,117 @@ def create_case_from_alert(
   if not case_id: 
     raise HTTPException(400, "Could not create case") 
   return {"alert_id": alert_id, "case_id": case_id, "created": True} 
+
+# ─── EXPORT ENDPOINTS ───────────────────────────────────────
+
+@app.get("/export/alerts")
+def export_alerts(
+    request: Request,
+    severity: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    emp_id: Optional[int] = None,
+    token_data = Depends(require_role('compliance_officer', 'admin'))
+):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        query = "SELECT alert_id, alert_date, emp_id, adjusted_severity, rules_triggered, anomaly_score, explanation FROM alerts WHERE 1=1"
+        params = []
+        
+        if severity:
+            query += " AND adjusted_severity = %s"
+            params.append(severity)
+        if start_date:
+            query += " AND alert_date >= %s"
+            params.append(start_date)
+        if end_date:
+            query += " AND alert_date <= %s"
+            params.append(end_date)
+        if emp_id:
+            query += " AND emp_id = %s"
+            params.append(emp_id)
+            
+        query += " ORDER BY alert_date DESC"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['alert_id', 'alert_date', 'emp_id', 'adjusted_severity', 'rules_triggered', 'anomaly_score', 'explanation'])
+        
+        for row in rows:
+            writer.writerow([
+                row['alert_id'],
+                row['alert_date'],
+                row['emp_id'],
+                row['adjusted_severity'],
+                row['rules_triggered'],
+                row['anomaly_score'],
+                row['explanation']
+            ])
+
+        output.seek(0)
+        date_str = datetime.now().strftime("%Y%m%d")
+        headers = {
+            'Content-Disposition': f'attachment; filename=sentinelehr_alerts_{date_str}.csv'
+        }
+        return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers=headers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/export/case/{case_id}")
+def export_case_report(
+    case_id: str,
+    token_data = Depends(require_role('compliance_officer', 'admin'))
+):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # 1. Fetch case metadata
+        cursor.execute("SELECT * FROM cases WHERE case_id = %s", (case_id,))
+        case = cursor.fetchone()
+        if not case:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Case not found")
+            
+        # 2. Fetch employee info
+        cursor.execute("SELECT emp_id, role, dept_id FROM employees WHERE emp_id = %s", (case['emp_id'],))
+        employee = cursor.fetchone()
+        
+        # 3. Fetch linked alerts
+        import json
+        alert_ids = case['alert_ids'] if isinstance(case['alert_ids'], list) else json.loads(case['alert_ids'])
+        alerts = []
+        if alert_ids:
+            placeholders = ', '.join(['%s'] * len(alert_ids))
+            cursor.execute(f"SELECT * FROM alerts WHERE alert_id IN ({placeholders})", tuple(alert_ids))
+            alerts = [dict(r) for r in cursor.fetchall()]
+            
+        # 4. Fetch audit log / timeline
+        cursor.execute("""
+            SELECT l.*, u.username as actor_name 
+            FROM case_audit_log l 
+            LEFT JOIN users u ON l.user_id = u.user_id 
+            WHERE l.case_id = %s 
+            ORDER BY l.timestamp ASC
+        """, (case_id,))
+        timeline = [dict(r) for r in cursor.fetchall()]
+        
+        conn.close()
+        
+        return {
+            "report_generated_at": datetime.now().isoformat(),
+            "case_metadata": dict(case),
+            "employee_info": dict(employee) if employee else None,
+            "linked_alerts": alerts,
+            "timeline": timeline
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ─── SERVER STARTUP ─────────────────────────────────────────
 if __name__ == "__main__":
