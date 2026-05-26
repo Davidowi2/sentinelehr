@@ -1,10 +1,43 @@
 from db import get_connection
+import case_logic
+from datetime import datetime
 
 def setup_database():
     print("=== Initializing Neon PostgreSQL Database ===")
     conn = get_connection()
     cursor = conn.cursor()
     
+    # 0. Users Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        user_id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL, -- compliance_officer, it_director, admin
+        email TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP
+    )
+    """)
+    
+    # Seed users if not exists
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()['count'] == 0:
+        print("Seeding initial users...")
+        users_to_seed = [
+            ("demo", "hbh-demo-2026", "compliance_officer", "demo@sentinelehr.com"),
+            ("it_demo", "it-demo-2026", "it_director", "it_demo@sentinelehr.com"),
+            ("admin", "sentinelehr2026", "admin", "admin@sentinelehr.com")
+        ]
+        for uname, pwd, role, email in users_to_seed:
+            hashed = case_logic.hash_password(pwd)
+            cursor.execute("""
+                INSERT INTO users (username, password_hash, role, email)
+                VALUES (%s, %s, %s, %s)
+            """, (uname, hashed, role, email))
+        print("Users seeded.")
+
     # 1. Employees Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS employees (

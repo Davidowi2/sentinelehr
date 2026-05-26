@@ -63,10 +63,10 @@ def audit_log_login(username: str, ip: str, result: str):
 
 security = HTTPBearer() 
  
-def create_token(username: str) -> str: 
+def create_token(username: str, role: str) -> str: 
     expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS) 
     return jwt.encode( 
-        {"sub": username, "exp": expire}, 
+        {"sub": username, "role": role, "exp": expire}, 
         JWT_SECRET, 
         algorithm="HS256" 
     ) 
@@ -81,23 +81,22 @@ def verify_token(
             algorithms=["HS256"] 
         ) 
         username = payload.get("sub") 
-        if not username: 
+        role = payload.get("role")
+        if not username or not role: 
             raise HTTPException(status_code=401, 
                 detail="Invalid token") 
-        return username 
+        return {"username": username, "role": role} 
     except JWTError: 
         raise HTTPException(status_code=401, 
             detail="Invalid or expired token") 
 
-def get_current_user( 
-  credentials: HTTPAuthorizationCredentials = Depends(security) 
-): 
-  username = verify_token(credentials) 
+def get_current_user_from_token(token_data: dict):
+  username = token_data["username"]
   try: 
     conn = get_connection() 
     cursor = conn.cursor() 
     cursor.execute( 
-      "SELECT id, username, role, is_senior FROM users WHERE username = %s", 
+      "SELECT user_id, username, role FROM users WHERE username = %s", 
       (username,) 
     ) 
     user = cursor.fetchone() 
@@ -108,20 +107,25 @@ def get_current_user(
     pass 
   # Fallback for env var admin 
   return { 
-    "id": 0, 
+    "user_id": 0, 
     "username": username, 
-    "role": "admin", 
-    "is_senior": True 
+    "role": token_data["role"]
   } 
+
+def get_current_user( 
+  credentials: HTTPAuthorizationCredentials = Depends(security) 
+): 
+  token_data = verify_token(credentials) 
+  return get_current_user_from_token(token_data)
  
 def require_role(*allowed_roles): 
-  def checker(user = Depends(get_current_user)): 
-    if user['role'] not in allowed_roles: 
+  def checker(token_data = Depends(verify_token)): 
+    if token_data['role'] not in allowed_roles: 
       raise HTTPException( 
         status_code=403, 
-        detail=f"Role {user['role']} cannot access this endpoint" 
+        detail=f"Role {token_data['role']} cannot access this endpoint" 
       ) 
-    return user 
+    return token_data 
   return checker 
 
 app.add_middleware(
@@ -166,61 +170,36 @@ def login(request: Request, body: dict):
         audit_log_login(username, ip_address, "BLOCKED (Rate Limit)")
         raise HTTPException(status_code=429, detail="Too many failed login attempts. Please try again in 15 minutes.")
 
-    # First check database users 
+    # Check database users 
     try: 
         conn = get_connection() 
         cursor = conn.cursor() 
         cursor.execute( 
-            "SELECT id, password_hash, role, is_senior, active FROM users WHERE username = %s", 
+            "SELECT user_id, password_hash, role, is_active FROM users WHERE username = %s", 
             (username,) 
         ) 
         user = cursor.fetchone() 
         conn.close() 
         
-        if user and user['active'] and case_logic.verify_password(password, user['password_hash']): 
-            audit_log_login(username, ip_address, "SUCCESS (DB)")
-            token = create_token(username) 
+        if user and user['is_active'] and case_logic.verify_password(password, user['password_hash']): 
+            audit_log_login(username, ip_address, "SUCCESS")
+            token = create_token(username, user['role']) 
             return { 
                 "access_token": token, 
                 "token_type": "bearer", 
                 "role": user['role'], 
-                "is_senior": user['is_senior'], 
-                "user_id": user['id'] 
+                "user_id": user['user_id'] 
             } 
     except Exception as e: 
         print(f"Login error: {str(e)}")
         pass 
-    
-    # Fallback to env var admin (for bootstrap) 
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD: 
-        audit_log_login(username, ip_address, "SUCCESS (ADMIN_ENV)")
-        token = create_token(username) 
-        return { 
-            "access_token": token, 
-            "token_type": "bearer", 
-            "role": "admin", 
-            "is_senior": True, 
-            "user_id": 0 
-        } 
-    
-    # Also check demo users (existing logic) 
-    if username in DEMO_USERS and DEMO_USERS.get(username) == password: 
-        audit_log_login(username, ip_address, "SUCCESS (DEMO)")
-        token = create_token(username) 
-        return { 
-            "access_token": token, 
-            "token_type": "bearer", 
-            "role": "auditor", 
-            "is_senior": False, 
-            "user_id": -1 
-        } 
     
     record_failed_login(ip_address)
     audit_log_login(username, ip_address, "FAILED")
     raise HTTPException(status_code=401, detail="Incorrect username or password") 
 
 @app.post("/logout")
-def logout(user: str = Depends(verify_token)):
+def logout(token_data = Depends(verify_token)):
     # Currently stateless, so just returning success
     return {"message": "Logged out successfully"}
 
@@ -246,7 +225,8 @@ def health_check():
 
 @app.get("/summary")
 @limiter.limit("60/minute") 
-def get_summary(request: Request, user: str = Depends(verify_token)):
+def get_summary(request: Request, token_data = Depends(verify_token)):
+    # Everyone can see summary
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -301,7 +281,7 @@ def get_alerts(
     status: Optional[str] = None,
     limit: int = Query(50, le=200),
     offset: int = 0,
-    user: str = Depends(verify_token)
+    token_data = Depends(verify_token)
 ):
     try:
         conn = get_db()
@@ -343,7 +323,7 @@ def get_alerts(
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/alerts/{alert_id}")
-def get_alert(alert_id: int, user: str = Depends(verify_token)):
+def get_alert(alert_id: int, token_data = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -360,7 +340,7 @@ def get_alert(alert_id: int, user: str = Depends(verify_token)):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.patch("/alerts/{alert_id}/status")
-def update_alert_status(alert_id: int, update: StatusUpdate, user: str = Depends(verify_token)):
+def update_alert_status(alert_id: int, update: StatusUpdate, token_data = Depends(require_role('compliance_officer', 'admin'))):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -399,7 +379,7 @@ def update_alert_status(alert_id: int, update: StatusUpdate, user: str = Depends
 
 @app.get("/employees/{emp_id}/profile")
 @limiter.limit("30/minute") 
-def get_employee_profile(request: Request, emp_id: int, user: str = Depends(verify_token)):
+def get_employee_profile(request: Request, emp_id: int, token_data = Depends(require_role('compliance_officer', 'admin'))):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -453,7 +433,7 @@ def get_employee_profile(request: Request, emp_id: int, user: str = Depends(veri
 
 @app.get("/digest")
 @limiter.limit("30/minute") 
-def get_digest(request: Request, days: int = 180, user: str = Depends(verify_token)):
+def get_digest(request: Request, days: int = 180, token_data = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -466,7 +446,7 @@ def get_digest(request: Request, days: int = 180, user: str = Depends(verify_tok
 
 @app.get("/investigate")
 @limiter.limit("30/minute")
-def investigate_employee(request: Request, emp_id: int, user: str = Depends(verify_token)):
+def investigate_employee(request: Request, emp_id: int, token_data = Depends(require_role('compliance_officer', 'admin'))):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -534,17 +514,16 @@ def investigate_employee(request: Request, emp_id: int, user: str = Depends(veri
 def create_user( 
   request: Request, 
   body: dict, 
-  user = Depends(require_role('admin')) 
+  token_data = Depends(require_role('admin')) 
 ): 
   username = body.get("username") 
   email = body.get("email") 
   password = body.get("password") 
-  role = body.get("role", "investigator") 
-  is_senior = body.get("is_senior", False) 
+  role = body.get("role", "compliance_officer") 
   
   if not all([username, email, password]): 
     raise HTTPException(400, "Missing required fields") 
-  if role not in ['admin','investigator','auditor']: 
+  if role not in ['admin','compliance_officer','it_director']: 
     raise HTTPException(400, "Invalid role") 
   
   hashed = case_logic.hash_password(password) 
@@ -553,26 +532,26 @@ def create_user(
     cursor = conn.cursor() 
     cursor.execute( 
       """INSERT INTO users 
-         (username, email, password_hash, role, is_senior) 
-         VALUES (%s,%s,%s,%s,%s) RETURNING id""", 
-      (username, email, hashed, role, is_senior) 
+         (username, email, password_hash, role) 
+         VALUES (%s,%s,%s,%s) RETURNING user_id""", 
+      (username, email, hashed, role) 
     ) 
-    new_id = cursor.fetchone()['id'] 
+    new_id = cursor.fetchone()['user_id'] 
     conn.commit() 
     conn.close() 
-    return {"id": new_id, "username": username, 
+    return {"user_id": new_id, "username": username, 
             "role": role, "created": True} 
   except Exception as e: 
     raise HTTPException(400, "Username or email already exists") 
  
 @app.get("/users") 
 def list_users( 
-  user = Depends(require_role('admin')) 
+  token_data = Depends(require_role('admin')) 
 ): 
   conn = get_connection() 
   cursor = conn.cursor() 
   cursor.execute( 
-    "SELECT id, username, email, role, is_senior, active, created_at FROM users ORDER BY created_at" 
+    "SELECT user_id, username, email, role, is_active, created_at FROM users ORDER BY created_at" 
   ) 
   users = [dict(r) for r in cursor.fetchall()] 
   conn.close() 
@@ -589,7 +568,7 @@ def list_cases(
   assigned_to: int = None, 
   limit: int = 50, 
   offset: int = 0, 
-  user = Depends(get_current_user) 
+  token_data = Depends(verify_token) 
 ): 
   conn = get_connection() 
   case_logic.flag_overdue_cases(conn) 
@@ -632,7 +611,7 @@ def list_cases(
 @app.get("/cases/{case_id}") 
 def get_case( 
   case_id: str, 
-  user = Depends(get_current_user) 
+  token_data = Depends(verify_token) 
 ): 
   conn = get_connection() 
   case_logic.flag_overdue_cases(conn) 
@@ -649,7 +628,7 @@ def get_case(
   cursor.execute( 
     """SELECT l.*, u.username as changed_by_name 
        FROM case_audit_log l 
-       LEFT JOIN users u ON l.user_id = u.id 
+       LEFT JOIN users u ON l.user_id = u.user_id 
        WHERE l.case_id = %s 
        ORDER BY l.timestamp ASC""", 
     (case_id,) 
@@ -665,7 +644,7 @@ def get_case(
 def update_case_status( 
   case_id: str, 
   body: dict, 
-  user = Depends(require_role('admin','investigator')) 
+  token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
   new_status = body.get("status") 
   note = body.get("note", "") 
@@ -673,8 +652,9 @@ def update_case_status(
   if not new_status: 
     raise HTTPException(400, "Status required") 
   
+  user = get_current_user_from_token(token_data)
   success = case_logic.update_case_status( 
-    case_id, new_status, user['id'], note 
+    case_id, new_status, user['user_id'], note 
   ) 
   if not success: 
     raise HTTPException(400, f"Invalid status transition to {new_status}") 
@@ -684,21 +664,23 @@ def update_case_status(
 def add_note( 
   case_id: str, 
   body: dict, 
-  user = Depends(require_role('admin','investigator')) 
+  token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
   note_text = body.get("note", "").strip() 
   if not note_text: 
     raise HTTPException(400, "Note cannot be empty") 
-  case_logic.add_case_note(case_id, user['id'], note_text) 
+  user = get_current_user_from_token(token_data)
+  case_logic.add_case_note(case_id, user['user_id'], note_text) 
   return {"case_id": case_id, "note_added": True} 
  
 @app.patch("/cases/{case_id}/assign") 
 def assign_case( 
   case_id: str, 
   body: dict, 
-  user = Depends(require_role('admin','investigator')) 
+  token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
   assign_to_id = body.get("user_id") 
+  user = get_current_user_from_token(token_data)
   conn = get_connection() 
   cursor = conn.cursor() 
   cursor.execute( 
@@ -719,7 +701,7 @@ def assign_case(
     """INSERT INTO case_audit_log 
        (case_id, user_id, action, field_name, old_value, new_value) 
        VALUES (%s,%s,'assigned','assigned_to',%s,%s)""", 
-    (case_id, user['id'], str(old_assigned), str(assign_to_id)) 
+    (case_id, user['user_id'], str(old_assigned), str(assign_to_id)) 
   ) 
   conn.commit() 
   conn.close() 
@@ -729,19 +711,20 @@ def assign_case(
 def set_outcome( 
   case_id: str, 
   body: dict, 
-  user = Depends(require_role('admin','investigator')) 
+  token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
   outcome = body.get("outcome") 
   valid = ['Legitimate Access','Policy Violation','Training Required','Termination Recommended','No Action'] 
   if outcome not in valid: 
     raise HTTPException(400, f"Invalid outcome") 
-  case_logic.set_case_outcome(case_id, outcome, user['id']) 
+  user = get_current_user_from_token(token_data)
+  case_logic.set_case_outcome(case_id, outcome, user['user_id']) 
   return {"case_id": case_id, "outcome": outcome} 
  
 @app.get("/cases/{case_id}/export") 
 def export_case( 
   case_id: str, 
-  user = Depends(require_role('admin','investigator','auditor')) 
+  token_data = Depends(require_role('admin','compliance_officer','it_director')) 
 ): 
   conn = get_connection() 
   case_logic.flag_overdue_cases(conn) 
@@ -760,11 +743,12 @@ def export_case(
   ) 
   audit_log = [dict(r) for r in cursor.fetchall()] 
   
+  user = get_current_user_from_token(token_data)
   cursor.execute( 
     """INSERT INTO case_audit_log 
        (case_id, user_id, action, note) 
        VALUES (%s,%s,'exported','OCR export generated')""", 
-    (case_id, user['id']) 
+    (case_id, user['user_id']) 
   ) 
   conn.commit() 
   conn.close() 
@@ -781,7 +765,7 @@ def export_case(
 @app.post("/alerts/{alert_id}/create-case") 
 def create_case_from_alert( 
   alert_id: int, 
-  user = Depends(require_role('admin','investigator')) 
+  token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
   case_id = case_logic.process_new_alert(alert_id) 
   if not case_id: 
