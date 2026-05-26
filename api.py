@@ -177,13 +177,13 @@ def login(request: Request, body: dict):
         conn = get_connection() 
         cursor = conn.cursor() 
         cursor.execute( 
-            "SELECT user_id, password_hash, role, is_active FROM users WHERE username = %s", 
+            "SELECT user_id, password_hash, role, active FROM users WHERE username = %s", 
             (username,) 
         ) 
         user = cursor.fetchone() 
         conn.close() 
         
-        if user and user['is_active'] and case_logic.verify_password(password, user['password_hash']): 
+        if user and user['active'] and case_logic.verify_password(password, user['password_hash']): 
             audit_log_login(username, ip_address, "SUCCESS")
             token = create_token(username, user['role']) 
             return { 
@@ -553,7 +553,7 @@ def list_users(
   conn = get_connection() 
   cursor = conn.cursor() 
   cursor.execute( 
-    "SELECT user_id, username, email, role, is_active, created_at FROM users ORDER BY created_at" 
+    "SELECT user_id, username, email, role, active, created_at FROM users ORDER BY created_at" 
   ) 
   users = [dict(r) for r in cursor.fetchall()] 
   conn.close() 
