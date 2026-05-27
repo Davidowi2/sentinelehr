@@ -1057,38 +1057,38 @@ export default function AppV2() {
           { 
             label:'Critical', 
             data: last180.map(d => d.critical_count||0), 
-            borderColor: '#E11D48', 
-            backgroundColor: 'rgba(225,29,72,0.06)', 
-            borderWidth: 2, 
+            borderColor: '#f43f5e', 
+            backgroundColor: 'rgba(244,63,94,0.08)', 
+            borderWidth: 2.5, 
             fill: true, 
             tension: 0.15, 
             pointRadius: 0, 
-            pointHoverRadius: 4 
+            pointHoverRadius: 5 
           }, 
           { 
             label:'High', 
             data: last180.map(d => d.high_count||0), 
-            borderColor: '#F59E0B', 
+            borderColor: '#f97316', 
             backgroundColor: 'transparent', 
-            borderWidth: 2, 
+            borderWidth: 2.5, 
             tension: 0.15, 
             pointRadius: 0, 
-            pointHoverRadius: 4 
+            pointHoverRadius: 5 
           }, 
           { 
             label:'Medium', 
             data: last180.map(d => d.medium_count||0), 
-            borderColor: '#3B82F6', 
+            borderColor: '#3b82f6', 
             backgroundColor: 'transparent', 
-            borderWidth: 1.5, 
+            borderWidth: 2, 
             tension: 0.15, 
             pointRadius: 0, 
-            pointHoverRadius: 4 
+            pointHoverRadius: 5 
           }, 
           { 
             label:'Threshold', 
             data: last180.map(() => 3), 
-            borderColor: 'rgba(100,116,139,0.3)', 
+            borderColor: 'rgba(135,146,152,0.3)', 
             borderWidth: 1, 
             borderDash: [6,4], 
             pointRadius: 0, 
@@ -1110,32 +1110,33 @@ export default function AppV2() {
                 return '  ' + ctx.dataset.label + ': ' + ctx.parsed.y 
               } 
             }, 
-            backgroundColor: '#1A2235', 
-            borderColor: '#1E2D45', 
+            backgroundColor: '#0b1c30', 
+            borderColor: '#3e484d', 
             borderWidth: 1, 
-            titleColor: '#F1F5F9', 
-            bodyColor: '#7A8EA8', 
-            padding: 10 
+            titleColor: '#d3e4fe', 
+            bodyColor: '#bdc8ce', 
+            padding: 12,
+            cornerRadius: 8
           } 
         }, 
         scales: { 
           x: { 
             grid: {display:false}, 
             border: { 
-              color:'var(--border)' 
+              color:'#3e484d' 
             }, 
             ticks: { 
-              color:'var(--text-muted)', 
+              color:'#879298', 
               font:{size:10}, 
               maxTicksLimit:8 
             } 
           }, 
           y: { 
             min: 0, 
-            grid: {color:'var(--border-subtle)'}, 
+            grid: {color:'rgba(62,72,77,0.3)'}, 
             border: {display:false}, 
             ticks: { 
-              color:'var(--text-muted)', 
+              color:'#879298', 
               font:{size:10}, 
               stepSize:2 
             } 
@@ -1690,132 +1691,185 @@ export default function AppV2() {
         </header>
 
         {/* Content Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', paddingBottom: '72px' }}>
           {activeView === 'overview' && ( 
-            <div style={{maxWidth:'1200px'}}> 
+            <div style={{ maxWidth: '1400px', margin: '0 auto' }}> 
           
               {/* Stat cards */} 
               <div style={{ 
-                display:'grid', 
-                gridTemplateColumns:'repeat(4, 1fr)', 
-                gap:'16px', marginBottom:'24px' 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(4, 1fr)', 
+                gap: '20px', 
+                marginBottom: '32px' 
               }}> 
                 {[ 
                   { 
-                    label:'CRITICAL THREATS', 
+                    label: 'CRITICAL THREATS', 
                     value: summary?.critical ?? alerts.filter(a => a.adjusted_severity === 'Critical').length, 
-                    sub:'Require immediate action', 
-                    color:'var(--critical)', 
-                    bg:'var(--critical-bg)' 
+                    sub: 'Require immediate action', 
+                    color: '#f43f5e',
+                    icon: 'warning',
+                    iconFill: 1
                   }, 
                   { 
-                    label:'HIGH RISK', 
+                    label: 'HIGH RISK', 
                     value: summary?.high ?? alerts.filter(a => a.adjusted_severity === 'High').length, 
-                    sub:'ML-elevated alerts', 
-                    color:'var(--high)', 
-                    bg:'var(--high-bg)' 
+                    sub: 'ML-elevated alerts', 
+                    color: '#f97316',
+                    icon: 'report',
+                    iconFill: 1
                   }, 
                   { 
-                    label:'MEDIUM RISK', 
+                    label: 'MEDIUM RISK', 
                     value: summary?.medium ?? alerts.filter(a => a.adjusted_severity === 'Medium').length, 
-                    sub:'Under observation', 
-                    color:'var(--medium)', 
-                    bg:'var(--medium-bg)' 
+                    sub: 'Under observation', 
+                    color: '#3b82f6',
+                    icon: 'info',
+                    iconFill: 1
                   }, 
                   { 
-                    label:'ML PEAK SCORE', 
+                    label: 'ML PEAK SCORE', 
                     value: summary?.top_anomaly_score 
                       ? summary.top_anomaly_score.toFixed(2) 
                       : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), 
-                    sub:'90-day highest anomaly', 
-                    color:'var(--text-primary)', 
-                    bg:'var(--bg-elevated)' 
+                    sub: '90-day highest anomaly', 
+                    color: '#6cd3f7',
+                    icon: 'monitoring',
+                    iconFill: 0
                   } 
-                ].map(card => ( 
-                  <div key={card.label} style={{ 
-                    background:'var(--bg-surface)', 
-                    border:'1px solid var(--border)', 
-                    borderRadius:'10px', 
-                    padding:'20px', 
-                    boxShadow:'var(--shadow-sm)', 
-                    position:'relative', 
-                    overflow:'hidden' 
-                  }}> 
+                ].map((card, idx) => ( 
+                  <div 
+                    key={card.label} 
+                    style={{ 
+                      background: '#102034', 
+                      border: '1px solid #3e484d', 
+                      borderRadius: '12px', 
+                      padding: '20px', 
+                      position: 'relative', 
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'rgba(108,211,247,0.4)';
+                      e.currentTarget.querySelector('.bottom-bar').style.width = '100%';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = '#3e484d';
+                      e.currentTarget.querySelector('.bottom-bar').style.width = '0%';
+                    }}
+                  > 
                     <div style={{ 
-                      position:'absolute', left:0, 
-                      top:0, bottom:0, width:'3px', 
-                      background: card.color, 
-                      borderRadius:'10px 0 0 10px' 
-                    }}/> 
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ 
+                        fontSize: '10px', 
+                        fontWeight: '600', 
+                        letterSpacing: '0.1em', 
+                        textTransform: 'uppercase', 
+                        color: '#879298'
+                      }}>{card.label}</div>
+                      <span 
+                        className="material-symbols-outlined" 
+                        style={{ 
+                          fontSize: '24px', 
+                          color: card.color,
+                          fontVariationSettings: `'FILL' ${card.iconFill}, 'wght' 400, 'GRAD' 0, 'opsz' 24`
+                        }}
+                      >
+                        {card.icon}
+                      </span>
+                    </div>
                     <div style={{ 
-                      fontSize:'10px', fontWeight:'600', 
-                      letterSpacing:'0.1em', 
-                      textTransform:'uppercase', 
-                      color:'var(--text-muted)', 
-                      marginBottom:'8px' 
-                    }}>{card.label}</div> 
-                    <div style={{ 
-                      fontSize:'40px', fontWeight:'700', 
-                      color: card.color, lineHeight:1, 
-                      fontFamily:"'JetBrains Mono',monospace", 
-                      letterSpacing:'-0.02em', 
-                      marginBottom:'8px' 
+                      fontSize: '48px', 
+                      fontWeight: '700', 
+                      color: card.color, 
+                      lineHeight: 1, 
+                      fontFamily: "'JetBrains Mono', monospace", 
+                      letterSpacing: '-0.02em', 
+                      marginBottom: '12px' 
                     }}>{card.value}</div> 
                     <div style={{ 
-                      fontSize:'12px', 
-                      color:'var(--text-muted)' 
-                    }}>{card.sub}</div> 
+                      fontSize: '12px', 
+                      color: '#bdc8ce',
+                      fontFamily: "'JetBrains Mono', monospace"
+                    }}>{card.sub}</div>
+                    <div 
+                      className="bottom-bar"
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        height: '4px',
+                        width: '0%',
+                        background: card.color,
+                        transition: 'width 0.3s ease'
+                      }}
+                    />
                   </div> 
                 ))} 
               </div> 
           
-              {/* Chart card */} 
+              {/* Chart card with dot grid background */} 
               <div style={{ 
-                background:'var(--bg-surface)', 
-                border:'1px solid var(--border)', 
-                borderRadius:'10px', 
-                boxShadow:'var(--shadow-sm)', 
-                overflow:'hidden' 
+                background: '#102034', 
+                border: '1px solid #3e484d', 
+                borderRadius: '12px', 
+                overflow: 'hidden',
+                marginBottom: '32px',
+                backgroundImage: 'radial-gradient(circle at 2px 2px, #1e293b 1px, transparent 0)',
+                backgroundSize: '24px 24px'
               }}> 
                 <div style={{ 
-                  padding:'20px 24px 0', 
-                  display:'flex', 
-                  justifyContent:'space-between', 
-                  alignItems:'flex-start' 
+                  padding: '24px 28px 0',
+                  background: '#102034',
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-start' 
                 }}> 
                   <div> 
                     <div style={{ 
-                      fontSize:'10px', fontWeight:'600', 
-                      letterSpacing:'0.1em', 
-                      textTransform:'uppercase', 
-                      color:'var(--text-muted)', 
-                      marginBottom:'4px' 
-                    }}>ALERT TREND</div> 
+                      fontSize: '10px', 
+                      fontWeight: '600', 
+                      letterSpacing: '0.1em', 
+                      textTransform: 'uppercase', 
+                      color: '#879298', 
+                      marginBottom: '6px' 
+                    }}>ALERT TREND ANALYSIS</div> 
                     <div style={{ 
-                      fontSize:'18px', fontWeight:'700', 
-                      color:'var(--text-primary)', 
-             letterSpacing:'-0.02em' 
-           }}>Last 30 days</div> 
-         </div> 
-         <div style={{ 
-           display:'flex', gap:'20px', 
-           alignItems:'center' 
-         }}> 
+                      fontSize: '20px', 
+                      fontWeight: '700', 
+                      color: '#d3e4fe', 
+                      letterSpacing: '-0.02em' 
+                    }}>Last 30 Days Activity</div> 
+                  </div> 
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '24px', 
+                    alignItems: 'center' 
+                  }}> 
                     {[ 
-                      {c:'var(--critical)',l:'Critical'}, 
-                      {c:'var(--high)',l:'High'}, 
-                      {c:'var(--medium)',l:'Medium'}, 
+                      { c: '#f43f5e', l: 'Critical' }, 
+                      { c: '#f97316', l: 'High' }, 
+                      { c: '#3b82f6', l: 'Medium' }, 
                     ].map(item => ( 
                       <span key={item.l} style={{ 
-                        display:'flex', alignItems:'center', 
-                        gap:'6px', fontSize:'12px', 
-                        color:'var(--text-secondary)' 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        fontSize: '12px', 
+                        fontWeight: '600',
+                        color: '#bdc8ce' 
                       }}> 
                         <span style={{ 
-                          display:'inline-block', 
-                          width:'20px', height:'2px', 
+                          display: 'inline-block', 
+                          width: '24px', 
+                          height: '3px', 
                           background: item.c, 
-                          borderRadius:'2px' 
+                          borderRadius: '2px' 
                         }}/> 
                         {item.l} 
                       </span> 
@@ -1824,66 +1878,219 @@ export default function AppV2() {
                 </div> 
           
                 <div style={{ 
-          padding:'16px 24px', 
-          height:'220px', position:'relative' 
-        }}> 
-          {dataLoading ? (
-            <div style={{ 
-              display:'flex', alignItems:'center', 
-              justifyContent:'center', height:'100%', 
-              color:'var(--text-muted)', fontSize:'13px' 
-            }}>Loading chart data...</div> 
-          ) : digest.length === 0 ? ( 
-            <div style={{ 
-              display:'flex', alignItems:'center', 
-              justifyContent:'center', height:'100%', 
-              color:'var(--text-muted)', fontSize:'13px' 
-            }}>No activity detected in the last 30 days.</div> 
-          ) : ( 
-            <canvas ref={chartRef} 
-              style={{width:'100%', height:'100%'}}/> 
-          )} 
-        </div> 
-
-        <div style={{ 
-          borderTop:'1px solid var(--border)', 
-          padding:'12px 24px', 
-          display:'grid', 
-          gridTemplateColumns:'repeat(4,1fr)' 
-        }}> 
-          {[ 
-            {label:'Monitoring', 
-             value:'SentinelEHR Demo'}, 
-            {label:'Employees', 
-             value: summary 
-               ?.total_employees_monitored ?? 80}, 
-            {label:'Active Signals', 
-             value: summary?.total_active ?? alertsTotal ?? '—'}, 
-            {label:'Range', 
-             value: summary?.date_range 
-               ? `${summary.date_range.start} – ${summary.date_range.end}` 
-               : 'Jan 5 – Mar 31'} 
-          ].map(s => ( 
-                    <div key={s.label} style={{ 
-                      textAlign:'center', 
-                      borderRight:'1px solid var(--border)', 
-                      padding:'0 16px', 
-                      '&:last-child': {borderRight:'none'} 
-                    }}> 
-                      <div style={{ 
-                        fontSize:'11px', 
-                        color:'var(--text-muted)', 
-                        marginBottom:'2px' 
-                      }}>{s.label}</div> 
-                      <div style={{ 
-                        fontSize:'12px', fontWeight:'600', 
-                        color:'var(--text-secondary)', 
-                        fontFamily:"'JetBrains Mono',monospace" 
-                      }}>{s.value}</div> 
-                    </div> 
-                  ))} 
+                  padding: '20px 28px', 
+                  height: '280px', 
+                  position: 'relative',
+                  background: '#102034'
+                }}> 
+                  {dataLoading ? (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      height: '100%', 
+                      color: '#879298', 
+                      fontSize: '13px' 
+                    }}>Loading chart data...</div> 
+                  ) : digest.length === 0 ? ( 
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      height: '100%', 
+                      color: '#879298', 
+                      fontSize: '13px' 
+                    }}>No activity detected in the last 30 days.</div> 
+                  ) : ( 
+                    <canvas ref={chartRef} style={{ width: '100%', height: '100%' }}/> 
+                  )} 
                 </div> 
-              </div> 
+              </div>
+
+              {/* Two column section: System Health + Recent Investigations */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1.5fr', 
+                gap: '24px',
+                marginBottom: '32px'
+              }}>
+                {/* System Health */}
+                <div style={{
+                  background: '#102034',
+                  border: '1px solid #3e484d',
+                  borderRadius: '12px',
+                  padding: '24px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '24px'
+                  }}>
+                    <span className="material-symbols-outlined" style={{ color: '#6cd3f7', fontSize: '24px' }}>
+                      health_and_safety
+                    </span>
+                    <div>
+                      <div style={{
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        color: '#879298'
+                      }}>SYSTEM HEALTH</div>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: '#d3e4fe'
+                      }}>All Systems Operational</div>
+                    </div>
+                  </div>
+
+                  {[
+                    { label: 'Core Engine', value: 98, status: 'Optimal' },
+                    { label: 'Data Pipeline', value: 95, status: 'Healthy' },
+                    { label: 'DB Latency', value: 87, status: 'Normal' }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{ marginBottom: idx < 2 ? '20px' : '0' }}>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#d3e4fe'
+                        }}>{item.label}</span>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: '#6cd3f7',
+                          background: 'rgba(108,211,247,0.1)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>{item.status}</span>
+                      </div>
+                      <div style={{
+                        width: '100%',
+                        height: '8px',
+                        background: '#1b2b3f',
+                        borderRadius: '4px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${item.value}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #269dbe 0%, #6cd3f7 100%)',
+                          borderRadius: '4px',
+                          transition: 'width 0.5s ease'
+                        }} />
+                      </div>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#879298',
+                        marginTop: '4px',
+                        fontFamily: "'JetBrains Mono', monospace"
+                      }}>{item.value}% uptime</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recent Investigations */}
+                <div style={{
+                  background: '#102034',
+                  border: '1px solid #3e484d',
+                  borderRadius: '12px',
+                  padding: '24px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <span className="material-symbols-outlined" style={{ color: '#6cd3f7', fontSize: '24px' }}>
+                      assignment
+                    </span>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: '#879298'
+                    }}>RECENT INVESTIGATIONS</div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {cases.slice(0, 5).map((c, idx) => (
+                      <div 
+                        key={c.case_id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px',
+                          background: '#0b1c30',
+                          border: '1px solid #3e484d',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = '#6cd3f7';
+                          e.currentTarget.style.background = '#102034';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = '#3e484d';
+                          e.currentTarget.style.background = '#0b1c30';
+                        }}
+                        onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id);}}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            color: '#6cd3f7',
+                            fontFamily: "'JetBrains Mono', monospace"
+                          }}>{c.case_id}</span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            color: c.status === 'Open' ? '#f43f5e' : c.status === 'Resolved' ? '#10B981' : '#f97316',
+                            background: c.status === 'Open' ? 'rgba(244,63,94,0.1)' : c.status === 'Resolved' ? 'rgba(16,185,129,0.1)' : 'rgba(249,115,22,0.1)',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>{c.status}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{
+                            fontSize: '12px',
+                            color: '#bdc8ce'
+                          }}>{c.assigned_to_name || 'Unassigned'}</span>
+                          <span style={{
+                            fontSize: '11px',
+                            color: '#879298',
+                            fontFamily: "'JetBrains Mono', monospace"
+                          }}>{c.days_open || 0}d ago</span>
+                        </div>
+                      </div>
+                    ))}
+                    {cases.length === 0 && (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '32px',
+                        color: '#879298',
+                        fontSize: '13px'
+                      }}>No recent investigations</div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div> 
           )} 
           
@@ -2152,6 +2359,65 @@ export default function AppV2() {
           {activeView === 'settings' && <SettingsView />}
         </div>
       </main>
+
+      {/* Footer Strip */}
+      <footer style={{
+        position: 'fixed',
+        bottom: 0,
+        left: '260px',
+        right: 0,
+        height: '48px',
+        background: '#0b1c30',
+        borderTop: '1px solid #3e484d',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 24px',
+        zIndex: 30
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <span style={{
+            fontSize: '12px',
+            fontWeight: '600',
+            color: '#6cd3f7',
+            letterSpacing: '0.05em'
+          }}>SentinelEHR Security Ops</span>
+          <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
+          <span style={{
+            fontSize: '11px',
+            color: '#bdc8ce'
+          }}>SentinelEHR Demo</span>
+          <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
+          <span style={{
+            fontSize: '11px',
+            color: '#bdc8ce',
+            fontFamily: "'JetBrains Mono', monospace"
+          }}>{summary?.total_employees_monitored ?? 80} Employees</span>
+          <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
+          <span style={{
+            fontSize: '11px',
+            color: '#bdc8ce',
+            fontFamily: "'JetBrains Mono', monospace"
+          }}>{summary?.total_active ?? alertsTotal ?? 0} Active Signals</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '8px',
+            height: '8px',
+            background: '#6cd3f7',
+            borderRadius: '50%',
+            boxShadow: '0 0 12px rgba(108,211,247,0.6)',
+            animation: 'pulse 2s infinite'
+          }} />
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            color: '#6cd3f7',
+            letterSpacing: '0.1em',
+            fontFamily: "'JetBrains Mono', monospace"
+          }}>LIVE</span>
+        </div>
+      </footer>
 
       <CaseReportModal report={caseReport} onClose={() => setCaseReport(null)} />
 
