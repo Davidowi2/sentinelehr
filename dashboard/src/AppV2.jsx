@@ -272,69 +272,157 @@ const InvestigateResults = React.memo(({ results }) => {
   const outOfPanelPct = totalAlerts > 0 ? (outOfPanelAlerts / totalAlerts * 100).toFixed(1) : '0.0';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      {/* Profile Card */}
-      <div style={{ 
-        background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-        borderRadius: '12px', padding: '28px', display: 'flex', gap: '48px',
-        boxShadow: 'var(--shadow)', position: 'relative', overflow: 'hidden'
-      }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: 'var(--accent)' }} />
-        
-        <div>
-          <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{results.emp_id}</div>
-          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>{results.role}</div>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Profile Card with Anomaly Gauge */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '24px' }}>
+        {/* Left: Employee Profile */}
+        <div style={{ 
+          background: '#0b1c30', 
+          border: '1px solid #3e484d', 
+          borderRadius: '12px', 
+          padding: '28px'
+        }}>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{results.emp_id}</div>
+          </div>
 
-        <div>
-          <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Department</div>
-          <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>Dept {results.dept_id}</div>
-        </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>Role</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#bdc8ce' }}>{results.role}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>Department</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#bdc8ce' }}>Dept {results.dept_id}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>Clearance</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#bdc8ce' }}>Level {results.clearance_level || 'N/A'}</div>
+            </div>
+          </div>
 
-        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-          <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Aggregate Anomaly Score</div>
+          {/* Investigation Insight */}
           <div style={{ 
-            fontSize: '32px', fontWeight: '700', 
-            color: topScore > 0.7 ? 'var(--critical)' : topScore > 0.4 ? 'var(--high)' : 'var(--success)', 
-            fontFamily: "'JetBrains Mono', monospace" 
+            background: '#000f21', 
+            border: '1px solid #3e484d', 
+            borderRadius: '10px', 
+            padding: '20px'
           }}>
-            {topScore.toFixed(2)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <Activity size={16} style={{ color: '#6cd3f7' }} />
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#6cd3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Investigation Insight</div>
+            </div>
+            <div style={{ fontSize: '14px', color: '#d3e4fe', lineHeight: '1.6' }}>
+              This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
+              with an aggregate risk score of {topScore.toFixed(2)} — 
+              {topScore > 0.5 ? ' significantly above' : ' near'} the 0.5 threshold for investigation.
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Why Flagged Section */}
-      <div style={{ 
-        background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
-        borderRadius: '10px', padding: '20px'
-      }}>
-        <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>Investigation Insight</div>
-        <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: '500' }}>
-          This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
-          with an aggregate risk score of {topScore.toFixed(2)} — 
-          {topScore > 0.5 ? ' significantly above' : ' near'} the 0.5 threshold for investigation.
+        {/* Right: Anomaly Gauge */}
+        <div style={{ 
+          background: '#0b1c30', 
+          border: '1px solid #3e484d', 
+          borderRadius: '12px', 
+          padding: '28px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {/* Circular Gauge */}
+          <div style={{ position: 'relative', width: '180px', height: '180px', marginBottom: '20px' }}>
+            <div style={{
+              width: '180px',
+              height: '180px',
+              borderRadius: '50%',
+              background: `conic-gradient(#6cd3f7 ${topScore * 100}%, #1e293b 0)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                width: '140px',
+                height: '140px',
+                borderRadius: '50%',
+                background: '#102034',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{ fontSize: '48px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                  {topScore.toFixed(2)}
+                </div>
+                <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '8px' }}>
+                  Anomaly
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* High Risk Warning */}
+          {topScore > 0.7 && (
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '8px',
+              padding: '12px 20px',
+              background: 'rgba(244,63,94,0.1)',
+              border: '1px solid rgba(244,63,94,0.2)',
+              borderRadius: '8px',
+              width: '100%'
+            }}>
+              <AlertTriangle size={20} style={{ color: '#f43f5e' }} />
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#f43f5e', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                High Risk
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Risk Summary Bar */}
+      {/* Mini Stat Cards */}
       <div style={{ 
-        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px'
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(3, 1fr)', 
+        gap: '16px'
       }}>
         {[
-          { label: 'Total Alerts', value: totalAlerts, icon: <Bell size={16} /> },
-          { label: 'Days Monitored', value: daysMonitored || 1, icon: <LayoutGrid size={16} /> },
-          { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: <Shield size={16} /> }
+          { label: 'Total Alerts', value: totalAlerts, icon: 'notifications' },
+          { label: 'Days Monitored', value: daysMonitored || 1, icon: 'calendar_month' },
+          { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: 'shield' }
         ].map(stat => (
           <div key={stat.label} style={{ 
-            background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-            borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px'
+            background: '#0b1c30', 
+            border: '1px solid #3e484d', 
+            borderRadius: '12px', 
+            padding: '20px',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
-            <div style={{ color: 'var(--accent)' }}>{stat.icon}</div>
-            <div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{stat.value}</div>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
+                {stat.label}
+              </div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>
+                {stat.value}
+              </div>
             </div>
+            <span className="material-symbols-outlined" style={{ 
+              position: 'absolute', 
+              right: '16px', 
+              top: '50%', 
+              transform: 'translateY(-50%)',
+              fontSize: '64px', 
+              color: '#6cd3f7',
+              opacity: 0.2
+            }}>
+              {stat.icon}
+            </span>
           </div>
         ))}
       </div>
@@ -342,30 +430,50 @@ const InvestigateResults = React.memo(({ results }) => {
       {/* Alert History */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Bell size={18} color="var(--accent)" />
-          <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recent Alert History</h3>
+          <Bell size={18} color="#6cd3f7" />
+          <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#d3e4fe' }}>Recent Alert History</h3>
         </div>
-        <TableCard> 
+        <div style={{
+          background: '#0b1c30',
+          border: '1px solid #3e484d',
+          borderRadius: '12px',
+          overflow: 'hidden'
+        }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
             <thead> 
-              <tr style={{ background: 'var(--bg-elevated)' }}> 
-                <TH>Date</TH> 
-                <TH>Severity</TH> 
-                <TH>Rules Triggered</TH> 
-                <TH>Score</TH> 
+              <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Date</th> 
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Severity</th> 
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Rules Triggered</th> 
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Score</th> 
               </tr> 
             </thead> 
             <tbody> 
               {alerts.length > 0 ? (
                 alerts.slice(0, 20).map((a, i) => ( 
-                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}> 
+                  <tr 
+                    key={i} 
+                    style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  > 
+                    <td style={{ padding: '14px 20px', fontSize: '13px', color: '#bdc8ce', fontFamily: "'JetBrains Mono', monospace" }}> 
                       {new Date(a.alert_date).toLocaleDateString()} 
                     </td> 
-                    <td style={{ padding: '12px 16px' }}> 
-                      <SeverityBadge severity={a.adjusted_severity} /> 
+                    <td style={{ padding: '14px 20px' }}> 
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        background: a.adjusted_severity === 'Critical' ? '#f43f5e1a' : a.adjusted_severity === 'High' ? '#f973161a' : '#3b82f61a',
+                        color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6',
+                        border: `1px solid ${a.adjusted_severity === 'Critical' ? '#f43f5e33' : a.adjusted_severity === 'High' ? '#f9731633' : '#3b82f633'}`
+                      }}>{a.adjusted_severity}</span>
                     </td> 
-                    <td style={{ padding: '12px 16px' }}> 
+                    <td style={{ padding: '14px 20px' }}> 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {a.rules_triggered.split(',').map(r => ( 
                           <span 
@@ -373,12 +481,14 @@ const InvestigateResults = React.memo(({ results }) => {
                             title={RULE_DESCRIPTIONS[r.trim()] || r}
                             style={{ 
                               fontSize: '10px', 
-                              background: 'var(--bg-elevated)', 
-                              border: '1px solid var(--border)', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px', 
-                              color: 'var(--text-secondary)',
-                              cursor: 'help'
+                              background: '#26364a', 
+                              border: '1px solid #3e484d', 
+                              padding: '3px 8px', 
+                              borderRadius: '6px', 
+                              color: '#bdc8ce',
+                              cursor: 'help',
+                              display: 'inline-block',
+                              marginBottom: '4px'
                             }}
                           >
                             {r}
@@ -386,54 +496,64 @@ const InvestigateResults = React.memo(({ results }) => {
                         ))} 
                       </div>
                     </td> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'JetBrains Mono', monospace" }}> 
+                    <td style={{ padding: '14px 20px', fontSize: '14px', color: '#6cd3f7', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}> 
                       {(a.anomaly_score ?? 0).toFixed(2)} 
                     </td> 
                   </tr> 
                 ))
               ) : (
-                <tr><td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No alert history found for this employee.</td></tr>
+                <tr><td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: '#879298', fontSize: '13px' }}>No alert history found for this employee.</td></tr>
               )} 
             </tbody> 
           </table> 
-        </TableCard>
+        </div>
       </div>
 
       {/* Open Cases */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Folder size={18} color="var(--accent)" />
-          <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Open Cases</h3>
+          <Folder size={18} color="#6cd3f7" />
+          <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#d3e4fe' }}>Open Cases</h3>
         </div>
-        <TableCard> 
+        <div style={{
+          background: '#0b1c30',
+          border: '1px solid #3e484d',
+          borderRadius: '12px',
+          overflow: 'hidden'
+        }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
             <thead> 
-              <tr style={{ background: 'var(--bg-elevated)' }}> 
-                <TH>Case ID</TH> 
-                <TH>Status</TH> 
-                <TH>Days Open</TH> 
+              <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Case ID</th> 
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Status</th> 
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Days Open</th> 
               </tr> 
             </thead> 
             <tbody> 
               {results.cases?.length > 0 ? (
                 results.cases.filter(c => c.status !== 'Resolved').map((c, i) => ( 
-                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
-                    <td style={{ padding: '12px 16px' }}> 
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warning)' }} /> 
+                  <tr 
+                    key={i} 
+                    style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  > 
+                    <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
+                    <td style={{ padding: '14px 20px' }}> 
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}> 
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f97316' }} /> 
                         {c.status} 
                       </span> 
                     </td> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}>{c.days_open}d</td> 
+                    <td style={{ padding: '14px 20px', fontSize: '13px', color: '#bdc8ce', fontFamily: "'JetBrains Mono', monospace" }}>{c.days_open}d</td> 
                   </tr> 
                 ))
               ) : (
-                <tr><td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No active cases found for this employee.</td></tr>
+                <tr><td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: '#879298', fontSize: '13px' }}>No active cases found for this employee.</td></tr>
               )} 
             </tbody> 
           </table> 
-        </TableCard>
+        </div>
       </div>
     </div>
   );
@@ -526,44 +646,91 @@ const SettingsView = () => (
 
 const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating }) => (
   <div> 
-    <FilterBar count={investigateResults?.alerts?.length || 0} total={investigateResults?.alerts?.length || 0}> 
-      <form onSubmit={handleInvestigate} style={{ display: 'flex', gap: '12px', flex: 1 }}> 
-        <FilterLabel label="Employee ID"> 
-          <input 
-            type="text" 
-            value={investigateId} 
-            onChange={e => setInvestigateId(e.target.value)} 
-            placeholder="Enter EMP-ID (e.g. 10042)" 
-            style={{ 
-              background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
-              borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
-              color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", 
-              outline: 'none', width: '240px' 
-            }} 
-          /> 
-        </FilterLabel> 
+    {/* Query Section */}
+    <div style={{
+      background: '#0b1c30',
+      border: '1px solid #3e484d',
+      borderRadius: '12px',
+      padding: '24px',
+      marginBottom: '24px'
+    }}>
+      <form onSubmit={handleInvestigate} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}> 
+        <div style={{ flex: 1 }}>
+          <div style={{
+            fontSize: '10px',
+            fontWeight: '600',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: '#879298',
+            marginBottom: '8px'
+          }}>Employee ID</div>
+          <div style={{ position: 'relative' }}>
+            <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#879298' }} />
+            <input 
+              type="text" 
+              value={investigateId} 
+              onChange={e => setInvestigateId(e.target.value)} 
+              placeholder="Enter EMP-ID (e.g. 10042)" 
+              style={{ 
+                background: '#000f21', 
+                border: '1px solid #3e484d', 
+                borderRadius: '8px', 
+                padding: '10px 14px 10px 40px', 
+                fontSize: '13px', 
+                color: '#d3e4fe', 
+                fontFamily: "'JetBrains Mono', monospace", 
+                outline: 'none', 
+                width: '100%',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={e => e.target.style.borderColor = '#6cd3f7'}
+              onBlur={e => e.target.style.borderColor = '#3e484d'}
+            /> 
+          </div>
+        </div>
         <button 
           type="submit" 
           disabled={investigating} 
           style={{ 
-            alignSelf: 'flex-end', padding: '10px 20px', background: 'var(--accent)', 
-            color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', 
-            fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', 
-            cursor: investigating ? 'default' : 'pointer', opacity: investigating ? 0.7 : 1 
-          }} 
+            padding: '10px 24px', 
+            background: '#0891b2', 
+            color: '#fff', 
+            border: 'none', 
+            borderRadius: '8px', 
+            fontSize: '12px', 
+            fontWeight: '700', 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.05em', 
+            cursor: investigating ? 'default' : 'pointer', 
+            opacity: investigating ? 0.7 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={e => !investigating && (e.currentTarget.style.background = '#0e7490')}
+          onMouseLeave={e => !investigating && (e.currentTarget.style.background = '#0891b2')}
         > 
+          <Search size={16} />
           {investigating ? 'Searching...' : 'Run Query'} 
         </button> 
       </form> 
-    </FilterBar> 
+    </div>
 
     {investigateResults?.error && ( 
       <div style={{ 
-        padding: '24px', background: 'var(--critical-bg)', color: 'var(--critical)', 
-        borderRadius: '10px', border: '1px solid var(--critical)', fontSize: '14px', 
-        marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' 
+        padding: '24px', 
+        background: 'rgba(244,63,94,0.1)', 
+        color: '#f43f5e', 
+        borderRadius: '10px', 
+        border: '1px solid #f43f5e', 
+        fontSize: '14px', 
+        marginBottom: '24px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px' 
       }}> 
-        <LogOut size={20} />
+        <AlertTriangle size={20} />
         <span>{investigateResults.error}</span> 
       </div> 
     )} 
