@@ -1228,34 +1228,31 @@ export default function AppV2() {
             label:'Critical', 
             data: last180.map(d => d.critical_count||0), 
             borderColor: '#f43f5e', 
-            backgroundColor: 'rgba(244,63,94,0.1)', 
             borderWidth: 2, 
-            fill: true, 
-            tension: 0.15, 
+            fill: false, 
+            tension: 0.3, 
             pointRadius: 0, 
-            pointHoverRadius: 5 
+            pointHoverRadius: 4 
           }, 
           { 
             label:'High', 
             data: last180.map(d => d.high_count||0), 
             borderColor: '#f97316', 
-            backgroundColor: 'rgba(249,115,22,0.1)', 
             borderWidth: 2, 
-            fill: true, 
-            tension: 0.15, 
+            fill: false, 
+            tension: 0.3, 
             pointRadius: 0, 
-            pointHoverRadius: 5 
+            pointHoverRadius: 4 
           }, 
           { 
             label:'Medium', 
             data: last180.map(d => d.medium_count||0), 
             borderColor: '#3b82f6', 
-            backgroundColor: 'rgba(59,130,246,0.1)', 
             borderWidth: 2, 
-            fill: true, 
-            tension: 0.15, 
+            fill: false, 
+            tension: 0.3, 
             pointRadius: 0, 
-            pointHoverRadius: 5 
+            pointHoverRadius: 4 
           }, 
           { 
             label:'Threshold', 
@@ -1295,7 +1292,7 @@ export default function AppV2() {
           x: { 
             grid: {
               display: true,
-              color: '#1e293b',
+              color: 'rgba(255,255,255,0.05)',
               drawBorder: false,
               lineWidth: 1
             }, 
@@ -1312,7 +1309,7 @@ export default function AppV2() {
           y: { 
             min: 0, 
             grid: {
-              color:'#1e293b',
+              color: 'rgba(255,255,255,0.05)',
               drawBorder: false,
               lineWidth: 1
             }, 
@@ -2194,7 +2191,7 @@ export default function AppV2() {
           
                 <div style={{ 
                   padding: '20px 28px', 
-                  height: '280px', 
+                  height: '320px', 
                   position: 'relative',
                   background: '#102034'
                 }}> 
