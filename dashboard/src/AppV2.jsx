@@ -1391,6 +1391,8 @@ export default function AppV2() {
                     onChange={e => setLoginForm({...loginForm, username: e.target.value})}
                     required
                     autoComplete="off"
+                    placeholder="name@company.com"
+                    className="login-input"
                     style={{
                       width: '100%',
                       padding: '12px 14px 12px 46px',
@@ -1406,7 +1408,7 @@ export default function AppV2() {
                     }}
                     onFocus={e => {
                       e.target.style.borderColor = '#38bdf8';
-                      e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
+                      e.target.style.boxShadow = '0 0 0 1px rgba(56,189,248,0.2)';
                     }}
                     onBlur={e => {
                       e.target.style.borderColor = '#334155';
@@ -1441,6 +1443,8 @@ export default function AppV2() {
                     value={loginForm.password}
                     onChange={e => setLoginForm({...loginForm, password: e.target.value})}
                     required
+                    placeholder="••••••••"
+                    className="login-input"
                     style={{
                       width: '100%',
                       padding: '12px 14px 12px 46px',
@@ -1456,7 +1460,7 @@ export default function AppV2() {
                     }}
                     onFocus={e => {
                       e.target.style.borderColor = '#38bdf8';
-                      e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
+                      e.target.style.boxShadow = '0 0 0 1px rgba(56,189,248,0.2)';
                     }}
                     onBlur={e => {
                       e.target.style.borderColor = '#334155';
@@ -3114,6 +3118,11 @@ export default function AppV2() {
         
         .material-symbols-outlined {
           font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .login-input::placeholder {
+          color: #475569;
+          opacity: 1;
         }
         
         .active-glow {
