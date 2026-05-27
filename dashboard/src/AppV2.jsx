@@ -1213,46 +1213,37 @@ export default function AppV2() {
       chartInstanceRef.current.destroy() 
     } 
     const ctx = chartRef.current.getContext('2d') 
-    const last180 = [...digest].slice(-180).reverse()
-    const labels = last180.map(d => { 
+    const last30 = [...digest].slice(-30).reverse()
+    const labels = last30.map(d => { 
       const date = new Date(d.alert_date) 
       return date.toLocaleDateString('en-US', 
         {month:'short', day:'numeric'}) 
     }) 
     chartInstanceRef.current = new window.Chart(ctx, { 
-      type: 'line', 
+      type: 'bar', 
       data: { 
         labels, 
         datasets: [ 
           { 
             label:'Critical', 
-            data: last180.map(d => d.critical_count||0), 
+            data: last30.map(d => d.critical_count||0), 
             borderColor: '#f43f5e', 
-            borderWidth: 2, 
-            fill: false, 
-            tension: 0.3, 
-            pointRadius: 0, 
-            pointHoverRadius: 4 
+            backgroundColor: '#f43f5e',
+            borderWidth: 1
           }, 
           { 
             label:'High', 
-            data: last180.map(d => d.high_count||0), 
+            data: last30.map(d => d.high_count||0), 
             borderColor: '#f97316', 
-            borderWidth: 2, 
-            fill: false, 
-            tension: 0.3, 
-            pointRadius: 0, 
-            pointHoverRadius: 4 
+            backgroundColor: '#f97316',
+            borderWidth: 1
           }, 
           { 
             label:'Medium', 
-            data: last180.map(d => d.medium_count||0), 
+            data: last30.map(d => d.medium_count||0), 
             borderColor: '#3b82f6', 
-            borderWidth: 2, 
-            fill: false, 
-            tension: 0.3, 
-            pointRadius: 0, 
-            pointHoverRadius: 4 
+            backgroundColor: '#3b82f6',
+            borderWidth: 1
           }
         ] 
       }, 
@@ -1280,6 +1271,7 @@ export default function AppV2() {
         }, 
         scales: { 
           x: { 
+            stacked: true,
             grid: {
               display: true,
               color: 'rgba(255,255,255,0.05)',
@@ -1297,6 +1289,7 @@ export default function AppV2() {
             } 
           }, 
           y: { 
+            stacked: true,
             min: 0, 
             grid: {
               color: 'rgba(255,255,255,0.05)',
@@ -2146,7 +2139,7 @@ export default function AppV2() {
                       fontWeight: '700', 
                       color: '#d3e4fe', 
                       letterSpacing: '-0.02em' 
-                    }}>Last 30 Days Activity</div> 
+                    }}>30-Day Alert Trend</div> 
                   </div> 
                   <div style={{ 
                     display: 'flex', 
