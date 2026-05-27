@@ -2096,96 +2096,262 @@ export default function AppV2() {
           
           {activeView === 'alerts' && ( 
             <div> 
-              <FilterBar count={alerts.length} total={alertsTotal}> 
-                <FilterLabel label="Severity"> 
-                  <Select value={alertSeverity} onChange={e => {setAlertSeverity(e.target.value); setAlertsOffset(0)}}> 
-                    <option value="">All</option> 
-                    <option value="Critical">Critical</option> 
-                    <option value="High">High</option> 
-                    <option value="Medium">Medium</option> 
-                  </Select> 
-                </FilterLabel> 
-                <FilterLabel label="Status"> 
-                  <Select value={alertStatus} onChange={e => {setAlertStatus(e.target.value); setAlertsOffset(0)}}> 
-                    <option value="">All</option> 
-                    <option value="open">Open</option> 
-                    <option value="investigating">Investigating</option> 
-                    <option value="resolved">Resolved</option> 
-                  </Select> 
-                </FilterLabel> 
+              {/* Filter Bar */}
+              <div style={{
+                background: '#0b1c30',
+                border: '1px solid #3e484d',
+                borderRadius: '12px',
+                padding: '20px 24px',
+                marginBottom: '24px',
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: '20px'
+              }}>
+                <div style={{ flex: 1, display: 'flex', gap: '20px' }}>
+                  <div>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: '#879298',
+                      marginBottom: '8px'
+                    }}>SEVERITY</div>
+                    <select 
+                      value={alertSeverity} 
+                      onChange={e => {setAlertSeverity(e.target.value); setAlertsOffset(0)}}
+                      style={{
+                        background: '#000f21',
+                        border: '1px solid #3e484d',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '13px',
+                        color: '#d3e4fe',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        outline: 'none',
+                        minWidth: '160px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">All</option>
+                      <option value="Critical">Critical</option>
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: '#879298',
+                      marginBottom: '8px'
+                    }}>STATUS</div>
+                    <select 
+                      value={alertStatus} 
+                      onChange={e => {setAlertStatus(e.target.value); setAlertsOffset(0)}}
+                      style={{
+                        background: '#000f21',
+                        border: '1px solid #3e484d',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '13px',
+                        color: '#d3e4fe',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        outline: 'none',
+                        minWidth: '160px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">All</option>
+                      <option value="open">Open</option>
+                      <option value="investigating">Investigating</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                  </div>
+                </div>
                 <button 
                   onClick={handleExportAlerts}
                   disabled={exportingAlerts}
                   style={{ 
-                    alignSelf: 'flex-end', padding: '10px 16px', background: 'var(--bg-elevated)', 
-                    color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: '6px', 
-                    fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', 
-                    cursor: exportingAlerts ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-                  }} 
+                    padding: '10px 20px',
+                    background: '#0891b2',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    cursor: exportingAlerts ? 'default' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: exportingAlerts ? 0.7 : 1,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => !exportingAlerts && (e.currentTarget.style.background = '#0e7490')}
+                  onMouseLeave={e => !exportingAlerts && (e.currentTarget.style.background = '#0891b2')}
                 > 
-                  <Download size={16} />
+                  <Download size={18} />
                   {exportingAlerts ? 'Exporting...' : 'Export CSV'} 
                 </button>
-              </FilterBar> 
+                <div style={{
+                  marginLeft: 'auto',
+                  fontSize: '12px',
+                  color: '#879298',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: '600'
+                }}>{alerts.length} of {alertsTotal}</div>
+              </div>
         
-              <TableCard> 
+              {/* Table */}
+              <div style={{
+                background: '#0b1c30',
+                border: '1px solid #3e484d',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                marginBottom: '24px'
+              }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
                   <thead> 
-                    <tr style={{ background: 'var(--bg-elevated)' }}> 
-                      <TH>#</TH> 
-                      <TH>Severity</TH> 
-                      <TH>Employee</TH> 
-                      <TH>Rules</TH> 
-                      <TH>Score</TH> 
-                      <TH>Date</TH> 
-                      <TH>Explanation</TH> 
-                      <TH>Action</TH> 
+                    <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>#</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>SEVERITY</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>EMPLOYEE</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>RULES</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>SCORE</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>DATE</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>EXPLANATION</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>ACTION</th> 
                     </tr> 
                   </thead> 
                   <tbody> 
-                    {alertsLoading ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading alerts...</td></tr> : 
+                    {alertsLoading ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#879298' }}>Loading alerts...</td></tr> : 
                      alerts.map(a => ( 
-                      <tr key={a.alert_id} style={{ borderBottom: '1px solid var(--border)' }}> 
-                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>{a.priority_rank}</td> 
-                        <td style={{ padding: '12px 16px' }}><SeverityBadge severity={a.adjusted_severity} /></td> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
-                        <td style={{ padding: '12px 16px' }}> 
+                      <tr 
+                        key={a.alert_id} 
+                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      > 
+                        <td style={{ padding: '14px 20px', fontSize: '12px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>{a.priority_rank}</td> 
+                        <td style={{ padding: '14px 20px' }}>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            background: a.adjusted_severity === 'Critical' ? '#f43f5e1a' : a.adjusted_severity === 'High' ? '#f973161a' : '#3b82f61a',
+                            color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6',
+                            border: `1px solid ${a.adjusted_severity === 'Critical' ? '#f43f5e33' : a.adjusted_severity === 'High' ? '#f9731633' : '#3b82f633'}`
+                          }}>{a.adjusted_severity}</span>
+                        </td> 
+                        <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
+                        <td style={{ padding: '14px 20px' }}> 
                           {a.rules_triggered.split(',').map(r => ( 
                             <span 
                               key={r} 
                               title={RULE_DESCRIPTIONS[r.trim()] || r}
                               style={{ 
                                 fontSize: '10px', 
-                                background: 'var(--bg-elevated)', 
-                                border: '1px solid var(--border)', 
-                                padding: '2px 6px', 
-                                borderRadius: '4px', 
-                                marginRight: '4px', 
-                                color: 'var(--text-secondary)',
-                                cursor: 'help'
+                                background: '#26364a', 
+                                border: '1px solid #3e484d', 
+                                padding: '3px 8px', 
+                                borderRadius: '6px', 
+                                marginRight: '6px', 
+                                color: '#bdc8ce',
+                                cursor: 'help',
+                                display: 'inline-block',
+                                marginBottom: '4px'
                               }}
                             >
                               {r}
                             </span> 
                           ))} 
                         </td> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'JetBrains Mono', monospace" }}>{a.anomaly_score.toFixed(2)}</td> 
-                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
-                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
-                        <td style={{ padding: '12px 16px' }}> 
-                          <button onClick={() => {setSelectedAlert(a.alert_id); fetchAlertDetail(a.alert_id)}} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>REVIEW</button> 
+                        <td style={{ 
+                          padding: '14px 20px', 
+                          fontSize: '14px', 
+                          fontWeight: '700', 
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6'
+                        }}>{a.anomaly_score.toFixed(2)}</td> 
+                        <td style={{ padding: '14px 20px', fontSize: '12px', color: '#bdc8ce' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
+                        <td style={{ padding: '14px 20px', fontSize: '12px', color: '#879298', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
+                        <td style={{ padding: '14px 20px' }}> 
+                          <button 
+                            onClick={() => {setSelectedAlert(a.alert_id); fetchAlertDetail(a.alert_id)}} 
+                            style={{ 
+                              padding: '8px 16px', 
+                              background: '#0891b2', 
+                              color: '#fff', 
+                              border: 'none', 
+                              borderRadius: '6px', 
+                              fontSize: '11px', 
+                              fontWeight: '700', 
+                              cursor: 'pointer',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#0e7490'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#0891b2'}
+                          >REVIEW</button> 
                         </td> 
                       </tr> 
                     ))} 
                   </tbody> 
                 </table> 
                 {alertsTotal > LIMIT && ( 
-                  <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px' }}> 
-                    <button onClick={() => setAlertsOffset(Math.max(0, alertsOffset - LIMIT))} disabled={alertsOffset === 0} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: alertsOffset === 0 ? 0.5 : 1 }}>Previous</button> 
-                    <button onClick={() => setAlertsOffset(alertsOffset + LIMIT)} disabled={alertsOffset + LIMIT >= alertsTotal} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: alertsOffset + LIMIT >= alertsTotal ? 0.5 : 1 }}>Next</button> 
+                  <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(62,72,77,0.3)', display: 'flex', gap: '12px', justifyContent: 'center' }}> 
+                    <button onClick={() => setAlertsOffset(Math.max(0, alertsOffset - LIMIT))} disabled={alertsOffset === 0} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: alertsOffset === 0 ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Previous</button> 
+                    <button onClick={() => setAlertsOffset(alertsOffset + LIMIT)} disabled={alertsOffset + LIMIT >= alertsTotal} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: alertsOffset + LIMIT >= alertsTotal ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Next</button> 
                   </div> 
                 )} 
-              </TableCard> 
+              </div>
+
+              {/* Mini Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                {[
+                  { label: 'System Health', value: '99.98%', icon: 'health_and_safety' },
+                  { label: 'Risk Level', value: 'STABLE', icon: 'shield' },
+                  { label: 'Mean Response', value: '2.4h', icon: 'schedule' }
+                ].map((stat, idx) => (
+                  <div key={idx} style={{
+                    background: '#0b1c30',
+                    border: '1px solid #3e484d',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div>
+                      <div style={{
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        color: '#879298',
+                        marginBottom: '8px'
+                      }}>{stat.label}</div>
+                      <div style={{
+                        fontSize: '24px',
+                        fontWeight: '700',
+                        color: '#6cd3f7',
+                        fontFamily: "'JetBrains Mono', monospace"
+                      }}>{stat.value}</div>
+                    </div>
+                    <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(108,211,247,0.2)' }}>
+                      {stat.icon}
+                    </span>
+                  </div>
+                ))}
+              </div>
         
               {selectedAlert && ( 
                 <Drawer title="Alert Review" id={`ALT-${selectedAlert}`} onClose={() => setSelectedAlert(null)} loading={!alertDetail}> 
