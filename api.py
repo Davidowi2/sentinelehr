@@ -15,6 +15,8 @@ from typing import Optional, List
 from dotenv import load_dotenv
 from db import get_connection
 import case_logic
+import sendgrid
+from sendgrid.helpers.mail import Mail
 
 from jose import JWTError, jwt 
 from passlib.context import CryptContext 
@@ -152,6 +154,23 @@ async def global_exception_handler(request, exc):
 # ─── DATABASE HELPER ────────────────────────────────────────
 def get_db():
     return get_connection()
+
+# ─── EMAIL HELPER ───────────────────────────────────────────
+def send_alert_email(to_email, subject, body):
+    sg = sendgrid.SendGridAPIClient(api_key=os.getenv('SENDGRID_API_KEY'))
+    message = Mail(
+        from_email=os.getenv('SENDGRID_FROM_EMAIL', 'david.sentinelehr@gmail.com'),
+        to_emails=to_email,
+        subject=subject,
+        plain_text_content=body
+    )
+    try:
+        response = sg.send(message)
+        print(f"Email sent: {response.status_code}")
+        return True
+    except Exception as e:
+        print(f"Email error: {e}")
+        return False
 
 # ─── MODELS ─────────────────────────────────────────────────
 class StatusUpdate(BaseModel):
