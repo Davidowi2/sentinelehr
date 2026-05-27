@@ -1392,14 +1392,14 @@ export default function AppV2() {
                     required
                     autoComplete="off"
                     placeholder="name@company.com"
-                    className="login-input"
+                    className="login-input bg-[#000f21] text-[#d3e4fe] border-[#334155]"
                     style={{
                       width: '100%',
                       padding: '12px 14px 12px 46px',
-                      background: '#000f21',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
+                      backgroundColor: '#000f21',
                       color: '#d3e4fe',
+                      borderColor: '#334155',
+                      borderRadius: '8px',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '14px',
                       outline: 'none',
@@ -1444,14 +1444,14 @@ export default function AppV2() {
                     onChange={e => setLoginForm({...loginForm, password: e.target.value})}
                     required
                     placeholder="••••••••"
-                    className="login-input"
+                    className="login-input bg-[#000f21] text-[#d3e4fe] border-[#334155]"
                     style={{
                       width: '100%',
                       padding: '12px 14px 12px 46px',
-                      background: '#000f21',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
+                      backgroundColor: '#000f21',
                       color: '#d3e4fe',
+                      borderColor: '#334155',
+                      borderRadius: '8px',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '14px',
                       outline: 'none',
