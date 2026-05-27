@@ -244,6 +244,22 @@ def health_check():
             "timestamp": datetime.now().isoformat()
         }
 
+@app.get("/test-email")
+def test_email(token_data = Depends(require_role('admin'))):
+    try:
+        ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "compliance@sentinelehr.com")
+        result = send_alert_email(
+            ALERT_EMAIL_TO,
+            "SentinelEHR Test Email",
+            "Email notifications are working correctly."
+        )
+        if result:
+            return {"status": "sent"}
+        else:
+            return {"status": "failed", "error": "send_alert_email returned False"}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+
 @app.get("/summary")
 @limiter.limit("60/minute") 
 def get_summary(request: Request, token_data = Depends(verify_token)):
