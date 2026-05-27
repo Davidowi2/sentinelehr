@@ -1225,8 +1225,8 @@ export default function AppV2() {
             label:'Critical', 
             data: last180.map(d => d.critical_count||0), 
             borderColor: '#f43f5e', 
-            backgroundColor: 'rgba(244,63,94,0.08)', 
-            borderWidth: 2.5, 
+            backgroundColor: 'rgba(244,63,94,0.1)', 
+            borderWidth: 2, 
             fill: true, 
             tension: 0.15, 
             pointRadius: 0, 
@@ -1236,8 +1236,9 @@ export default function AppV2() {
             label:'High', 
             data: last180.map(d => d.high_count||0), 
             borderColor: '#f97316', 
-            backgroundColor: 'transparent', 
-            borderWidth: 2.5, 
+            backgroundColor: 'rgba(249,115,22,0.1)', 
+            borderWidth: 2, 
+            fill: true, 
             tension: 0.15, 
             pointRadius: 0, 
             pointHoverRadius: 5 
@@ -1246,8 +1247,9 @@ export default function AppV2() {
             label:'Medium', 
             data: last180.map(d => d.medium_count||0), 
             borderColor: '#3b82f6', 
-            backgroundColor: 'transparent', 
+            backgroundColor: 'rgba(59,130,246,0.1)', 
             borderWidth: 2, 
+            fill: true, 
             tension: 0.15, 
             pointRadius: 0, 
             pointHoverRadius: 5 
@@ -1277,7 +1279,7 @@ export default function AppV2() {
                 return '  ' + ctx.dataset.label + ': ' + ctx.parsed.y 
               } 
             }, 
-            backgroundColor: '#0b1c30', 
+            backgroundColor: '#102034', 
             borderColor: '#3e484d', 
             borderWidth: 1, 
             titleColor: '#d3e4fe', 
@@ -1288,9 +1290,15 @@ export default function AppV2() {
         }, 
         scales: { 
           x: { 
-            grid: {display:false}, 
+            grid: {
+              display: true,
+              color: '#1e293b',
+              drawBorder: false,
+              lineWidth: 1
+            }, 
             border: { 
-              color:'#3e484d' 
+              color:'#3e484d',
+              display: false
             }, 
             ticks: { 
               color:'#879298', 
@@ -1300,7 +1308,11 @@ export default function AppV2() {
           }, 
           y: { 
             min: 0, 
-            grid: {color:'rgba(62,72,77,0.3)'}, 
+            grid: {
+              color:'#1e293b',
+              drawBorder: false,
+              lineWidth: 1
+            }, 
             border: {display:false}, 
             ticks: { 
               color:'#879298', 
@@ -2500,13 +2512,12 @@ export default function AppV2() {
                 background: '#0b1c30',
                 border: '1px solid #3e484d',
                 borderRadius: '12px',
-                overflow: 'hidden',
+                overflow: 'auto',
                 marginBottom: '24px'
               }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
+                <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse' }}> 
                   <thead> 
                     <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>#</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>SEVERITY</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>EMPLOYEE</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>RULES</th> 
@@ -2517,15 +2528,14 @@ export default function AppV2() {
                     </tr> 
                   </thead> 
                   <tbody> 
-                    {alertsLoading ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#879298' }}>Loading alerts...</td></tr> : 
+                    {alertsLoading ? <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#879298' }}>Loading alerts...</td></tr> : 
                      alerts.map(a => ( 
                       <tr 
                         key={a.alert_id} 
-                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s' }}
+                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s', verticalAlign: 'middle' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
-                        <td style={{ padding: '14px 20px', fontSize: '12px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>{a.priority_rank}</td> 
                         <td style={{ padding: '14px 20px' }}>
                           <span style={{
                             padding: '4px 12px',
@@ -2539,28 +2549,28 @@ export default function AppV2() {
                             border: `1px solid ${a.adjusted_severity === 'Critical' ? '#f43f5e33' : a.adjusted_severity === 'High' ? '#f9731633' : '#3b82f633'}`
                           }}>{a.adjusted_severity}</span>
                         </td> 
-                        <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
+                        <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
                         <td style={{ padding: '14px 20px' }}> 
-                          {a.rules_triggered.split(',').map(r => ( 
-                            <span 
-                              key={r} 
-                              title={RULE_DESCRIPTIONS[r.trim()] || r}
-                              style={{ 
-                                fontSize: '10px', 
-                                background: '#26364a', 
-                                border: '1px solid #3e484d', 
-                                padding: '3px 8px', 
-                                borderRadius: '6px', 
-                                marginRight: '6px', 
-                                color: '#bdc8ce',
-                                cursor: 'help',
-                                display: 'inline-block',
-                                marginBottom: '4px'
-                              }}
-                            >
-                              {r}
-                            </span> 
-                          ))} 
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '160px' }}>
+                            {a.rules_triggered.split(',').map(r => ( 
+                              <span 
+                                key={r} 
+                                title={RULE_DESCRIPTIONS[r.trim()] || r}
+                                style={{ 
+                                  fontSize: '10px', 
+                                  background: '#26364a', 
+                                  border: '1px solid #3e484d', 
+                                  padding: '3px 8px', 
+                                  borderRadius: '6px', 
+                                  color: '#bdc8ce',
+                                  cursor: 'help',
+                                  display: 'inline-block'
+                                }}
+                              >
+                                {r}
+                              </span> 
+                            ))} 
+                          </div>
                         </td> 
                         <td style={{ 
                           padding: '14px 20px', 
@@ -2569,13 +2579,13 @@ export default function AppV2() {
                           fontFamily: "'JetBrains Mono', monospace",
                           color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6'
                         }}>{a.anomaly_score.toFixed(2)}</td> 
-                        <td style={{ padding: '14px 20px', fontSize: '12px', color: '#bdc8ce' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
-                        <td style={{ padding: '14px 20px', fontSize: '12px', color: '#879298', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
+                        <td style={{ padding: '14px 20px', fontSize: '14px', color: '#bdc8ce' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
+                        <td style={{ padding: '14px 20px', fontSize: '14px', color: '#879298', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
                         <td style={{ padding: '14px 20px' }}> 
                           <button 
                             onClick={() => {setSelectedAlert(a.alert_id); fetchAlertDetail(a.alert_id)}} 
                             style={{ 
-                              padding: '8px 16px', 
+                              padding: '4px 12px', 
                               background: '#0891b2', 
                               color: '#fff', 
                               border: 'none', 
