@@ -3124,6 +3124,14 @@ export default function AppV2() {
           color: #475569;
           opacity: 1;
         }
+
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0px 1000px #000f21 inset !important;
+          -webkit-text-fill-color: #d3e4fe !important;
+          border-color: #334155 !important;
+        }
         
         .active-glow {
           box-shadow: 0px 0px 12px rgba(108,211,247,0.2);
