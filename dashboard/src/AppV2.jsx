@@ -674,6 +674,7 @@ const CaseReportModal = ({ report, onClose }) => {
 export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   const [token, setToken] = useState(localStorage.getItem('sentinel_token') || null);
+  const [userRole, setUserRole] = useState(localStorage.getItem('sentinel_role') || null);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -726,6 +727,13 @@ export default function AppV2() {
     localStorage.setItem('sentinel_theme', theme);
   }, [theme]);
 
+  // Redirect it_director away from investigate tab
+  useEffect(() => {
+    if (userRole === 'it_director' && activeView === 'investigate') {
+      setActiveView('overview');
+    }
+  }, [userRole, activeView]);
+
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   const handleLogin = async (e) => {
@@ -741,7 +749,9 @@ export default function AppV2() {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('sentinel_token', data.access_token);
+        localStorage.setItem('sentinel_role', data.role);
         setToken(data.access_token);
+        setUserRole(data.role);
       } else {
         const errData = await res.json().catch(() => ({}));
         setLoginError(errData.detail || 'Incorrect username or password');
@@ -755,7 +765,9 @@ export default function AppV2() {
 
   const handleLogout = () => {
     localStorage.removeItem('sentinel_token');
+    localStorage.removeItem('sentinel_role');
     setToken(null);
+    setUserRole(null);
   };
 
   const authHeaders = () => ({ 
@@ -856,7 +868,7 @@ export default function AppV2() {
       if (res.ok) { 
         const data = await res.json() 
         setCases(data.cases || []) 
-        setCasesTotal(data.total || 0) 
+        setCasesTotal(data.total_count || 0) 
       } 
     } catch(e) { console.error(e) } 
     setCasesLoading(false) 
@@ -959,6 +971,7 @@ export default function AppV2() {
   };
 
   const handleGenerateReport = async (caseId) => {
+    console.log('Generate Report clicked for case:', caseId);
     setGeneratingReport(true);
     try {
       const res = await fetch(`${API_BASE}/export/case/${caseId}`, {
@@ -966,7 +979,10 @@ export default function AppV2() {
       });
       if (res.ok) {
         const data = await res.json();
+        console.log('Report data received:', data);
         setCaseReport(data);
+      } else {
+        console.error('Report generation failed with status:', res.status);
       }
     } catch (e) {
       console.error('Report generation failed', e);
@@ -1428,6 +1444,11 @@ export default function AppV2() {
           {NAV_ITEMS.map((item, idx) => {
             if (item.id === 'divider') {
               return <div key={`div-${idx}`} style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />;
+            }
+            
+            // Hide Investigate tab for it_director role
+            if (item.id === 'investigate' && userRole === 'it_director') {
+              return null;
             }
             
             const isActive = activeView === item.id;
