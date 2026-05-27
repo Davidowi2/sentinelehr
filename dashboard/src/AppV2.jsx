@@ -32,7 +32,7 @@ const THEMES = {
     --surface-container-lowest: #000f21;
     --outline-variant: #3e484d;
     --outline: #879298;
-    --primary: #6cd3f7;
+    --primary: #38bdf8;
     --primary-container: #269dbe;
     --on-primary-container: #002e3b;
     --on-surface: #d3e4fe;
@@ -58,7 +58,7 @@ const THEMES = {
     --text-primary: #d3e4fe;
     --text-secondary: #bdc8ce;
     --text-muted: #879298;
-    --accent: #6cd3f7;
+    --accent: #38bdf8;
     --accent-hover: #269dbe;
     --accent-subtle: rgba(108,211,247,0.12);
   `,
@@ -72,7 +72,7 @@ const THEMES = {
     --outline-variant: #bdc8ce;
     --outline: #879298;
     --primary: #269dbe;
-    --primary-container: #6cd3f7;
+    --primary-container: #38bdf8;
     --on-primary-container: #002e3b;
     --on-surface: #0f172a;
     --on-surface-variant: #475569;
@@ -310,8 +310,8 @@ const InvestigateResults = React.memo(({ results }) => {
             padding: '20px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Activity size={16} style={{ color: '#6cd3f7' }} />
-              <div style={{ fontSize: '10px', fontWeight: '600', color: '#6cd3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Investigation Insight</div>
+              <Activity size={16} style={{ color: '#38bdf8' }} />
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#38bdf8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Investigation Insight</div>
             </div>
             <div style={{ fontSize: '14px', color: '#d3e4fe', lineHeight: '1.6' }}>
               This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
@@ -338,7 +338,7 @@ const InvestigateResults = React.memo(({ results }) => {
               width: '180px',
               height: '180px',
               borderRadius: '50%',
-              background: `conic-gradient(#6cd3f7 ${topScore * 100}%, #1e293b 0)`,
+              background: `conic-gradient(#38bdf8 ${topScore * 100}%, #1e293b 0)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -353,7 +353,7 @@ const InvestigateResults = React.memo(({ results }) => {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <div style={{ fontSize: '48px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                <div style={{ fontSize: '48px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
                   {topScore.toFixed(2)}
                 </div>
                 <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '8px' }}>
@@ -418,7 +418,7 @@ const InvestigateResults = React.memo(({ results }) => {
               top: '50%', 
               transform: 'translateY(-50%)',
               fontSize: '64px', 
-              color: '#6cd3f7',
+              color: '#38bdf8',
               opacity: 0.2
             }}>
               {stat.icon}
@@ -430,7 +430,7 @@ const InvestigateResults = React.memo(({ results }) => {
       {/* Alert History */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Bell size={18} color="#6cd3f7" />
+          <Bell size={18} color="#38bdf8" />
           <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#d3e4fe' }}>Recent Alert History</h3>
         </div>
         <div style={{
@@ -496,7 +496,7 @@ const InvestigateResults = React.memo(({ results }) => {
                         ))} 
                       </div>
                     </td> 
-                    <td style={{ padding: '14px 20px', fontSize: '14px', color: '#6cd3f7', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}> 
+                    <td style={{ padding: '14px 20px', fontSize: '14px', color: '#38bdf8', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}> 
                       {(a.anomaly_score ?? 0).toFixed(2)} 
                     </td> 
                   </tr> 
@@ -512,7 +512,7 @@ const InvestigateResults = React.memo(({ results }) => {
       {/* Open Cases */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Folder size={18} color="#6cd3f7" />
+          <Folder size={18} color="#38bdf8" />
           <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#d3e4fe' }}>Open Cases</h3>
         </div>
         <div style={{
@@ -538,7 +538,7 @@ const InvestigateResults = React.memo(({ results }) => {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   > 
-                    <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
+                    <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
                     <td style={{ padding: '14px 20px' }}> 
                       <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}> 
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f97316' }} /> 
@@ -683,7 +683,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
                 width: '100%',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={e => e.target.style.borderColor = '#6cd3f7'}
+              onFocus={e => e.target.style.borderColor = '#38bdf8'}
               onBlur={e => e.target.style.borderColor = '#3e484d'}
             /> 
           </div>
@@ -1341,7 +1341,7 @@ export default function AppV2() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
               <img src="/sentinelehr-logo.png" className="w-8 h-8 object-contain" alt="SentinelEHR" />
-              <span style={{ fontWeight: '700', fontSize: '20px', color: '#6cd3f7' }}>SentinelEHR</span>
+              <span style={{ fontWeight: '700', fontSize: '20px', color: '#38bdf8' }}>SentinelEHR</span>
             </div>
             <div style={{ 
               fontSize: '10px', 
@@ -1399,7 +1399,7 @@ export default function AppV2() {
                       transition: 'all 0.2s ease'
                     }}
                     onFocus={e => {
-                      e.target.style.borderColor = '#6cd3f7';
+                      e.target.style.borderColor = '#38bdf8';
                       e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
                     }}
                     onBlur={e => {
@@ -1449,7 +1449,7 @@ export default function AppV2() {
                       transition: 'all 0.2s ease'
                     }}
                     onFocus={e => {
-                      e.target.style.borderColor = '#6cd3f7';
+                      e.target.style.borderColor = '#38bdf8';
                       e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
                     }}
                     onBlur={e => {
@@ -1521,7 +1521,7 @@ export default function AppV2() {
             alignItems: 'center',
             gap: '16px'
           }}>
-            <span className="material-symbols-outlined" style={{ color: '#6cd3f7', fontSize: '24px' }}>verified_user</span>
+            <span className="material-symbols-outlined" style={{ color: '#38bdf8', fontSize: '24px' }}>verified_user</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>HIPAA §164.312(b) COMPLIANT</div>
@@ -1599,7 +1599,7 @@ export default function AppV2() {
               {/* Shield Icon */}
               <span className="material-symbols-outlined" style={{ 
                 fontSize: '120px', 
-                color: '#6cd3f7',
+                color: '#38bdf8',
                 fontVariationSettings: "'FILL' 1"
               }}>shield_with_heart</span>
 
@@ -1628,9 +1628,9 @@ export default function AppV2() {
               padding: '20px'
             }}>
               <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>System Uptime</div>
-              <div style={{ fontSize: '32px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
               <div style={{ width: '100%', height: '4px', background: '#1e293b', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ width: '99%', height: '100%', background: '#6cd3f7' }} />
+                <div style={{ width: '99%', height: '100%', background: '#38bdf8' }} />
               </div>
             </div>
 
@@ -1642,10 +1642,10 @@ export default function AppV2() {
               padding: '20px'
             }}>
               <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Latency</div>
-              <div style={{ fontSize: '32px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '20px' }}>
                 {[40, 60, 45, 70, 55, 80, 65, 50].map((h, i) => (
-                  <div key={i} style={{ flex: 1, height: `${h}%`, background: '#6cd3f7', borderRadius: '2px' }} />
+                  <div key={i} style={{ flex: 1, height: `${h}%`, background: '#38bdf8', borderRadius: '2px' }} />
                 ))}
               </div>
             </div>
@@ -1662,17 +1662,17 @@ export default function AppV2() {
               alignItems: 'center'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
                 <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>Events Monitored</div>
               </div>
               <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
                 <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>PHI Stored</div>
               </div>
               <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
                 <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>Alert Precision</div>
               </div>
             </div>
@@ -1738,60 +1738,96 @@ export default function AppV2() {
             <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '24px' }}>shield</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontWeight: '700', fontSize: '18px', color: '#6cd3f7', lineHeight: 1 }}>SentinelEHR</span>
+            <span style={{ fontWeight: '700', fontSize: '18px', color: '#38bdf8', lineHeight: 1 }}>SentinelEHR</span>
             <span style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enterprise Security</span>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav style={{ flex: 1, padding: '16px 0', overflowY: 'auto' }}>
-          {NAV_ITEMS.map((item, idx) => {
-            if (item.id === 'divider') {
-              return <div key={`div-${idx}`} style={{ height: '1px', background: '#3e484d', margin: '16px 0' }} />;
-            }
+        <nav style={{ flex: 1, padding: '16px 0', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1 }}>
+            {NAV_ITEMS.map((item, idx) => {
+              if (item.id === 'divider') {
+                return null; // Remove the divider
+              }
+              
+              // Hide Investigate tab for it_director role
+              if (item.id === 'investigate' && userRole === 'it_director') {
+                return null;
+              }
+              
+              // Skip settings here, we'll render it separately
+              if (item.id === 'settings') {
+                return null;
+              }
+              
+              const isActive = activeView === item.id;
+              
+              // Map nav items to Material Symbols
+              const iconMap = {
+                'overview': 'dashboard',
+                'alerts': 'notifications_active',
+                'cases': 'assignment',
+                'investigate': 'troubleshoot',
+                'settings': 'settings'
+              };
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveView(item.id)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px 20px',
+                    background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    border: 'none',
+                    borderLeft: isActive ? '2px solid #38bdf8' : '2px solid transparent',
+                    color: isActive ? '#38bdf8' : '#bdc8ce',
+                    cursor: 'pointer',
+                    gap: '12px',
+                    transition: 'all 0.2s',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px', flexShrink: 0 }}>{iconMap[item.id]}</span>
+                  <span style={{ fontSize: '14px', fontWeight: isActive ? '600' : '500' }}>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Settings and Sign Out at bottom */}
+          <div style={{ marginTop: 'auto' }}>
+            <div style={{ height: '1px', background: '#3e484d', margin: '16px 0' }} />
             
-            // Hide Investigate tab for it_director role
-            if (item.id === 'investigate' && userRole === 'it_director') {
-              return null;
-            }
-            
-            const isActive = activeView === item.id;
-            
-            // Map nav items to Material Symbols
-            const iconMap = {
-              'overview': 'dashboard',
-              'alerts': 'notifications_active',
-              'cases': 'assignment',
-              'investigate': 'troubleshoot',
-              'settings': 'settings'
-            };
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveView(item.id)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '12px 20px',
-                  background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
-                  border: 'none',
-                  borderLeft: isActive ? '2px solid #6cd3f7' : '2px solid transparent',
-                  color: isActive ? '#6cd3f7' : '#bdc8ce',
-                  cursor: 'pointer',
-                  gap: '12px',
-                  transition: 'all 0.2s',
-                  textAlign: 'left'
-                }}
-                onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '20px', flexShrink: 0 }}>{iconMap[item.id]}</span>
-                <span style={{ fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</span>
-              </button>
-            );
-          })}
+            {/* Settings */}
+            <button
+              onClick={() => setActiveView('settings')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '12px 20px',
+                background: activeView === 'settings' ? 'rgba(255,255,255,0.05)' : 'transparent',
+                border: 'none',
+                borderLeft: activeView === 'settings' ? '2px solid #38bdf8' : '2px solid transparent',
+                color: activeView === 'settings' ? '#38bdf8' : '#bdc8ce',
+                cursor: 'pointer',
+                gap: '12px',
+                transition: 'all 0.2s',
+                textAlign: 'left'
+              }}
+              onMouseEnter={e => activeView !== 'settings' && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+              onMouseLeave={e => activeView !== 'settings' && (e.currentTarget.style.background = 'transparent')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', flexShrink: 0 }}>settings</span>
+              <span style={{ fontSize: '14px', fontWeight: activeView === 'settings' ? '600' : '500' }}>Settings</span>
+            </button>
+          </div>
         </nav>
 
         {/* Bottom Actions */}
@@ -1814,7 +1850,7 @@ export default function AppV2() {
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>logout</span>
-            <span style={{ fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sign Out</span>
+            <span style={{ fontSize: '14px', fontWeight: '500' }}>Sign Out</span>
           </button>
         </div>
       </aside>
@@ -1986,7 +2022,7 @@ export default function AppV2() {
                       ? summary.top_anomaly_score.toFixed(2) 
                       : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), 
                     sub: '90-day highest anomaly', 
-                    color: '#6cd3f7',
+                    color: '#38bdf8',
                     icon: 'monitoring',
                     iconFill: 0
                   } 
@@ -2046,9 +2082,9 @@ export default function AppV2() {
                       marginBottom: '12px' 
                     }}>{card.value}</div> 
                     <div style={{ 
-                      fontSize: '12px', 
-                      color: '#bdc8ce',
-                      fontFamily: "'JetBrains Mono', monospace"
+                      fontSize: '14px', 
+                      color: '#94a3b8',
+                      fontFamily: "'Inter', sans-serif"
                     }}>{card.sub}</div>
                     <div 
                       className="bottom-bar"
@@ -2180,7 +2216,7 @@ export default function AppV2() {
                     gap: '12px',
                     marginBottom: '24px'
                   }}>
-                    <span className="material-symbols-outlined" style={{ color: '#6cd3f7', fontSize: '24px' }}>
+                    <span className="material-symbols-outlined" style={{ color: '#38bdf8', fontSize: '24px' }}>
                       health_and_safety
                     </span>
                     <div>
@@ -2219,7 +2255,7 @@ export default function AppV2() {
                         <span style={{
                           fontSize: '11px',
                           fontWeight: '600',
-                          color: '#6cd3f7',
+                          color: '#38bdf8',
                           background: 'rgba(108,211,247,0.1)',
                           padding: '2px 8px',
                           borderRadius: '4px',
@@ -2237,7 +2273,7 @@ export default function AppV2() {
                         <div style={{
                           width: `${item.value}%`,
                           height: '100%',
-                          background: 'linear-gradient(90deg, #269dbe 0%, #6cd3f7 100%)',
+                          background: 'linear-gradient(90deg, #269dbe 0%, #38bdf8 100%)',
                           borderRadius: '4px',
                           transition: 'width 0.5s ease'
                         }} />
@@ -2265,7 +2301,7 @@ export default function AppV2() {
                     gap: '12px',
                     marginBottom: '20px'
                   }}>
-                    <span className="material-symbols-outlined" style={{ color: '#6cd3f7', fontSize: '24px' }}>
+                    <span className="material-symbols-outlined" style={{ color: '#38bdf8', fontSize: '24px' }}>
                       assignment
                     </span>
                     <div style={{
@@ -2293,7 +2329,7 @@ export default function AppV2() {
                           transition: 'all 0.2s'
                         }}
                         onMouseEnter={e => {
-                          e.currentTarget.style.borderColor = '#6cd3f7';
+                          e.currentTarget.style.borderColor = '#38bdf8';
                           e.currentTarget.style.background = '#102034';
                         }}
                         onMouseLeave={e => {
@@ -2306,7 +2342,7 @@ export default function AppV2() {
                           <span style={{
                             fontSize: '13px',
                             fontWeight: '700',
-                            color: '#6cd3f7',
+                            color: '#38bdf8',
                             fontFamily: "'JetBrains Mono', monospace"
                           }}>{c.case_id}</span>
                           <span style={{
@@ -2595,7 +2631,7 @@ export default function AppV2() {
                       <div style={{
                         fontSize: '24px',
                         fontWeight: '700',
-                        color: '#6cd3f7',
+                        color: '#38bdf8',
                         fontFamily: "'JetBrains Mono', monospace"
                       }}>{stat.value}</div>
                     </div>
@@ -2748,7 +2784,7 @@ export default function AppV2() {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
                           <span style={{
@@ -2800,8 +2836,8 @@ export default function AppV2() {
                               transition: 'all 0.2s'
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = '#6cd3f7';
-                              e.currentTarget.style.color = '#6cd3f7';
+                              e.currentTarget.style.borderColor = '#38bdf8';
+                              e.currentTarget.style.color = '#38bdf8';
                             }}
                             onMouseLeave={e => {
                               e.currentTarget.style.borderColor = '#3e484d';
@@ -2907,7 +2943,7 @@ export default function AppV2() {
           <span style={{
             fontSize: '12px',
             fontWeight: '600',
-            color: '#6cd3f7',
+            color: '#38bdf8',
             letterSpacing: '0.05em'
           }}>SentinelEHR Security Ops</span>
           <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
@@ -2932,7 +2968,7 @@ export default function AppV2() {
           <div style={{
             width: '8px',
             height: '8px',
-            background: '#6cd3f7',
+            background: '#38bdf8',
             borderRadius: '50%',
             boxShadow: '0 0 12px rgba(108,211,247,0.6)',
             animation: 'pulse 2s infinite'
@@ -2940,7 +2976,7 @@ export default function AppV2() {
           <span style={{
             fontSize: '11px',
             fontWeight: '600',
-            color: '#6cd3f7',
+            color: '#38bdf8',
             letterSpacing: '0.1em',
             fontFamily: "'JetBrains Mono', monospace"
           }}>LIVE</span>
