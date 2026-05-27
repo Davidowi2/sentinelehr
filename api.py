@@ -630,7 +630,7 @@ def get_case(
   cursor.execute( 
     """SELECT l.*, u.username as changed_by_name 
        FROM case_audit_log l 
-       LEFT JOIN users u ON l.user_id = u.user_id 
+       LEFT JOIN users u ON l.user_id = u.id 
        WHERE l.case_id = %s 
        ORDER BY l.timestamp ASC""", 
     (case_id,) 
@@ -867,7 +867,7 @@ def export_case_report(
         cursor.execute("""
             SELECT l.*, u.username as actor_name 
             FROM case_audit_log l 
-            LEFT JOIN users u ON l.user_id = u.user_id 
+            LEFT JOIN users u ON l.user_id = u.id 
             WHERE l.case_id = %s 
             ORDER BY l.timestamp ASC
         """, (case_id,))
