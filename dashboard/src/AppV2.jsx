@@ -1271,7 +1271,7 @@ export default function AppV2() {
         }, 
         scales: { 
           x: { 
-            stacked: true,
+            stacked: false,
             grid: {
               display: true,
               color: 'rgba(255,255,255,0.05)',
@@ -1289,7 +1289,7 @@ export default function AppV2() {
             } 
           }, 
           y: { 
-            stacked: true,
+            stacked: false,
             min: 0, 
             grid: {
               color: 'rgba(255,255,255,0.05)',
