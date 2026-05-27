@@ -1452,33 +1452,48 @@ export default function AppV2() {
     }}>
       {/* SIDEBAR */}
       <aside style={{
-        width: sidebarCollapsed ? '64px' : '220px',
-        background: 'var(--bg-surface)',
-        borderRight: '1px solid var(--border)',
+        width: '260px',
+        background: '#031427',
+        borderRight: '1px solid #3e484d',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'width 0.2s ease',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        bottom: 0,
         zIndex: 10
       }}>
         {/* Top Logo */}
         <div style={{ 
-          height: '60px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          padding: '0 20px', 
-          borderBottom: '1px solid var(--border)',
-          gap: '12px',
-          overflow: 'hidden'
+          padding: '24px 20px', 
+          borderBottom: '1px solid #3e484d',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
         }}>
-          <Shield size={22} color="#E11D48" style={{ flexShrink: 0 }} />
-          {!sidebarCollapsed && <span style={{ fontWeight: '700', fontSize: '16px', whiteSpace: 'nowrap' }}>SentinelEHR</span>}
+          <div style={{
+            width: '40px',
+            height: '40px',
+            background: '#269dbe',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '24px' }}>shield</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ fontWeight: '700', fontSize: '18px', color: '#6cd3f7', lineHeight: 1 }}>SentinelEHR</span>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enterprise Security</span>
+          </div>
         </div>
 
         {/* Navigation */}
         <nav style={{ flex: 1, padding: '16px 0', overflowY: 'auto' }}>
           {NAV_ITEMS.map((item, idx) => {
             if (item.id === 'divider') {
-              return <div key={`div-${idx}`} style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />;
+              return <div key={`div-${idx}`} style={{ height: '1px', background: '#3e484d', margin: '16px 0' }} />;
             }
             
             // Hide Investigate tab for it_director role
@@ -1488,77 +1503,45 @@ export default function AppV2() {
             
             const isActive = activeView === item.id;
             
+            // Map nav items to Material Symbols
+            const iconMap = {
+              'overview': 'dashboard',
+              'alerts': 'notifications_active',
+              'cases': 'assignment',
+              'investigate': 'troubleshoot',
+              'settings': 'settings'
+            };
+            
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveView(item.id)}
-                title={sidebarCollapsed ? item.label : ''}
                 style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   padding: '12px 20px',
-                  background: isActive ? 'var(--accent-subtle)' : 'transparent',
+                  background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
                   border: 'none',
-                  borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
-                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                  borderLeft: isActive ? '2px solid #6cd3f7' : '2px solid transparent',
+                  color: isActive ? '#6cd3f7' : '#bdc8ce',
                   cursor: 'pointer',
                   gap: '12px',
-                  transition: 'background 0.2s',
+                  transition: 'all 0.2s',
                   textAlign: 'left'
                 }}
-                onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'var(--bg-hover)')}
+                onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                 onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}
               >
-                <span style={{ flexShrink: 0 }}>{item.icon}</span>
-                {!sidebarCollapsed && <span style={{ fontSize: '14px', fontWeight: isActive ? '600' : '500' }}>{item.label}</span>}
+                <span className="material-symbols-outlined" style={{ fontSize: '20px', flexShrink: 0 }}>{iconMap[item.id]}</span>
+                <span style={{ fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</span>
               </button>
             );
           })}
         </nav>
 
         {/* Bottom Actions */}
-        <div style={{ padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-          <button 
-            onClick={toggleTheme}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 20px',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              gap: '12px'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            {!sidebarCollapsed && <span style={{ fontSize: '14px' }}>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
-          </button>
-          
-          <button 
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 20px',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              gap: '12px'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-            {!sidebarCollapsed && <span style={{ fontSize: '14px' }}>Collapse Sidebar</span>}
-          </button>
-
+        <div style={{ padding: '8px 0', borderTop: '1px solid #3e484d' }}>
           <button 
             onClick={handleLogout}
             style={{
@@ -1568,49 +1551,141 @@ export default function AppV2() {
               padding: '12px 20px',
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-secondary)',
+              color: '#bdc8ce',
               cursor: 'pointer',
-              gap: '12px'
+              gap: '12px',
+              transition: 'all 0.2s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <LogOut size={18} />
-            {!sidebarCollapsed && <span style={{ fontSize: '14px' }}>Sign Out</span>}
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>logout</span>
+            <span style={{ fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sign Out</span>
           </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <main style={{ marginLeft: '260px', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         {/* Top Bar */}
         <header style={{
-          height: '60px',
-          background: 'var(--bg-surface)',
-          borderBottom: '1px solid var(--border)',
+          height: '64px',
+          background: '#000f21',
+          borderBottom: '1px solid #3e484d',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 24px',
-          flexShrink: 0
+          position: 'sticky',
+          top: 0,
+          zIndex: 40
         }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'capitalize' }}>{activeView}</h2>
+          {/* Left: Search */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            background: '#102034',
+            borderRadius: '8px',
+            padding: '8px 16px',
+            width: '320px',
+            border: '1px solid #3e484d'
+          }}>
+            <span className="material-symbols-outlined" style={{ color: '#879298', fontSize: '20px' }}>search</span>
+            <input 
+              type="text" 
+              placeholder="Search alerts, cases, employees..."
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: '#d3e4fe',
+                fontSize: '13px',
+                width: '100%'
+              }}
+            />
+          </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ 
-              width: '8px', 
-              height: '8px', 
-              background: 'var(--success)', 
-              borderRadius: '50%',
-              boxShadow: '0 0 8px var(--success)',
-              animation: 'pulse 2s infinite'
-            }} />
-            <span style={{ 
-              fontFamily: "'JetBrains Mono', monospace", 
-              fontSize: '12px', 
-              fontWeight: '600', 
-              color: 'var(--text-muted)' 
-            }}>LIVE</span>
+          {/* Right: Actions and User */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Sensors Icon */}
+            <button style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#bdc8ce',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>sensors</span>
+            </button>
+            
+            {/* Notifications Icon with Badge */}
+            <button style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#bdc8ce',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>notifications</span>
+              <div style={{
+                position: 'absolute',
+                top: '6px',
+                right: '6px',
+                width: '8px',
+                height: '8px',
+                background: '#f43f5e',
+                borderRadius: '50%',
+                border: '2px solid #000f21'
+              }} />
+            </button>
+            
+            {/* Vertical Divider */}
+            <div style={{ width: '1px', height: '32px', background: '#3e484d' }} />
+            
+            {/* User Info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#d3e4fe' }}>
+                  {loginForm.username || 'User'}
+                </div>
+                <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {userRole === 'compliance_officer' ? 'COMPLIANCE OFFICER' : userRole === 'it_director' ? 'IT DIRECTOR' : userRole === 'admin' ? 'ADMIN' : 'USER'}
+                </div>
+              </div>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: '#269dbe',
+                border: '2px solid rgba(108,211,247,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: '700',
+                fontSize: '14px'
+              }}>
+                {(loginForm.username || 'U').charAt(0).toUpperCase()}
+              </div>
+            </div>
           </div>
         </header>
 
