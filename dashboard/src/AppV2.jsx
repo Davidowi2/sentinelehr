@@ -273,15 +273,10 @@ const InvestigateResults = React.memo(({ results }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Profile Card with Anomaly Gauge */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '24px' }}>
-        {/* Left: Employee Profile */}
-        <div style={{ 
-          background: '#0b1c30', 
-          border: '1px solid #3e484d', 
-          borderRadius: '12px', 
-          padding: '28px'
-        }}>
+      {/* Top Row: Profile + Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
+        {/* Employee Profile - col-span-8 */}
+        <div style={{ gridColumn: 'span 8', background: '#0b1c30', border: '1px solid #3e484d', borderRadius: '12px', padding: '28px' }}>
           <div style={{ marginBottom: '24px' }}>
             <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
             <div style={{ fontSize: '28px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{results.emp_id}</div>
@@ -321,114 +316,90 @@ const InvestigateResults = React.memo(({ results }) => {
           </div>
         </div>
 
-        {/* Right: Anomaly Gauge */}
-        <div style={{ 
-          background: '#0b1c30', 
-          border: '1px solid #3e484d', 
-          borderRadius: '12px', 
-          padding: '28px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          {/* Circular Gauge */}
-          <div style={{ position: 'relative', width: '180px', height: '180px', marginBottom: '20px' }}>
-            <div style={{
-              width: '180px',
-              height: '180px',
-              borderRadius: '50%',
-              background: `conic-gradient(#38bdf8 ${topScore * 100}%, #1e293b 0)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+        {/* Mini Stats - col-span-4 */}
+        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Anomaly Gauge */}
+          <div style={{ background: '#0b1c30', border: '1px solid #3e484d', borderRadius: '12px', padding: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', width: '128px', height: '128px', marginBottom: '16px' }}>
               <div style={{
-                width: '140px',
-                height: '140px',
+                position: 'relative',
+                width: '128px',
+                height: '128px',
                 borderRadius: '50%',
-                background: '#102034',
+                border: '4px solid #38bdf8',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <div style={{ fontSize: '48px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
                   {topScore.toFixed(2)}
                 </div>
-                <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '8px' }}>
-                  Anomaly
+              </div>
+            </div>
+
+            {/* High Risk Warning */}
+            {topScore > 0.7 && (
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                gap: '8px',
+                padding: '12px 20px',
+                background: 'rgba(244,63,94,0.1)',
+                border: '1px solid rgba(244,63,94,0.2)',
+                borderRadius: '8px',
+                width: '100%'
+              }}>
+                <AlertTriangle size={20} style={{ color: '#f43f5e' }} />
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#f43f5e', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  High Risk
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* High Risk Warning */}
-          {topScore > 0.7 && (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              gap: '8px',
-              padding: '12px 20px',
-              background: 'rgba(244,63,94,0.1)',
-              border: '1px solid rgba(244,63,94,0.2)',
-              borderRadius: '8px',
-              width: '100%'
-            }}>
-              <AlertTriangle size={20} style={{ color: '#f43f5e' }} />
-              <div style={{ fontSize: '12px', fontWeight: '700', color: '#f43f5e', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                High Risk
+          {/* Mini Stat Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+            {[
+              { label: 'Total Alerts', value: totalAlerts, icon: 'notifications' },
+              { label: 'Days Monitored', value: daysMonitored || 1, icon: 'calendar_month' },
+              { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: 'shield' }
+            ].map(stat => (
+              <div key={stat.label} style={{ 
+                background: '#0b1c30', 
+                border: '1px solid #3e484d', 
+                borderRadius: '12px', 
+                padding: '16px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    {stat.label}
+                  </div>
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {stat.value}
+                  </div>
+                </div>
+                <span className="material-symbols-outlined" style={{ 
+                  position: 'absolute', 
+                  right: '12px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  fontSize: '48px', 
+                  color: '#38bdf8',
+                  opacity: 0.2
+                }}>
+                  {stat.icon}
+                </span>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Mini Stat Cards */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(3, 1fr)', 
-        gap: '16px'
-      }}>
-        {[
-          { label: 'Total Alerts', value: totalAlerts, icon: 'notifications' },
-          { label: 'Days Monitored', value: daysMonitored || 1, icon: 'calendar_month' },
-          { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: 'shield' }
-        ].map(stat => (
-          <div key={stat.label} style={{ 
-            background: '#0b1c30', 
-            border: '1px solid #3e484d', 
-            borderRadius: '12px', 
-            padding: '20px',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
-                {stat.label}
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>
-                {stat.value}
-              </div>
-            </div>
-            <span className="material-symbols-outlined" style={{ 
-              position: 'absolute', 
-              right: '16px', 
-              top: '50%', 
-              transform: 'translateY(-50%)',
-              fontSize: '64px', 
-              color: '#38bdf8',
-              opacity: 0.2
-            }}>
-              {stat.icon}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Alert History */}
-      <div>
+      {/* Alert History - col-span-12 */}
+      <div style={{ gridColumn: 'span 12' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <Bell size={18} color="#38bdf8" />
           <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#d3e4fe' }}>Recent Alert History</h3>
@@ -734,6 +705,38 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
         <span>{investigateResults.error}</span> 
       </div> 
     )} 
+
+    {/* Empty State */}
+    {!investigateResults && !investigating && (
+      <div style={{
+        background: '#0b1c30',
+        border: '1px solid #3e484d',
+        borderRadius: '12px',
+        padding: '64px',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <span className="material-symbols-outlined" style={{
+          fontSize: '80px',
+          color: '#38bdf8',
+          opacity: 0.3,
+          marginBottom: '24px'
+        }}>troubleshoot</span>
+        <div style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#94a3b8',
+          marginBottom: '12px'
+        }}>Enter an Employee ID to begin investigation</div>
+        <div style={{
+          fontSize: '14px',
+          color: '#64748b'
+        }}>Search by employee number (e.g. 10042)</div>
+      </div>
+    )}
 
     <InvestigateResults results={investigateResults} />
   </div> 
