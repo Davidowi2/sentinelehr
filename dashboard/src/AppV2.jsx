@@ -24,50 +24,82 @@ import {
 
 const THEMES = {
   dark: `
-    --bg-app: #0A0E1A;
-    --bg-surface: #111827;
-    --bg-elevated: #1A2235;
-    --bg-hover: #1E2A40;
-    --border: #1E2D45;
-    --text-primary: #F1F5F9;
-    --text-secondary: #7A8EA8;
-    --text-muted: #3D5170;
-    --accent: #E11D48;
-    --accent-hover: #BE123C;
-    --accent-subtle: rgba(225,29,72,0.12);
-    --success: #10B981;
-    --warning: #F59E0B;
-    --info: #3B82F6;
-    --critical: #E11D48;
-    --critical-bg: rgba(225,29,72,0.1);
-    --high: #F59E0B;
-    --high-bg: rgba(245,158,11,0.1);
-    --medium: #3B82F6;
+    --surface-dim: #031427;
+    --surface-container-low: #0b1c30;
+    --surface-container: #102034;
+    --surface-container-high: #1b2b3f;
+    --surface-container-highest: #26364a;
+    --surface-container-lowest: #000f21;
+    --outline-variant: #3e484d;
+    --outline: #879298;
+    --primary: #6cd3f7;
+    --primary-container: #269dbe;
+    --on-primary-container: #002e3b;
+    --on-surface: #d3e4fe;
+    --on-surface-variant: #bdc8ce;
+    --error: #ffb4ab;
+    --tertiary: #ffb873;
+    --background: #031427;
+    --critical: #f43f5e;
+    --critical-bg: rgba(244,63,94,0.1);
+    --high: #f97316;
+    --high-bg: rgba(249,115,22,0.1);
+    --medium: #3b82f6;
     --medium-bg: rgba(59,130,246,0.1);
+    --success: #10B981;
+    --warning: #f97316;
     --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    
+    --bg-app: #031427;
+    --bg-surface: #102034;
+    --bg-elevated: #1b2b3f;
+    --bg-hover: #26364a;
+    --border: #3e484d;
+    --text-primary: #d3e4fe;
+    --text-secondary: #bdc8ce;
+    --text-muted: #879298;
+    --accent: #6cd3f7;
+    --accent-hover: #269dbe;
+    --accent-subtle: rgba(108,211,247,0.12);
   `,
   light: `
-    --bg-app: #F1F5F9;
-    --bg-surface: #FFFFFF;
-    --bg-elevated: #F8FAFF;
-    --bg-hover: #F1F5FF;
-    --border: #E2E8F4;
-    --text-primary: #0F172A;
-    --text-secondary: #475569;
-    --text-muted: #94A3B8;
-    --accent: #E11D48;
-    --accent-hover: #BE123C;
-    --accent-subtle: rgba(225,29,72,0.06);
+    --surface-dim: #d3e4fe;
+    --surface-container-low: #e8f1ff;
+    --surface-container: #eef5ff;
+    --surface-container-high: #f4f8ff;
+    --surface-container-highest: #fafcff;
+    --surface-container-lowest: #ffffff;
+    --outline-variant: #bdc8ce;
+    --outline: #879298;
+    --primary: #269dbe;
+    --primary-container: #6cd3f7;
+    --on-primary-container: #002e3b;
+    --on-surface: #0f172a;
+    --on-surface-variant: #475569;
+    --error: #dc2626;
+    --tertiary: #ea580c;
+    --background: #fafcff;
+    --critical: #dc2626;
+    --critical-bg: #fee2e2;
+    --high: #ea580c;
+    --high-bg: #ffedd5;
+    --medium: #2563eb;
+    --medium-bg: #dbeafe;
     --success: #059669;
-    --warning: #D97706;
-    --info: #2563EB;
-    --critical: #E11D48;
-    --critical-bg: #FFF1F3;
-    --high: #D97706;
-    --high-bg: #FFFBEB;
-    --medium: #2563EB;
-    --medium-bg: #EFF6FF;
+    --warning: #ea580c;
     --shadow: 0 4px 24px rgba(15,23,42,0.08);
+    
+    --bg-app: #fafcff;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f4f8ff;
+    --bg-hover: #eef5ff;
+    --border: #bdc8ce;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent: #269dbe;
+    --accent-hover: #1e7a99;
+    --accent-subtle: rgba(38,157,190,0.08);
   `
 };
 
@@ -133,7 +165,7 @@ const FilterBar = ({ children, count, total }) => (
     {children} 
     <div style={{ 
       marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', 
-      fontFamily: "'IBM Plex Mono', monospace" 
+      fontFamily: "'JetBrains Mono', monospace" 
     }}>{count} of {total}</div> 
   </div> 
 ); 
@@ -152,7 +184,7 @@ const Select = (props) => (
   <select {...props} style={{ 
     background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
     borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
-    color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+    color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", 
     outline: 'none', minWidth: '140px' 
   }} /> 
 ); 
@@ -192,7 +224,7 @@ const Drawer = ({ title, subtitle, id, onClose, children, loading }) => (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}> 
           <div> 
             <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>{title}</div> 
-            <div style={{ fontSize: '22px', fontWeight: '700', fontFamily: "'IBM Plex Mono', monospace", color: 'var(--accent)' }}>{id}</div> 
+            <div style={{ fontSize: '22px', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent)' }}>{id}</div> 
             {subtitle && <div style={{ marginTop: '8px' }}>{subtitle}</div>} 
           </div> 
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><LogOut size={20} /></button> 
@@ -251,7 +283,7 @@ const InvestigateResults = React.memo(({ results }) => {
         
         <div>
           <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{results.emp_id}</div>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{results.emp_id}</div>
           <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>{results.role}</div>
         </div>
 
@@ -265,7 +297,7 @@ const InvestigateResults = React.memo(({ results }) => {
           <div style={{ 
             fontSize: '32px', fontWeight: '700', 
             color: topScore > 0.7 ? 'var(--critical)' : topScore > 0.4 ? 'var(--high)' : 'var(--success)', 
-            fontFamily: "'IBM Plex Mono', monospace" 
+            fontFamily: "'JetBrains Mono', monospace" 
           }}>
             {topScore.toFixed(2)}
           </div>
@@ -301,7 +333,7 @@ const InvestigateResults = React.memo(({ results }) => {
             <div style={{ color: 'var(--accent)' }}>{stat.icon}</div>
             <div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>{stat.value}</div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{stat.value}</div>
             </div>
           </div>
         ))}
@@ -327,7 +359,7 @@ const InvestigateResults = React.memo(({ results }) => {
               {alerts.length > 0 ? (
                 alerts.slice(0, 20).map((a, i) => ( 
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}> 
                       {new Date(a.alert_date).toLocaleDateString()} 
                     </td> 
                     <td style={{ padding: '12px 16px' }}> 
@@ -354,7 +386,7 @@ const InvestigateResults = React.memo(({ results }) => {
                         ))} 
                       </div>
                     </td> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'JetBrains Mono', monospace" }}> 
                       {(a.anomaly_score ?? 0).toFixed(2)} 
                     </td> 
                   </tr> 
@@ -386,14 +418,14 @@ const InvestigateResults = React.memo(({ results }) => {
               {results.cases?.length > 0 ? (
                 results.cases.filter(c => c.status !== 'Resolved').map((c, i) => ( 
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.case_id}</td> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
                     <td style={{ padding: '12px 16px' }}> 
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warning)' }} /> 
                         {c.status} 
                       </span> 
                     </td> 
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace" }}>{c.days_open}d</td> 
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}>{c.days_open}d</td> 
                   </tr> 
                 ))
               ) : (
@@ -435,7 +467,7 @@ const SettingsField = ({ label, value, subtext, disabled, type = 'text' }) => (
         style={{ 
           background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
           borderRadius: '6px', padding: '10px 14px', fontSize: '13px', 
-          color: disabled ? 'var(--text-muted)' : 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+          color: disabled ? 'var(--text-muted)' : 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", 
           outline: 'none', width: '100%', cursor: 'default'
         }} 
       />
@@ -505,7 +537,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
             style={{ 
               background: 'var(--bg-elevated)', border: '1px solid var(--border)', 
               borderRadius: '6px', padding: '8px 12px', fontSize: '13px', 
-              color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", 
+              color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", 
               outline: 'none', width: '240px' 
             }} 
           /> 
@@ -1184,7 +1216,7 @@ export default function AppV2() {
                     border: '1px solid var(--border)',
                     borderRadius: '10px',
                     color: 'var(--text-primary)',
-                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontFamily: "'JetBrains Mono', monospace",
                     fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -1223,7 +1255,7 @@ export default function AppV2() {
                     border: '1px solid var(--border)',
                     borderRadius: '10px',
                     color: 'var(--text-primary)',
-                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontFamily: "'JetBrains Mono', monospace",
                     fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -1378,15 +1410,15 @@ export default function AppV2() {
 
           <div style={{ display: 'flex', gap: '56px', textAlign: 'center', marginBottom: '48px' }}>
             <div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>325K</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>325K</div>
               <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>Events Monitored</div>
             </div>
             <div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>0</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>0</div>
               <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>PHI Stored</div>
             </div>
             <div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>86%</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>86%</div>
               <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>Alert Precision</div>
             </div>
           </div>
@@ -1397,7 +1429,7 @@ export default function AppV2() {
             borderRadius: '30px',
             color: 'var(--accent)',
             fontSize: '12px',
-            fontFamily: "'IBM Plex Mono', monospace",
+            fontFamily: "'JetBrains Mono', monospace",
             fontWeight: '700',
             letterSpacing: '0.05em',
             background: 'rgba(225,29,72,0.05)'
@@ -1574,7 +1606,7 @@ export default function AppV2() {
               animation: 'pulse 2s infinite'
             }} />
             <span style={{ 
-              fontFamily: "'IBM Plex Mono', monospace", 
+              fontFamily: "'JetBrains Mono', monospace", 
               fontSize: '12px', 
               fontWeight: '600', 
               color: 'var(--text-muted)' 
@@ -1650,7 +1682,7 @@ export default function AppV2() {
                     <div style={{ 
                       fontSize:'40px', fontWeight:'700', 
                       color: card.color, lineHeight:1, 
-                      fontFamily:"'IBM Plex Mono',monospace", 
+                      fontFamily:"'JetBrains Mono',monospace", 
                       letterSpacing:'-0.02em', 
                       marginBottom:'8px' 
                     }}>{card.value}</div> 
@@ -1771,7 +1803,7 @@ export default function AppV2() {
                       <div style={{ 
                         fontSize:'12px', fontWeight:'600', 
                         color:'var(--text-secondary)', 
-                        fontFamily:"'IBM Plex Mono',monospace" 
+                        fontFamily:"'JetBrains Mono',monospace" 
                       }}>{s.value}</div> 
                     </div> 
                   ))} 
@@ -1832,9 +1864,9 @@ export default function AppV2() {
                     {alertsLoading ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading alerts...</td></tr> : 
                      alerts.map(a => ( 
                       <tr key={a.alert_id} style={{ borderBottom: '1px solid var(--border)' }}> 
-                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace" }}>{a.priority_rank}</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace" }}>{a.priority_rank}</td> 
                         <td style={{ padding: '12px 16px' }}><SeverityBadge severity={a.adjusted_severity} /></td> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace" }}>EMP-{a.emp_id}</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
                         <td style={{ padding: '12px 16px' }}> 
                           {a.rules_triggered.split(',').map(r => ( 
                             <span 
@@ -1855,7 +1887,7 @@ export default function AppV2() {
                             </span> 
                           ))} 
                         </td> 
-                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'IBM Plex Mono', monospace" }}>{a.anomaly_score.toFixed(2)}</td> 
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--accent)', fontWeight: '600', fontFamily: "'JetBrains Mono', monospace" }}>{a.anomaly_score.toFixed(2)}</td> 
                         <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
                         <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
                         <td style={{ padding: '12px 16px' }}> 
@@ -1940,8 +1972,8 @@ export default function AppV2() {
                     {casesLoading ? <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading cases...</td></tr> : 
                      cases.map(c => ( 
                       <tr key={c.case_id} style={{ borderBottom: '1px solid var(--border)' }}> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', cursor: 'pointer' }}><SeverityBadge severity={c.priority} /></td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', cursor: 'pointer' }}> 
                           <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
@@ -1949,9 +1981,9 @@ export default function AppV2() {
                             {c.status} 
                           </span> 
                         </td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>{c.days_open || 0}d</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace", cursor: 'pointer' }}> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.days_open || 0}d</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}> 
                           {new Date(c.window_start).toLocaleDateString()}<br/> 
                           to {new Date(c.window_end).toLocaleDateString()} 
                         </td> 
@@ -2016,7 +2048,7 @@ export default function AppV2() {
                               <div key={i} style={{ padding: '12px', background: 'var(--bg-elevated)', borderRadius: '8px', borderLeft: '3px solid var(--border)', fontSize: '12px' }}> 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}> 
                                   <span style={{ fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', fontSize: '10px' }}>{log.action}</span> 
-                                  <span style={{ color: 'var(--text-muted)', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}>{new Date(log.timestamp).toLocaleString()}</span> 
+                                  <span style={{ color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px' }}>{new Date(log.timestamp).toLocaleString()}</span> 
                                 </div> 
                                 <div style={{ color: 'var(--text-secondary)' }}>{log.note}</div> 
                                 <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>by {log.changed_by_name}</div> 
@@ -2057,6 +2089,40 @@ export default function AppV2() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .active-glow {
+          box-shadow: 0px 0px 12px rgba(108,211,247,0.2);
+        }
+        
+        .glow-primary {
+          box-shadow: 0px 0px 12px rgba(108,211,247,0.2);
+        }
+        
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: #031427;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: #3e484d;
+          border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: #879298;
+        }
+        
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: #3e484d #031427;
         }
       `}</style>
     </div>
