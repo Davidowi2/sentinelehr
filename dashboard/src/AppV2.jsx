@@ -1355,7 +1355,17 @@ export default function AppV2() {
           {/* Top: Logo */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <img src="/sentinelehr-logo.png" className="w-8 h-8 object-contain" alt="SentinelEHR" />
+              <div style={{
+                width: '40px',
+                height: '40px',
+                background: '#0891b2',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '24px' }}>security</span>
+              </div>
               <span style={{ fontWeight: '700', fontSize: '20px', color: '#38bdf8' }}>SentinelEHR</span>
             </div>
             <div style={{ 
@@ -1364,7 +1374,7 @@ export default function AppV2() {
               textTransform: 'uppercase', 
               color: '#879298',
               fontWeight: '600',
-              marginLeft: '44px'
+              marginLeft: '52px'
             }}>Healthcare Insider Risk</div>
           </div>
 
@@ -1404,7 +1414,7 @@ export default function AppV2() {
                       width: '100%',
                       padding: '12px 14px 12px 46px',
                       background: '#000f21',
-                      border: '1px solid #3e484d',
+                      border: '1px solid #334155',
                       borderRadius: '8px',
                       color: '#d3e4fe',
                       fontFamily: "'JetBrains Mono', monospace",
@@ -1418,7 +1428,7 @@ export default function AppV2() {
                       e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
                     }}
                     onBlur={e => {
-                      e.target.style.borderColor = '#3e484d';
+                      e.target.style.borderColor = '#334155';
                       e.target.style.boxShadow = 'none';
                     }}
                   />
@@ -1454,7 +1464,7 @@ export default function AppV2() {
                       width: '100%',
                       padding: '12px 14px 12px 46px',
                       background: '#000f21',
-                      border: '1px solid #3e484d',
+                      border: '1px solid #334155',
                       borderRadius: '8px',
                       color: '#d3e4fe',
                       fontFamily: "'JetBrains Mono', monospace",
@@ -1468,7 +1478,7 @@ export default function AppV2() {
                       e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
                     }}
                     onBlur={e => {
-                      e.target.style.borderColor = '#3e484d';
+                      e.target.style.borderColor = '#334155';
                       e.target.style.boxShadow = 'none';
                     }}
                   />
@@ -1588,8 +1598,8 @@ export default function AppV2() {
             {/* Spinning Dashed Ring */}
             <div style={{
               position: 'absolute',
-              width: '280px',
-              height: '280px',
+              width: '360px',
+              height: '360px',
               border: '2px dashed rgba(108,211,247,0.2)',
               borderRadius: '50%',
               top: '50%',
@@ -1600,8 +1610,8 @@ export default function AppV2() {
 
             {/* Shield Circle */}
             <div style={{
-              width: '256px',
-              height: '256px',
+              width: '320px',
+              height: '320px',
               background: '#1b2b3f',
               border: '1px solid rgba(108,211,247,0.3)',
               borderRadius: '50%',
@@ -1613,7 +1623,7 @@ export default function AppV2() {
             }}>
               {/* Shield Icon */}
               <span className="material-symbols-outlined" style={{ 
-                fontSize: '120px', 
+                fontSize: '160px', 
                 color: '#38bdf8',
                 fontVariationSettings: "'FILL' 1"
               }}>shield_with_heart</span>
@@ -1632,6 +1642,7 @@ export default function AppV2() {
             gap: '16px', 
             maxWidth: '420px',
             width: '100%',
+            marginTop: '32px',
             marginBottom: '32px',
             zIndex: 1
           }}>
@@ -1642,8 +1653,8 @@ export default function AppV2() {
               borderRadius: '12px', 
               padding: '20px'
             }}>
-              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>System Uptime</div>
-              <div style={{ fontSize: '32px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>System Uptime</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
               <div style={{ width: '100%', height: '4px', background: '#1e293b', borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{ width: '99%', height: '100%', background: '#38bdf8' }} />
               </div>
@@ -1656,8 +1667,8 @@ export default function AppV2() {
               borderRadius: '12px', 
               padding: '20px'
             }}>
-              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Latency</div>
-              <div style={{ fontSize: '32px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Latency</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '20px' }}>
                 {[40, 60, 45, 70, 55, 80, 65, 50].map((h, i) => (
                   <div key={i} style={{ flex: 1, height: `${h}%`, background: '#38bdf8', borderRadius: '2px' }} />
@@ -1677,18 +1688,18 @@ export default function AppV2() {
               alignItems: 'center'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
-                <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>Events Monitored</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Events Monitored</div>
               </div>
               <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
-                <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>PHI Stored</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>PHI Stored</div>
               </div>
               <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
-                <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>Alert Precision</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Alert Precision</div>
               </div>
             </div>
           </div>
@@ -2760,11 +2771,38 @@ export default function AppV2() {
                 </div>
                 <div style={{
                   marginLeft: 'auto',
-                  fontSize: '12px',
-                  color: '#879298',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: '600'
-                }}>{cases.length} of {casesTotal}</div>
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '24px'
+                }}>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#879298',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontWeight: '600'
+                  }}>{cases.length} of {casesTotal}</div>
+                  <button 
+                    style={{ 
+                      background: '#0891b2', 
+                      color: '#fff', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      padding: '8px 16px', 
+                      fontSize: '13px', 
+                      fontWeight: '600', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#0e7490'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#0891b2'}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+                    Create New Case
+                  </button>
+                </div>
               </div> 
         
               <div style={{
@@ -2777,7 +2815,7 @@ export default function AppV2() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
                   <thead> 
                     <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Case ID</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298', minWidth: '140px' }}>Case ID</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Employee</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Priority</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Status</th> 
@@ -2797,7 +2835,7 @@ export default function AppV2() {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
                           <span style={{
@@ -2818,7 +2856,10 @@ export default function AppV2() {
                               width: '8px', 
                               height: '8px', 
                               borderRadius: '50%', 
-                              background: c.status === 'Open' ? '#14b8a6' : c.status === 'Resolved' ? '#10B981' : '#f97316',
+                              background: c.status === 'Open' ? '#14b8a6' : 
+                                         (c.status === 'Under Investigation' || c.status === 'Pending HR' || c.status === 'In Review') ? '#f97316' : 
+                                         c.status === 'Escalated' ? '#f43f5e' : 
+                                         c.status === 'Resolved' ? '#64748b' : '#f97316',
                               animation: c.status === 'Open' ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
                             }} /> 
                             {c.status} 
