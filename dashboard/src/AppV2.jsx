@@ -971,23 +971,26 @@ export default function AppV2() {
   };
 
   const handleGenerateReport = async (caseId) => {
-    console.log('Generate Report clicked for case:', caseId);
-    setGeneratingReport(true);
+    console.log('Report button clicked for case:', caseId);
     try {
+      const token = localStorage.getItem('sentinel_token');
       const res = await fetch(`${API_BASE}/export/case/${caseId}`, {
-        headers: authHeaders()
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
-        const data = await res.json();
-        console.log('Report data received:', data);
-        setCaseReport(data);
-      } else {
-        console.error('Report generation failed with status:', res.status);
+      console.log('Response status:', res.status);
+      if (!res.ok) {
+        const err = await res.text();
+        console.error('API error:', err);
+        alert('Failed to load report: ' + err);
+        return;
       }
-    } catch (e) {
-      console.error('Report generation failed', e);
+      const data = await res.json();
+      console.log('Report data received:', data);
+      setCaseReport(data);
+    } catch (err) {
+      console.error('Report fetch failed:', err);
+      alert('Error: ' + err.message);
     }
-    setGeneratingReport(false);
   };
   
   useEffect(() => { 
