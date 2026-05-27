@@ -2381,72 +2381,181 @@ export default function AppV2() {
         
           {activeView === 'cases' && ( 
             <div> 
-              <FilterBar count={cases.length} total={casesTotal}> 
-                <FilterLabel label="Status"> 
-                  <Select value={caseStatusFilter} onChange={e => {setCaseStatusFilter(e.target.value); setCasesOffset(0)}}> 
-                    <option value="">All</option> 
-                    <option value="Open">Open</option> 
-                    <option value="Under Investigation">Under Investigation</option> 
-                    <option value="Pending HR">Pending HR</option> 
-                    <option value="Resolved">Resolved</option> 
-                  </Select> 
-                </FilterLabel> 
-                <FilterLabel label="Priority"> 
-                  <Select value={casePriorityFilter} onChange={e => {setCasePriorityFilter(e.target.value); setCasesOffset(0)}}> 
-                    <option value="">All</option> 
-                    <option value="Critical">Critical</option> 
-                    <option value="High">High</option> 
-                    <option value="Medium">Medium</option> 
-                  </Select> 
-                </FilterLabel> 
-              </FilterBar> 
+              <div style={{
+                background: '#0b1c30',
+                border: '1px solid #3e484d',
+                borderRadius: '12px',
+                padding: '20px 24px',
+                marginBottom: '24px',
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: '20px'
+              }}>
+                <div style={{ flex: 1, display: 'flex', gap: '20px' }}>
+                  <div>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: '#879298',
+                      marginBottom: '8px'
+                    }}>STATUS</div>
+                    <select 
+                      value={caseStatusFilter} 
+                      onChange={e => {setCaseStatusFilter(e.target.value); setCasesOffset(0)}}
+                      style={{
+                        background: '#000f21',
+                        border: '1px solid #3e484d',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '13px',
+                        color: '#d3e4fe',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        outline: 'none',
+                        minWidth: '200px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">All</option> 
+                      <option value="Open">Open</option> 
+                      <option value="Under Investigation">Under Investigation</option> 
+                      <option value="Pending HR">Pending HR</option> 
+                      <option value="Resolved">Resolved</option> 
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: '#879298',
+                      marginBottom: '8px'
+                    }}>PRIORITY</div>
+                    <select 
+                      value={casePriorityFilter} 
+                      onChange={e => {setCasePriorityFilter(e.target.value); setCasesOffset(0)}}
+                      style={{
+                        background: '#000f21',
+                        border: '1px solid #3e484d',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '13px',
+                        color: '#d3e4fe',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        outline: 'none',
+                        minWidth: '160px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">All</option> 
+                      <option value="Critical">Critical</option> 
+                      <option value="High">High</option> 
+                      <option value="Medium">Medium</option> 
+                    </select>
+                  </div>
+                </div>
+                <div style={{
+                  marginLeft: 'auto',
+                  fontSize: '12px',
+                  color: '#879298',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: '600'
+                }}>{cases.length} of {casesTotal}</div>
+              </div> 
         
-              <TableCard> 
+              <div style={{
+                background: '#0b1c30',
+                border: '1px solid #3e484d',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                marginBottom: '24px'
+              }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
                   <thead> 
-                    <tr style={{ background: 'var(--bg-elevated)' }}> 
-                      <TH>Case ID</TH> 
-                      <TH>Employee</TH> 
-                      <TH>Priority</TH> 
-                      <TH>Status</TH> 
-                      <TH>Days Open</TH> 
-                      <TH>Alerts</TH> 
-                      <TH>Window</TH> 
-                      <TH>Assigned</TH> 
-                      <TH>Report</TH>
+                    <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Case ID</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Employee</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Priority</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Status</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Days Open</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Alerts</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Window</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Assigned</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Report</th>
                     </tr> 
                   </thead> 
                   <tbody> 
-                    {casesLoading ? <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading cases...</td></tr> : 
+                    {casesLoading ? <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#879298' }}>Loading cases...</td></tr> : 
                      cases.map(c => ( 
-                      <tr key={c.case_id} style={{ borderBottom: '1px solid var(--border)' }}> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', cursor: 'pointer' }}><SeverityBadge severity={c.priority} /></td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', cursor: 'pointer' }}> 
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}> 
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: c.status === 'Open' ? 'var(--critical)' : c.status === 'Resolved' ? 'var(--success)' : 'var(--warning)' }} /> 
+                      <tr 
+                        key={c.case_id} 
+                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      > 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            background: c.priority === 'Critical' ? '#f43f5e1a' : c.priority === 'High' ? '#f973161a' : '#3b82f61a',
+                            color: c.priority === 'Critical' ? '#f43f5e' : c.priority === 'High' ? '#f97316' : '#3b82f6',
+                            border: `1px solid ${c.priority === 'Critical' ? '#f43f5e33' : c.priority === 'High' ? '#f9731633' : '#3b82f633'}`
+                          }}>{c.priority}</span>
+                        </td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}> 
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}> 
+                            <span style={{ 
+                              width: '8px', 
+                              height: '8px', 
+                              borderRadius: '50%', 
+                              background: c.status === 'Open' ? '#14b8a6' : c.status === 'Resolved' ? '#10B981' : '#f97316',
+                              animation: c.status === 'Open' ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
+                            }} /> 
                             {c.status} 
                           </span> 
                         </td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.days_open || 0}d</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', color: '#bdc8ce', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.days_open || 0}d</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', color: '#bdc8ce', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '11px', color: '#879298', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}> 
                           {new Date(c.window_start).toLocaleDateString()}<br/> 
                           to {new Date(c.window_end).toLocaleDateString()} 
                         </td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer' }}>{c.assigned_to_name || '—'}</td> 
-                        <td style={{ padding: '12px 16px' }}>
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '12px', color: '#879298', cursor: 'pointer' }}>{c.assigned_to_name || '—'}</td> 
+                        <td style={{ padding: '14px 20px' }}>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleGenerateReport(c.case_id); }}
                             style={{ 
-                              background: 'transparent', border: '1px solid var(--border)', 
-                              color: 'var(--text-secondary)', borderRadius: '4px', 
-                              padding: '4px 8px', cursor: 'pointer', fontSize: '11px',
-                              display: 'flex', alignItems: 'center', gap: '4px'
+                              background: 'transparent', 
+                              border: '1px solid #3e484d', 
+                              color: '#bdc8ce', 
+                              borderRadius: '6px', 
+                              padding: '6px 12px', 
+                              cursor: 'pointer', 
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '6px',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = '#6cd3f7';
+                              e.currentTarget.style.color = '#6cd3f7';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = '#3e484d';
+                              e.currentTarget.style.color = '#bdc8ce';
                             }}
                           >
-                            <FileText size={12} />
+                            <FileText size={14} />
                             Report
                           </button>
                         </td>
@@ -2455,12 +2564,12 @@ export default function AppV2() {
                   </tbody> 
                 </table> 
                 {casesTotal > LIMIT && ( 
-                  <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px' }}> 
-                    <button onClick={() => setCasesOffset(Math.max(0, casesOffset - LIMIT))} disabled={casesOffset === 0} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: casesOffset === 0 ? 0.5 : 1 }}>Previous</button> 
-                    <button onClick={() => setCasesOffset(casesOffset + LIMIT)} disabled={casesOffset + LIMIT >= casesTotal} style={{ padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer', opacity: casesOffset + LIMIT >= casesTotal ? 0.5 : 1 }}>Next</button> 
+                  <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(62,72,77,0.3)', display: 'flex', gap: '12px', justifyContent: 'center' }}> 
+                    <button onClick={() => setCasesOffset(Math.max(0, casesOffset - LIMIT))} disabled={casesOffset === 0} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset === 0 ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Previous</button> 
+                    <button onClick={() => setCasesOffset(casesOffset + LIMIT)} disabled={casesOffset + LIMIT >= casesTotal} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset + LIMIT >= casesTotal ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Next</button> 
                   </div> 
                 )} 
-              </TableCard> 
+              </div> 
         
               {selectedCase && ( 
                 <Drawer title="Case Investigation" id={selectedCase} onClose={() => setSelectedCase(null)} loading={!caseDetail} subtitle={caseDetail && <SeverityBadge severity={caseDetail.priority} />}> 
