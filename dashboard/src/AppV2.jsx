@@ -1213,12 +1213,12 @@ export default function AppV2() {
       chartInstanceRef.current.destroy() 
     } 
     const ctx = chartRef.current.getContext('2d') 
-    const labels = digest.slice(-180).map(d => { 
+    const last180 = [...digest].slice(-180).reverse()
+    const labels = last180.map(d => { 
       const date = new Date(d.alert_date) 
       return date.toLocaleDateString('en-US', 
         {month:'short', day:'numeric'}) 
     }) 
-    const last180 = digest.slice(-180) 
     chartInstanceRef.current = new window.Chart(ctx, { 
       type: 'line', 
       data: { 
@@ -1253,17 +1253,7 @@ export default function AppV2() {
             tension: 0.3, 
             pointRadius: 0, 
             pointHoverRadius: 4 
-          }, 
-          { 
-            label:'Threshold', 
-            data: last180.map(() => 3), 
-            borderColor: 'rgba(135,146,152,0.3)', 
-            borderWidth: 1, 
-            borderDash: [6,4], 
-            pointRadius: 0, 
-            fill: false, 
-            tension: 0 
-          } 
+          }
         ] 
       }, 
       options: { 
