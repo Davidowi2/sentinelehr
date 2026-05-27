@@ -1325,129 +1325,150 @@ export default function AppV2() {
         height: '100vh', 
         width: '100vw', 
         overflow: 'hidden',
-        fontFamily: "'DM Sans', sans-serif",
-        background: 'var(--bg-app)'
+        fontFamily: "'DM Sans', sans-serif"
       }}>
         {/* LEFT PANEL */}
         <div style={{ 
           width: '45%', 
-          background: 'var(--bg-surface)', 
+          background: '#000f21', 
           display: 'flex', 
           flexDirection: 'column', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          padding: '40px',
-          borderRight: '1px solid var(--border)'
+          justifyContent: 'space-between',
+          padding: '48px',
+          borderRight: '1px solid #3e484d'
         }}>
-          <div style={{ width: '100%', maxWidth: '380px' }}>
-            {/* Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
-              <div style={{ background: 'var(--accent-subtle)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Shield size={24} color="var(--accent)" fill="var(--accent)" fillOpacity="0.2" />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: '800', fontSize: '22px', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>SentinelEHR</span>
-                <span style={{ 
-                  fontSize: '9px', 
-                  letterSpacing: '0.15em', 
-                  textTransform: 'uppercase', 
-                  color: 'var(--text-muted)',
-                  fontWeight: '700'
-                }}>Healthcare Insider Risk</span>
-              </div>
+          {/* Top: Logo */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <img src="/sentinelehr-logo.png" className="w-8 h-8 object-contain" alt="SentinelEHR" />
+              <span style={{ fontWeight: '700', fontSize: '20px', color: '#6cd3f7' }}>SentinelEHR</span>
             </div>
+            <div style={{ 
+              fontSize: '10px', 
+              letterSpacing: '0.15em', 
+              textTransform: 'uppercase', 
+              color: '#879298',
+              fontWeight: '600',
+              marginLeft: '44px'
+            }}>Healthcare Insider Risk</div>
+          </div>
 
-            <h2 style={{ fontSize: '32px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '12px', letterSpacing: '-0.03em' }}>Welcome back</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', fontSize: '15px' }}>Sign in to your compliance dashboard</p>
+          {/* Middle: Login Form */}
+          <div style={{ width: '100%', maxWidth: '420px' }}>
+            <h2 style={{ fontSize: '40px', fontWeight: '800', color: '#d3e4fe', marginBottom: '12px', letterSpacing: '-0.02em' }}>Welcome back</h2>
+            <p style={{ color: '#bdc8ce', marginBottom: '40px', fontSize: '15px', lineHeight: '1.6' }}>Enter your credentials to access the secure EHR terminal.</p>
 
             <form onSubmit={handleLogin}>
+              {/* Username Field */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ 
                   display: 'block', 
-                  fontSize: '11px', 
-                  fontWeight: '700', 
+                  fontSize: '10px', 
+                  fontWeight: '600', 
                   textTransform: 'uppercase', 
-                  color: 'var(--text-muted)', 
+                  color: '#879298', 
                   marginBottom: '10px',
-                  letterSpacing: '0.08em'
-                }}>Username</label>
-                <input 
-                  type="text" 
-                  value={loginForm.username}
-                  onChange={e => setLoginForm({...loginForm, username: e.target.value})}
-                  required
-                  autoComplete="off"
-                  style={{
-                    width: '100%',
-                    padding: '14px 18px',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '10px',
-                    color: 'var(--text-primary)',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onFocus={e => {
-                    e.target.style.borderColor = 'var(--accent)';
-                    e.target.style.boxShadow = '0 0 0 4px var(--accent-subtle)';
-                  }}
-                  onBlur={e => {
-                    e.target.style.borderColor = 'var(--border)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
+                  letterSpacing: '0.1em'
+                }}>Corporate Email</label>
+                <div style={{ position: 'relative' }}>
+                  <span className="material-symbols-outlined" style={{ 
+                    position: 'absolute', 
+                    left: '14px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#879298',
+                    fontSize: '20px'
+                  }}>mail</span>
+                  <input 
+                    type="text" 
+                    value={loginForm.username}
+                    onChange={e => setLoginForm({...loginForm, username: e.target.value})}
+                    required
+                    autoComplete="off"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px 12px 46px',
+                      background: '#000f21',
+                      border: '1px solid #3e484d',
+                      borderRadius: '8px',
+                      color: '#d3e4fe',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onFocus={e => {
+                      e.target.style.borderColor = '#6cd3f7';
+                      e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
+                    }}
+                    onBlur={e => {
+                      e.target.style.borderColor = '#3e484d';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
               </div>
 
+              {/* Password Field */}
               <div style={{ marginBottom: '32px' }}>
                 <label style={{ 
                   display: 'block', 
-                  fontSize: '11px', 
-                  fontWeight: '700', 
+                  fontSize: '10px', 
+                  fontWeight: '600', 
                   textTransform: 'uppercase', 
-                  color: 'var(--text-muted)', 
+                  color: '#879298', 
                   marginBottom: '10px',
-                  letterSpacing: '0.08em'
+                  letterSpacing: '0.1em'
                 }}>Password</label>
-                <input 
-                  type="password" 
-                  value={loginForm.password}
-                  onChange={e => setLoginForm({...loginForm, password: e.target.value})}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '14px 18px',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '10px',
-                    color: 'var(--text-primary)',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onFocus={e => {
-                    e.target.style.borderColor = 'var(--accent)';
-                    e.target.style.boxShadow = '0 0 0 4px var(--accent-subtle)';
-                  }}
-                  onBlur={e => {
-                    e.target.style.borderColor = 'var(--border)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <span className="material-symbols-outlined" style={{ 
+                    position: 'absolute', 
+                    left: '14px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#879298',
+                    fontSize: '20px'
+                  }}>lock</span>
+                  <input 
+                    type="password" 
+                    value={loginForm.password}
+                    onChange={e => setLoginForm({...loginForm, password: e.target.value})}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px 12px 46px',
+                      background: '#000f21',
+                      border: '1px solid #3e484d',
+                      borderRadius: '8px',
+                      color: '#d3e4fe',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onFocus={e => {
+                      e.target.style.borderColor = '#6cd3f7';
+                      e.target.style.boxShadow = '0 0 0 1px rgba(108,211,247,0.2)';
+                    }}
+                    onBlur={e => {
+                      e.target.style.borderColor = '#3e484d';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
               </div>
 
+              {/* Error Message */}
               {loginError && (
                 <div style={{ 
                   padding: '14px 18px', 
-                  background: 'var(--critical-bg)', 
-                  border: '1px solid rgba(225,29,72,0.2)', 
-                  borderRadius: '10px', 
-                  color: 'var(--critical)', 
-                  fontSize: '14px', 
+                  background: 'rgba(244,63,94,0.1)', 
+                  border: '1px solid rgba(244,63,94,0.2)', 
+                  borderRadius: '8px', 
+                  color: '#f43f5e', 
+                  fontSize: '13px', 
                   marginBottom: '24px',
                   display: 'flex',
                   alignItems: 'center',
@@ -1458,152 +1479,217 @@ export default function AppV2() {
                 </div>
               )}
 
+              {/* Sign In Button */}
               <button 
                 type="submit" 
                 disabled={loggingIn}
                 style={{
                   width: '100%',
                   padding: '16px',
-                  background: 'var(--accent)',
+                  background: '#269dbe',
                   color: '#FFFFFF',
                   border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: '800',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '700',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
+                  letterSpacing: '0.15em',
                   cursor: loggingIn ? 'default' : 'pointer',
                   opacity: loggingIn ? 0.7 : 1,
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 4px 12px rgba(225,29,72,0.2)'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
                 }}
-                onMouseEnter={e => !loggingIn && (e.target.style.background = 'var(--accent-hover)')}
-                onMouseLeave={e => !loggingIn && (e.target.style.background = 'var(--accent)')}
+                onMouseEnter={e => !loggingIn && (e.target.style.background = '#0e7490')}
+                onMouseLeave={e => !loggingIn && (e.target.style.background = '#269dbe')}
               >
                 {loggingIn ? 'Authenticating...' : 'Sign In'}
+                {!loggingIn && <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_forward</span>}
               </button>
             </form>
+          </div>
 
-            <button 
-              onClick={toggleTheme}
-              style={{
-                marginTop: '40px',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--bg-elevated)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--text-muted)';
-              }}
-            >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
-            </button>
+          {/* Bottom: HIPAA Badge */}
+          <div style={{ 
+            border: '1px solid rgba(62,72,77,0.3)', 
+            background: '#0b1c30',
+            borderRadius: '8px',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px'
+          }}>
+            <span className="material-symbols-outlined" style={{ color: '#6cd3f7', fontSize: '24px' }}>verified_user</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>HIPAA §164.312(b) COMPLIANT</div>
+              </div>
+              <div style={{ width: '1px', height: '24px', background: '#3e484d' }} />
+              <div style={{ fontSize: '10px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>ENCRYPTION: AES-256-GCM</div>
+            </div>
           </div>
         </div>
 
         {/* RIGHT PANEL */}
         <div style={{ 
           flex: 1, 
-          background: 'linear-gradient(135deg, #0D1525, #1A2235, #0A1628)',
+          background: '#031427',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          color: '#FFFFFF',
+          overflow: 'hidden',
           padding: '60px'
         }}>
-          {/* Grid Overlay */}
+          {/* Dot Grid Background */}
           <div style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage: `linear-gradient(rgba(225,29,72,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(225,29,72,0.03) 1px, transparent 1px)`,
+            backgroundImage: 'radial-gradient(circle at 2px 2px, #3e484d 1px, transparent 0)',
             backgroundSize: '40px 40px',
+            opacity: 0.2,
             pointerEvents: 'none'
           }} />
 
-          {/* Shield Illustration */}
-          <div style={{ position: 'relative', width: '160px', height: '180px', marginBottom: '48px' }}>
-            <svg width="160" height="180" viewBox="0 0 160 180" fill="none">
-              <defs>
-                <linearGradient id="shieldGrad" x1="80" y1="0" x2="80" y2="180" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#1E293B" />
-                  <stop offset="1" stopColor="#0F172A" />
-                </linearGradient>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
-              <path d="M80 0L10 30V80C10 130 40 165 80 180C120 165 150 130 150 80V30L80 0Z" fill="url(#shieldGrad)" stroke="#1E2D45" strokeWidth="2"/>
-              <path d="M55 90 L72 107 L105 74" stroke="#E11D48" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow)"/>
-            </svg>
-            <div style={{ 
-              position: 'absolute', 
-              bottom: '-20px', 
-              left: '50%', 
-              transform: 'translateX(-50%)',
-              width: '120px', 
-              height: '10px', 
-              background: 'rgba(0,0,0,0.3)', 
-              borderRadius: '50%', 
-              filter: 'blur(8px)' 
+          {/* Teal Glow Blob Behind Shield */}
+          <div style={{
+            position: 'absolute',
+            width: '400px',
+            height: '400px',
+            background: 'rgba(108,211,247,0.2)',
+            filter: 'blur(80px)',
+            borderRadius: '50%',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none'
+          }} />
+
+          {/* Shield Circle with Animation */}
+          <div style={{ position: 'relative', marginBottom: '48px', zIndex: 1 }}>
+            {/* Spinning Dashed Ring */}
+            <div style={{
+              position: 'absolute',
+              width: '280px',
+              height: '280px',
+              border: '2px dashed rgba(108,211,247,0.2)',
+              borderRadius: '50%',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              animation: 'spin 20s linear infinite'
             }} />
+
+            {/* Shield Circle */}
+            <div style={{
+              width: '256px',
+              height: '256px',
+              background: '#1b2b3f',
+              border: '1px solid rgba(108,211,247,0.3)',
+              borderRadius: '50%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative'
+            }}>
+              {/* Shield Icon */}
+              <span className="material-symbols-outlined" style={{ 
+                fontSize: '120px', 
+                color: '#6cd3f7',
+                fontVariationSettings: "'FILL' 1"
+              }}>shield_with_heart</span>
+
+              {/* Pulse Lines */}
+              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(108,211,247,0.4)', top: '25%', animation: 'pulse 2s infinite' }} />
+              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(108,211,247,0.4)', top: '50%', animation: 'pulse 2s infinite', animationDelay: '0.3s' }} />
+              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(108,211,247,0.4)', top: '75%', animation: 'pulse 2s infinite', animationDelay: '0.6s' }} />
+            </div>
           </div>
 
-          <h3 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '16px', textAlign: 'center', letterSpacing: '-0.02em' }}>Healthcare Insider Risk Intelligence</h3>
-          <p style={{ 
-            fontSize: '15px', 
-            color: '#94A3B8', 
-            textAlign: 'center', 
-            maxWidth: '440px', 
-            lineHeight: '1.7',
-            marginBottom: '56px'
-          }}>Real-time behavioral monitoring for Epic EHR. Detect threats before they become breaches.</p>
-
-          <div style={{ display: 'flex', gap: '56px', textAlign: 'center', marginBottom: '48px' }}>
-            <div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>325K</div>
-              <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>Events Monitored</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>0</div>
-              <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>PHI Stored</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', color: 'var(--accent)' }}>86%</div>
-              <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '6px' }}>Alert Precision</div>
-            </div>
-          </div>
-
+          {/* Bento Grid Stats */}
           <div style={{ 
-            padding: '8px 20px',
-            border: '1px solid rgba(225,29,72,0.3)',
-            borderRadius: '30px',
-            color: 'var(--accent)',
-            fontSize: '12px',
-            fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: '700',
-            letterSpacing: '0.05em',
-            background: 'rgba(225,29,72,0.05)'
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '16px', 
+            maxWidth: '420px',
+            width: '100%',
+            marginBottom: '32px',
+            zIndex: 1
           }}>
-            HIPAA §164.312(b) COMPLIANT
+            {/* Card 1: System Uptime */}
+            <div style={{ 
+              background: 'rgba(11,28,48,0.6)', 
+              border: '1px solid #3e484d', 
+              borderRadius: '12px', 
+              padding: '20px'
+            }}>
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>System Uptime</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
+              <div style={{ width: '100%', height: '4px', background: '#1e293b', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: '99%', height: '100%', background: '#6cd3f7' }} />
+              </div>
+            </div>
+
+            {/* Card 2: Latency */}
+            <div style={{ 
+              background: 'rgba(11,28,48,0.6)', 
+              border: '1px solid #3e484d', 
+              borderRadius: '12px', 
+              padding: '20px'
+            }}>
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Latency</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '20px' }}>
+                {[40, 60, 45, 70, 55, 80, 65, 50].map((h, i) => (
+                  <div key={i} style={{ flex: 1, height: `${h}%`, background: '#6cd3f7', borderRadius: '2px' }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Card 3: Full Width Stats */}
+            <div style={{ 
+              gridColumn: '1 / -1',
+              background: 'rgba(11,28,48,0.6)', 
+              border: '1px solid #3e484d', 
+              borderRadius: '12px', 
+              padding: '20px',
+              display: 'flex',
+              justifyContent: 'space-around',
+              alignItems: 'center'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
+                <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>Events Monitored</div>
+              </div>
+              <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
+                <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>PHI Stored</div>
+              </div>
+              <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#6cd3f7', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
+                <div style={{ fontSize: '10px', color: '#879298', marginTop: '4px' }}>Alert Precision</div>
+              </div>
+            </div>
           </div>
+
+          {/* Bottom-right Atmospheric Glow */}
+          <div style={{
+            position: 'absolute',
+            bottom: '-100px',
+            right: '-100px',
+            width: '500px',
+            height: '500px',
+            background: 'rgba(108,211,247,0.1)',
+            filter: 'blur(120px)',
+            borderRadius: '50%',
+            pointerEvents: 'none'
+          }} />
         </div>
       </div>
     );
