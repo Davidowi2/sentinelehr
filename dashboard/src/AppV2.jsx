@@ -918,6 +918,7 @@ export default function AppV2() {
   const [caseReport, setCaseReport] = useState(null)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [exportingAlerts, setExportingAlerts] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   
   const LIMIT = 50 
 
@@ -1839,7 +1840,7 @@ export default function AppV2() {
         {/* Bottom Actions */}
         <div style={{ padding: '8px 0', borderTop: '1px solid #3e484d' }}>
           <button 
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             style={{
               width: '100%',
               display: 'flex',
@@ -3018,6 +3019,87 @@ export default function AppV2() {
       </footer>
 
       <CaseReportModal report={caseReport} onClose={() => setCaseReport(null)} />
+
+      {showLogoutConfirm && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #3e484d',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              background: 'rgba(244,63,94,0.1)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px'
+            }}>
+              <span className="material-symbols-outlined" style={{ color: '#f43f5e', fontSize: '32px' }}>warning</span>
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#d3e4fe', marginBottom: '12px' }}>Sign out of SentinelEHR?</h3>
+            <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '32px' }}>Any unsaved investigation notes will be lost.</p>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <button 
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #3e484d',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  handleLogout();
+                  setShowLogoutConfirm(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#f43f5e',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#b91c1c'}
+                 onMouseLeave={e => e.currentTarget.style.background = '#f43f5e'}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse {
