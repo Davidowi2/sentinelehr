@@ -586,19 +586,6 @@ const SettingsView = () => (
       </div>
     </SettingsSection>
 
-    <SettingsSection title="Notification Settings" icon={<Mail size={20} />}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600' }}>Email Notifications</div>
-          <div style={{ fontSize: '11px', color: 'var(--accent)' }}>Email notifications require configuration — contact support</div>
-        </div>
-        <div style={{ width: '40px', height: '20px', background: 'var(--text-muted)', borderRadius: '20px', position: 'relative', opacity: 0.4, cursor: 'not-allowed' }}>
-          <div style={{ position: 'absolute', left: '2px', top: '2px', width: '16px', height: '16px', background: '#fff', borderRadius: '50%' }} />
-        </div>
-      </div>
-      <SettingsField label="Notification Frequency" value="Immediate" type="select" disabled />
-    </SettingsSection>
-
     <SettingsSection title="Account" icon={<User size={20} />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         <SettingsField label="Username" value="demo" disabled />
