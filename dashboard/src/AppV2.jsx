@@ -2481,6 +2481,35 @@ export default function AppV2() {
                         </div>
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Explanation</div> 
                         <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', background: 'var(--bg-elevated)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>{alertDetail.explanation}</div> 
+                        <button 
+                          onClick={() => {
+                            setInvestigateId(alertDetail.emp_id);
+                            setActiveView('investigate');
+                            setSelectedAlert(null);
+                          }}
+                          style={{
+                            marginTop: '16px',
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '10px',
+                            background: '#0f172a',
+                            border: '1px solid #38bdf8',
+                            color: '#38bdf8',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.1)'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#0f172a'}
+                        >
+                          <Search size={16} />
+                          Investigate Employee
+                        </button>
                       </div> 
                       <div> 
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div> 
