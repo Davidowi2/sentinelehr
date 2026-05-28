@@ -583,7 +583,7 @@ const SettingsView = () => (
 
     <SettingsSection title="Alert Thresholds" icon={<AlertTriangle size={20} />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-        <SettingsField label="Critical Threshold" value="0.7" subtext="Contact support to adjust thresholds" disabled />
+        <SettingsField label="Critical Threshold" value="0.7" disabled />
         <SettingsField label="High Threshold" value="0.4" disabled />
         <SettingsField label="Medium Threshold" value="0.2" disabled />
       </div>
@@ -1668,7 +1668,7 @@ export default function AppV2() {
           {/* Bento Grid Stats */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
+            gridTemplateColumns: '1fr', 
             gap: '16px', 
             maxWidth: '420px',
             width: '100%',
@@ -1676,39 +1676,8 @@ export default function AppV2() {
             marginBottom: '32px',
             zIndex: 1
           }}>
-            {/* Card 1: System Uptime */}
-            <div style={{ 
-              background: 'rgba(11,28,48,0.6)', 
-              border: '1px solid #3e484d', 
-              borderRadius: '12px', 
-              padding: '20px'
-            }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>System Uptime</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
-              <div style={{ width: '100%', height: '4px', background: '#1e293b', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ width: '99%', height: '100%', background: '#4a9eff' }} />
-              </div>
-            </div>
-
-            {/* Card 2: Latency */}
-            <div style={{ 
-              background: 'rgba(11,28,48,0.6)', 
-              border: '1px solid #3e484d', 
-              borderRadius: '12px', 
-              padding: '20px'
-            }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Latency</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '20px' }}>
-                {[40, 60, 45, 70, 55, 80, 65, 50].map((h, i) => (
-                  <div key={i} style={{ flex: 1, height: `${h}%`, background: '#4a9eff', borderRadius: '2px' }} />
-                ))}
-              </div>
-            </div>
-
             {/* Card 3: Full Width Stats */}
             <div style={{ 
-              gridColumn: '1 / -1',
               background: 'rgba(11,28,48,0.6)', 
               border: '1px solid #3e484d', 
               borderRadius: '12px', 
