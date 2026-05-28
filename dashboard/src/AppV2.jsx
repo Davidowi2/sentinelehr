@@ -877,6 +877,7 @@ export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   const [token, setToken] = useState(localStorage.getItem('sentinel_token') || null);
   const [userRole, setUserRole] = useState(localStorage.getItem('sentinel_role') || null);
+  const [username, setUsername] = useState(localStorage.getItem('sentinel_user') || '');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -953,8 +954,10 @@ export default function AppV2() {
         const data = await res.json();
         localStorage.setItem('sentinel_token', data.access_token);
         localStorage.setItem('sentinel_role', data.role);
+        localStorage.setItem('sentinel_user', loginForm.username);
         setToken(data.access_token);
         setUserRole(data.role);
+        setUsername(loginForm.username);
       } else {
         const errData = await res.json().catch(() => ({}));
         setLoginError(errData.detail || 'Incorrect username or password');
@@ -969,8 +972,10 @@ export default function AppV2() {
   const handleLogout = () => {
     localStorage.removeItem('sentinel_token');
     localStorage.removeItem('sentinel_role');
+    localStorage.removeItem('sentinel_user');
     setToken(null);
     setUserRole(null);
+    setUsername('');
   };
 
   const authHeaders = () => ({ 
@@ -1965,7 +1970,7 @@ export default function AppV2() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#d3e4fe' }}>
-                  {loginForm.username || 'User'}
+                  {username || 'User'}
                 </div>
                 <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {userRole === 'compliance_officer' ? 'COMPLIANCE OFFICER' : userRole === 'it_director' ? 'IT DIRECTOR' : userRole === 'admin' ? 'ADMIN' : 'USER'}
@@ -1984,7 +1989,7 @@ export default function AppV2() {
                 fontWeight: '700',
                 fontSize: '14px'
               }}>
-                {(loginForm.username || 'U').charAt(0).toUpperCase()}
+                {(username || 'U').charAt(0).toUpperCase()}
               </div>
             </div>
           </div>
