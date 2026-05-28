@@ -19,7 +19,8 @@ import {
   Download,
   FileText,
   Printer,
-  X
+  X,
+  Plus
 } from 'lucide-react';
 
 const THEMES = {
