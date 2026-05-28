@@ -30,7 +30,6 @@ import {
   Lock,
   ScanSearch,
   ShieldCheck,
-  ShieldHeart,
   AlertOctagon
 } from 'lucide-react';
 
@@ -1435,12 +1434,11 @@ export default function AppV2() {
                   <input 
                     id="corporate-email"
                     name="email"
-                    autoComplete="username"
+                    autoComplete="off"
                     type="text" 
                     value={loginForm.username}
                     onChange={e => setLoginForm({...loginForm, username: e.target.value})}
                     required
-                    autoComplete="off"
                     placeholder="name@company.com"
                     className="login-input bg-[#000f21] text-[#d3e4fe] border-[#334155]"
                     style={{
@@ -1659,7 +1657,7 @@ export default function AppV2() {
               position: 'relative'
             }}>
               {/* Shield Icon */}
-              <ShieldHeart size={80} style={{ 
+              <Shield size={80} style={{ 
                 color: '#4a9eff'
               }} />
 
