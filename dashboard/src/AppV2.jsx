@@ -20,7 +20,18 @@ import {
   FileText,
   Printer,
   X,
-  Plus
+  Plus,
+  ArrowRight,
+  BellRing,
+  Calendar,
+  ClipboardList,
+  Info,
+  LayoutDashboard,
+  Lock,
+  ScanSearch,
+  ShieldCheck,
+  ShieldHeart,
+  AlertOctagon
 } from 'lucide-react';
 
 const THEMES = {
@@ -363,9 +374,9 @@ const InvestigateResults = React.memo(({ results }) => {
           {/* Mini Stat Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
             {[
-              { label: 'Total Alerts', value: totalAlerts, icon: 'notifications' },
-              { label: 'Days Monitored', value: daysMonitored || 1, icon: 'calendar_month' },
-              { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: 'shield' }
+              { label: 'Total Alerts', value: totalAlerts, icon: <Bell size={48} /> },
+              { label: 'Days Monitored', value: daysMonitored || 1, icon: <Calendar size={48} /> },
+              { label: 'Out-of-Panel %', value: `${outOfPanelPct}%`, icon: <Shield size={48} /> }
             ].map(stat => (
               <div key={stat.label} style={{ 
                 background: '#0b1c30', 
@@ -383,17 +394,16 @@ const InvestigateResults = React.memo(({ results }) => {
                     {stat.value}
                   </div>
                 </div>
-                <span className="material-symbols-outlined" style={{ 
+                <div style={{ 
                   position: 'absolute', 
                   right: '12px', 
                   top: '50%', 
                   transform: 'translateY(-50%)',
-                  fontSize: '48px', 
                   color: '#4a9eff',
                   opacity: 0.2
                 }}>
                   {stat.icon}
-                </span>
+                </div>
               </div>
             ))}
           </div>
@@ -712,12 +722,11 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        <span className="material-symbols-outlined" style={{
-          fontSize: '80px',
+        <ScanSearch size={48} style={{
           color: '#4a9eff',
           opacity: 0.3,
           marginBottom: '24px'
-        }}>troubleshoot</span>
+        }} />
         <div style={{
           fontSize: '18px',
           fontWeight: '600',
@@ -1384,7 +1393,7 @@ export default function AppV2() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '24px' }}>security</span>
+                <Shield size={20} style={{ color: '#fff' }} />
               </div>
               <span style={{ fontWeight: '700', fontSize: '20px', color: '#4a9eff' }}>SentinelEHR</span>
             </div>
@@ -1416,14 +1425,13 @@ export default function AppV2() {
                   letterSpacing: '0.1em'
                 }}>Corporate Email</label>
                 <div style={{ position: 'relative' }}>
-                  <span className="material-symbols-outlined" style={{ 
+                  <Mail size={20} style={{ 
                     position: 'absolute', 
                     left: '14px', 
                     top: '50%', 
                     transform: 'translateY(-50%)', 
-                    color: '#879298',
-                    fontSize: '20px'
-                  }}>mail</span>
+                    color: '#879298'
+                  }} />
                   <input 
                     id="corporate-email"
                     name="email"
@@ -1472,14 +1480,13 @@ export default function AppV2() {
                   letterSpacing: '0.1em'
                 }}>Password</label>
                 <div style={{ position: 'relative' }}>
-                  <span className="material-symbols-outlined" style={{ 
+                  <Lock size={20} style={{ 
                     position: 'absolute', 
                     left: '14px', 
                     top: '50%', 
                     transform: 'translateY(-50%)', 
-                    color: '#879298',
-                    fontSize: '20px'
-                  }}>lock</span>
+                    color: '#879298'
+                  }} />
                   <input 
                     id="password"
                     name="password"
@@ -1561,7 +1568,7 @@ export default function AppV2() {
                 onMouseLeave={e => !loggingIn && (e.target.style.background = '#2563eb')}
               >
                 {loggingIn ? 'Authenticating...' : 'Sign In'}
-                {!loggingIn && <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_forward</span>}
+                {!loggingIn && <ArrowRight size={18} />}
               </button>
             </form>
           </div>
@@ -1576,7 +1583,7 @@ export default function AppV2() {
             alignItems: 'center',
             gap: '16px'
           }}>
-            <span className="material-symbols-outlined" style={{ color: '#4a9eff', fontSize: '24px' }}>verified_user</span>
+            <ShieldCheck size={20} style={{ color: '#4a9eff' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>ZERO PHI STORAGE ARCHITECTURE</div>
@@ -1652,11 +1659,9 @@ export default function AppV2() {
               position: 'relative'
             }}>
               {/* Shield Icon */}
-              <span className="material-symbols-outlined" style={{ 
-                fontSize: '160px', 
-                color: '#4a9eff',
-                fontVariationSettings: "'FILL' 1"
-              }}>shield_with_heart</span>
+              <ShieldHeart size={80} style={{ 
+                color: '#4a9eff'
+              }} />
 
               {/* Pulse Lines */}
               <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(74,158,255,0.4)', top: '25%', animation: 'pulse 2s infinite' }} />
@@ -1760,7 +1765,7 @@ export default function AppV2() {
             justifyContent: 'center',
             flexShrink: 0
           }}>
-            <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '24px' }}>shield</span>
+            <Shield size={20} style={{ color: '#fff' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontWeight: '700', fontSize: '18px', color: '#4a9eff', lineHeight: 1 }}>SentinelEHR</span>
@@ -1788,13 +1793,13 @@ export default function AppV2() {
               
               const isActive = activeView === item.id;
               
-              // Map nav items to Material Symbols
+              // Map nav items to Lucide icons
               const iconMap = {
-                'overview': 'dashboard',
-                'alerts': 'notifications_active',
-                'cases': 'assignment',
-                'investigate': 'troubleshoot',
-                'settings': 'settings'
+                'overview': <LayoutDashboard size={18} />,
+                'alerts': <BellRing size={18} />,
+                'cases': <ClipboardList size={18} />,
+                'investigate': <ScanSearch size={18} />,
+                'settings': <Settings size={18} />
               };
               
               return (
@@ -1818,7 +1823,7 @@ export default function AppV2() {
                   onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                   onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: '20px', flexShrink: 0 }}>{iconMap[item.id]}</span>
+                  {iconMap[item.id]}
                   <span style={{ fontSize: '14px', fontWeight: isActive ? '600' : '500' }}>{item.label}</span>
                 </button>
               );
@@ -1849,7 +1854,7 @@ export default function AppV2() {
               onMouseEnter={e => activeView !== 'settings' && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
               onMouseLeave={e => activeView !== 'settings' && (e.currentTarget.style.background = 'transparent')}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', flexShrink: 0 }}>settings</span>
+              <Settings size={18} />
               <span style={{ fontSize: '14px', fontWeight: activeView === 'settings' ? '600' : '500' }}>Settings</span>
             </button>
           </div>
@@ -1874,7 +1879,7 @@ export default function AppV2() {
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>logout</span>
+            <LogOut size={18} />
             <span style={{ fontSize: '14px', fontWeight: '500' }}>Sign Out</span>
           </button>
         </div>
@@ -1906,7 +1911,7 @@ export default function AppV2() {
             width: '320px',
             border: '1px solid #3e484d'
           }}>
-            <span className="material-symbols-outlined" style={{ color: '#879298', fontSize: '20px' }}>search</span>
+            <Search size={20} style={{ color: '#879298' }} />
             <input 
               id="global-search"
               name="global-search"
@@ -1975,24 +1980,21 @@ export default function AppV2() {
                     value: summary?.critical ?? alerts.filter(a => a.adjusted_severity === 'Critical').length, 
                     sub: 'Require immediate action', 
                     color: '#f43f5e',
-                    icon: 'warning',
-                    iconFill: 1
+                    icon: <AlertTriangle size={20} />
                   }, 
                   { 
                     label: 'HIGH RISK', 
                     value: summary?.high ?? alerts.filter(a => a.adjusted_severity === 'High').length, 
                     sub: 'ML-elevated alerts', 
                     color: '#f97316',
-                    icon: 'report',
-                    iconFill: 1
+                    icon: <AlertOctagon size={20} />
                   }, 
                   { 
                     label: 'MEDIUM RISK', 
                     value: summary?.medium ?? alerts.filter(a => a.adjusted_severity === 'Medium').length, 
                     sub: 'Under observation', 
                     color: '#3b82f6',
-                    icon: 'info',
-                    iconFill: 1
+                    icon: <Info size={20} />
                   }, 
                   { 
                     label: 'ML PEAK SCORE', 
@@ -2001,8 +2003,7 @@ export default function AppV2() {
                       : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), 
                     sub: '90-day highest anomaly', 
                     color: '#4a9eff',
-                    icon: 'monitoring',
-                    iconFill: 0
+                    icon: <Activity size={20} />
                   } 
                 ].map((card, idx) => ( 
                   <div 
@@ -2039,16 +2040,9 @@ export default function AppV2() {
                         textTransform: 'uppercase', 
                         color: '#64748b'
                       }}>{card.label}</div>
-                      <span 
-                        className="material-symbols-outlined" 
-                        style={{ 
-                          fontSize: '24px', 
-                          color: card.color,
-                          fontVariationSettings: `'FILL' ${card.iconFill}, 'wght' 400, 'GRAD' 0, 'opsz' 24`
-                        }}
-                      >
+                      <div style={{ color: card.color }}>
                         {card.icon}
-                      </span>
+                      </div>
                     </div>
                     <div style={{ 
                       fontSize: '36px', 
@@ -2866,7 +2860,7 @@ export default function AppV2() {
               justifyContent: 'center',
               margin: '0 auto 24px'
             }}>
-              <span className="material-symbols-outlined" style={{ color: '#f43f5e', fontSize: '32px' }}>warning</span>
+              <AlertTriangle size={20} style={{ color: '#f43f5e' }} />
             </div>
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#d3e4fe', marginBottom: '12px' }}>Sign out of SentinelEHR?</h3>
             <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '32px' }}>Any unsaved investigation notes will be lost.</p>
@@ -2947,7 +2941,7 @@ export default function AppV2() {
               justifyContent: 'center',
               margin: '0 auto 24px'
             }}>
-              <span className="material-symbols-outlined" style={{ color: '#f97316', fontSize: '32px' }}>warning</span>
+              <AlertTriangle size={20} style={{ color: '#f97316' }} />
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#d3e4fe', marginBottom: '12px' }}>Unsaved Changes</h3>
             <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '32px' }}>You have unsaved notes. Close anyway?</p>
@@ -3009,10 +3003,6 @@ export default function AppV2() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
-        }
-        
-        .material-symbols-outlined {
-          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
         
         .login-input::placeholder {
