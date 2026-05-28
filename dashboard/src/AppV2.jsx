@@ -2345,7 +2345,7 @@ export default function AppV2() {
                   color: '#879298',
                   fontFamily: "'JetBrains Mono', monospace",
                   fontWeight: '600'
-                }}>{alerts.length} of {alertsTotal}</div>
+                }}>{alertsOffset + 1}-{Math.min(alertsOffset + alerts.length, alertsTotal)} of {alertsTotal}</div>
               </div>
         
               {/* Table */}
