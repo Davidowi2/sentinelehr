@@ -227,7 +227,7 @@ const Drawer = ({ title, subtitle, id, onClose, children, loading }) => (
             <div style={{ fontSize: '22px', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent)' }}>{id}</div> 
             {subtitle && <div style={{ marginTop: '8px' }}>{subtitle}</div>} 
           </div> 
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><LogOut size={20} /></button> 
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><X size={20} /></button> 
         </div> 
       </div> 
       <div style={{ padding: '24px', flex: 1 }}> 
@@ -920,6 +920,8 @@ export default function AppV2() {
   const [generatingReport, setGeneratingReport] = useState(false)
   const [exportingAlerts, setExportingAlerts] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
+  const [unsavedWarningType, setUnsavedWarningType] = useState(null)
   
   const LIMIT = 50 
 
@@ -976,6 +978,24 @@ export default function AppV2() {
     setToken(null);
     setUserRole(null);
     setUsername('');
+  };
+
+  const handleCloseAlertDrawer = () => {
+    if (alertNote && alertNote.trim().length > 0) {
+      setUnsavedWarningType('alert');
+      setShowUnsavedWarning(true);
+    } else {
+      setSelectedAlert(null);
+    }
+  };
+
+  const handleCloseCaseDrawer = () => {
+    if (caseNote && caseNote.trim().length > 0) {
+      setUnsavedWarningType('case');
+      setShowUnsavedWarning(true);
+    } else {
+      setSelectedCase(null);
+    }
   };
 
   const authHeaders = () => ({ 
@@ -2473,7 +2493,7 @@ export default function AppV2() {
               </div>
         
               {selectedAlert && ( 
-                <Drawer title="Alert Review" id={`ALT-${selectedAlert}`} onClose={() => setSelectedAlert(null)} loading={!alertDetail}> 
+                <Drawer title="Alert Review" id={`ALT-${selectedAlert}`} onClose={handleCloseAlertDrawer} loading={!alertDetail}> 
                   {alertDetail && ( 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}> 
                       <div> 
@@ -2721,7 +2741,7 @@ export default function AppV2() {
               </div> 
         
               {selectedCase && ( 
-                <Drawer title="Case Investigation" id={selectedCase} onClose={() => setSelectedCase(null)} loading={!caseDetail} subtitle={caseDetail && <SeverityBadge severity={caseDetail.priority} />}> 
+                <Drawer title="Case Investigation" id={selectedCase} onClose={handleCloseCaseDrawer} loading={!caseDetail} subtitle={caseDetail && <SeverityBadge severity={caseDetail.priority} />}> 
                   {caseDetail && ( 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}> 
                       <div> 
@@ -2920,6 +2940,89 @@ export default function AppV2() {
                  onMouseLeave={e => e.currentTarget.style.background = '#f43f5e'}
               >
                 Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUnsavedWarning && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #3e484d',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              background: 'rgba(249,115,22,0.1)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px'
+            }}>
+              <span className="material-symbols-outlined" style={{ color: '#f97316', fontSize: '32px' }}>warning</span>
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#d3e4fe', marginBottom: '12px' }}>Unsaved Changes</h3>
+            <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '32px' }}>You have unsaved notes. Close anyway?</p>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <button 
+                onClick={() => setShowUnsavedWarning(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #3e484d',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                No
+              </button>
+              <button 
+                onClick={() => {
+                  if (unsavedWarningType === 'alert') setSelectedAlert(null);
+                  if (unsavedWarningType === 'case') setSelectedCase(null);
+                  setShowUnsavedWarning(false);
+                  setUnsavedWarningType(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#f97316',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#ea580c'}
+                onMouseLeave={e => e.currentTarget.style.background = '#f97316'}
+              >
+                Yes
               </button>
             </div>
           </div>
