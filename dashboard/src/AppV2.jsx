@@ -130,13 +130,14 @@ const NAV_ITEMS = [
 ];
 
 const RULE_DESCRIPTIONS = {
-  'R1': 'Volume Spike',
-  'R2': 'Off-Hours Access',
-  'R3': 'Cross-Department',
-  'R4': 'VIP Record Access',
-  'R7': 'Rapid Access Pattern',
-  'R8': 'Sensitive Record Access',
-  'R_SENSITIVE': 'Sensitive Record Flag'
+  'R1': 'Out-of-panel access',
+  'R2': 'Volume spike',
+  'R3': 'Off-hours access',
+  'R4': 'VIP record accessed',
+  'R6': 'Bulk export detected',
+  'R7': 'Break-glass abuse',
+  'R8': 'Sensitive record — zero tolerance',
+  'R_SENSITIVE': 'Sensitive record snooping'
 };
 
 const SeverityBadge = ({ severity }) => { 
@@ -2497,6 +2498,26 @@ export default function AppV2() {
                   {alertDetail && ( 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}> 
                       <div> 
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Rules Triggered</div> 
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                          {alertDetail.rules_triggered?.split(',').map(r => (
+                            <span 
+                              key={r} 
+                              title={RULE_DESCRIPTIONS[r.trim()] || r}
+                              style={{ 
+                                fontSize: '11px', 
+                                background: 'var(--bg-elevated)', 
+                                border: '1px solid var(--border)', 
+                                padding: '4px 10px', 
+                                borderRadius: '6px', 
+                                color: 'var(--text-secondary)',
+                                cursor: 'help'
+                              }}
+                            >
+                              {r}
+                            </span>
+                          ))}
+                        </div>
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Explanation</div> 
                         <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', background: 'var(--bg-elevated)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>{alertDetail.explanation}</div> 
                       </div> 
