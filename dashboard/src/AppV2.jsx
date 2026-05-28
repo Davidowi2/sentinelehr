@@ -907,6 +907,9 @@ export default function AppV2() {
   const [caseStatusFilter, setCaseStatusFilter] = useState('Open') 
   const [casePriorityFilter, setCasePriorityFilter] = useState('') 
   const [casesOffset, setCasesOffset] = useState(0) 
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState({ alerts: [], cases: [], employees: [] })
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false) 
   const [selectedCase, setSelectedCase] = useState(null) 
   const [caseDetail, setCaseDetail] = useState(null) 
   const [caseNote, setCaseNote] = useState('') 
@@ -929,11 +932,26 @@ export default function AppV2() {
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
+  const searchContainerRef = useRef(null);
 
   useEffect(() => {
     applyTheme(theme);
     localStorage.setItem('sentinel_theme', theme);
   }, [theme]);
+
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setSearchDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Redirect it_director away from investigate tab
   useEffect(() => {
@@ -1191,6 +1209,83 @@ export default function AppV2() {
       setInvestigateResults({ error: "Failed to connect to investigation service." });
     } 
     setInvestigating(false); 
+  };
+
+  const handleLookup = async (id) => {
+    if (!id || !token) return;
+    setInvestigating(true);
+    setInvestigateId(id);
+    try {
+      const res = await fetch(`${API_BASE}/employees/${id}/profile`, {
+        headers: authHeaders()
+      });
+      if (res.ok) {
+        setInvestigateResults(await res.json());
+      } else {
+        setInvestigateResults({ error: "Employee profile not found. Please verify the ID." });
+      }
+    } catch(e) {
+      console.error(e);
+      setInvestigateResults({ error: "Failed to connect to investigation service." });
+    }
+    setInvestigating(false);
+  };
+
+  const handleGlobalSearch = (query) => {
+    setSearchQuery(query);
+    
+    if (!query || query.trim().length < 2) {
+      setSearchResults({ alerts: [], cases: [], employees: [] });
+      setSearchDropdownOpen(false);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    
+    // Search alerts
+    const matchingAlerts = alerts.filter(alert => 
+      String(alert.emp_id).includes(query) ||
+      (alert.rules_triggered && alert.rules_triggered.toLowerCase().includes(lowerQuery)) ||
+      (alert.explanation && alert.explanation.toLowerCase().includes(lowerQuery))
+    ).slice(0, 5);
+
+    // Search cases
+    const matchingCases = cases.filter(c => 
+      String(c.case_id).toLowerCase().includes(lowerQuery) ||
+      String(c.emp_id).includes(query)
+    ).slice(0, 5);
+
+    // Search employees (from alert emp_ids)
+    const uniqueEmpIds = [...new Set(alerts.map(a => a.emp_id))];
+    const matchingEmployees = uniqueEmpIds.filter(empId => 
+      String(empId).includes(query)
+    ).slice(0, 5);
+
+    setSearchResults({
+      alerts: matchingAlerts,
+      cases: matchingCases,
+      employees: matchingEmployees
+    });
+    setSearchDropdownOpen(true);
+  };
+
+  const handleSearchResultClick = async (type, item) => {
+    setSearchDropdownOpen(false);
+    setSearchQuery('');
+    
+    if (type === 'alerts') {
+      setActiveView('alerts');
+      setSelectedAlert(item.alert_id);
+      await fetchAlertDetail(item.alert_id);
+    } else if (type === 'cases') {
+      setActiveView('cases');
+      setSelectedCase(item.case_id);
+      await fetchCaseDetail(item.case_id);
+    } else if (type === 'employees') {
+      setActiveView('investigate');
+      setInvestigateId(String(item));
+      handleLookup(String(item));
+    }
   };
 
   const handleExportAlerts = async () => {
@@ -1899,7 +1994,9 @@ export default function AppV2() {
           zIndex: 40
         }}>
           {/* Left: Search */}
-          <div style={{ 
+          <div 
+            ref={searchContainerRef}
+            style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '12px',
@@ -1907,7 +2004,8 @@ export default function AppV2() {
             borderRadius: '8px',
             padding: '8px 16px',
             width: '320px',
-            border: '1px solid #3e484d'
+            border: '1px solid #3e484d',
+            position: 'relative'
           }}>
             <Search size={20} style={{ color: '#879298' }} />
             <input 
@@ -1915,6 +2013,9 @@ export default function AppV2() {
               name="global-search"
               type="text" 
               placeholder="Search alerts, cases, employees..."
+              value={searchQuery}
+              onChange={(e) => handleGlobalSearch(e.target.value)}
+              onFocus={() => searchQuery.trim().length >= 2 && setSearchDropdownOpen(true)}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -1924,6 +2025,148 @@ export default function AppV2() {
                 width: '100%'
               }}
             />
+            
+            {/* Search Dropdown */}
+            {searchDropdownOpen && (searchResults.alerts.length > 0 || searchResults.cases.length > 0 || searchResults.employees.length > 0) && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: '8px',
+                background: '#102034',
+                border: '1px solid #3e484d',
+                borderRadius: '8px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                maxHeight: '400px',
+                overflowY: 'auto',
+                zIndex: 200
+              }}>
+                {/* Alerts Section */}
+                {searchResults.alerts.length > 0 && (
+                  <div>
+                    <div style={{
+                      padding: '8px 16px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: '#879298',
+                      borderBottom: '1px solid #3e484d'
+                    }}>
+                      Alerts
+                    </div>
+                    {searchResults.alerts.map(alert => (
+                      <div
+                        key={alert.alert_id}
+                        onClick={() => handleSearchResultClick('alerts', alert)}
+                        style={{
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #1b2b3f',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#1b2b3f'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>
+                            Alert #{alert.alert_id}
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>
+                            EMP-{alert.emp_id}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#bdc8ce' }}>
+                          {alert.rules_triggered}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Cases Section */}
+                {searchResults.cases.length > 0 && (
+                  <div>
+                    <div style={{
+                      padding: '8px 16px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: '#879298',
+                      borderBottom: '1px solid #3e484d'
+                    }}>
+                      Cases
+                    </div>
+                    {searchResults.cases.map(c => (
+                      <div
+                        key={c.case_id}
+                        onClick={() => handleSearchResultClick('cases', c)}
+                        style={{
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #1b2b3f',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#1b2b3f'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>
+                            {c.case_id}
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>
+                            EMP-{c.emp_id}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#bdc8ce' }}>
+                          {c.priority} · {c.status}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Employees Section */}
+                {searchResults.employees.length > 0 && (
+                  <div>
+                    <div style={{
+                      padding: '8px 16px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: '#879298',
+                      borderBottom: '1px solid #3e484d'
+                    }}>
+                      Employees
+                    </div>
+                    {searchResults.employees.map(empId => (
+                      <div
+                        key={empId}
+                        onClick={() => handleSearchResultClick('employees', empId)}
+                        style={{
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #1b2b3f',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#1b2b3f'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>
+                          EMP-{empId}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#879298' }}>
+                          View employee profile
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Right: Actions and User */}
