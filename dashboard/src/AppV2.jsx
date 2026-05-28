@@ -1973,7 +1973,7 @@ export default function AppV2() {
             <div style={{ width: '100%' }}> 
           
               {/* Stat cards */} 
-              <div style={{ 
+              <div className="w-full" style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(4, 1fr)', 
                 gap: '16px', 
@@ -2091,7 +2091,7 @@ export default function AppV2() {
               </div> 
           
               {/* Chart card with dot grid background */} 
-              <div style={{ 
+              <div className="w-full" style={{ 
                 background: '#102034', 
                 border: '1px solid #3e484d', 
                 borderRadius: '12px', 
