@@ -203,8 +203,8 @@ const Select = (props) => (
 
 const TableCard = ({ children }) => ( 
   <div style={{ 
-    background: 'var(--bg-surface)', borderRadius: '10px', 
-    border: '1px solid var(--border)', boxShadow: 'var(--shadow)', 
+    background: '#0d1f35', borderRadius: '10px', 
+    border: '1px solid rgba(255,255,255,0.08)',
     overflow: 'hidden' 
   }}>{children}</div> 
 ); 
@@ -225,8 +225,8 @@ const Drawer = ({ title, subtitle, id, onClose, children, loading }) => (
     }} /> 
     <div style={{ 
       position: 'fixed', top: 0, right: 0, width: '480px', height: '100vh', 
-      background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', 
-      boxShadow: '-8px 0 40px rgba(0,0,0,0.4)', zIndex: 101, overflowY: 'auto', 
+      background: '#0d1f35', borderLeft: '1px solid rgba(255,255,255,0.08)',
+      zIndex: 101, overflowY: 'auto', 
       display: 'flex', flexDirection: 'column' 
     }}> 
       <div style={{ 
@@ -543,8 +543,8 @@ const InvestigateResults = React.memo(({ results }) => {
 
 const SettingsSection = ({ title, icon, children }) => (
   <div className="w-full" style={{ 
-    background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-    borderRadius: '12px', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)'
+    background: '#0d1f35', border: '1px solid rgba(255,255,255,0.08)', 
+    borderRadius: '12px', padding: '24px', marginBottom: '24px'
   }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
       <div style={{ color: 'var(--accent)' }}>{icon}</div>
@@ -1752,8 +1752,8 @@ export default function AppV2() {
           }}>
             {/* Card 3: Full Width Stats */}
             <div style={{ 
-              background: 'rgba(11,28,48,0.6)', 
-              border: '1px solid #3e484d', 
+              background: '#0d1f35',
+              border: '1px solid rgba(255,255,255,0.08)', 
               borderRadius: '12px', 
               padding: '20px',
               display: 'flex',
@@ -2010,10 +2010,9 @@ export default function AppV2() {
                 left: 0,
                 right: 0,
                 marginTop: '8px',
-                background: '#102034',
-                border: '1px solid #3e484d',
+                background: '#0d1f35',
+                border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '8px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
                 maxHeight: '400px',
                 overflowY: 'auto',
                 zIndex: 200
@@ -2186,8 +2185,7 @@ export default function AppV2() {
           
               {/* Stat cards */} 
               <div className="w-full" style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(4, 1fr)', 
+                display: 'flex',
                 gap: '24px', 
                 marginBottom: '40px' 
               }}> 
@@ -2226,12 +2224,13 @@ export default function AppV2() {
                   <div 
                     key={card.label} 
                     style={{ 
-                      background: '#102034', 
-                      border: '1px solid #3e484d', 
+                      flex: 1,
+                      minWidth: 0,
+                      background: '#0d1f35', 
+                      border: '1px solid rgba(255,255,255,0.08)', 
                       borderRadius: '12px', 
                       padding: '28px', 
                       position: 'relative', 
-                      overflow: 'hidden',
                       cursor: 'pointer',
                       transition: 'border-color 0.2s ease'
                     }}
@@ -2239,7 +2238,7 @@ export default function AppV2() {
                       e.currentTarget.style.borderColor = 'rgba(74,158,255,0.5)';
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = '#3e484d';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
                     }}
                   > 
                     <div style={{ 
@@ -2271,28 +2270,17 @@ export default function AppV2() {
                     <div style={{ 
                       fontSize: '12px', 
                       color: '#475569',
-                      fontFamily: "'Inter', sans-serif"
+                      fontFamily: "'Inter', sans-serif",
+                      lineHeight: 1.6
                     }}>{card.sub}</div>
-                    <div 
-                      className="bottom-bar"
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        height: '4px',
-                        width: '0%',
-                        background: card.color,
-                        transition: 'width 0.3s ease'
-                      }}
-                    />
                   </div> 
                 ))} 
               </div> 
           
-              {/* Chart card with dot grid background */} 
+              {/* Chart card */}
               <div className="w-full" style={{ 
-                background: '#102034', 
-                border: '1px solid #3e484d', 
+                background: '#0d1f35', 
+                border: '1px solid rgba(255,255,255,0.08)', 
                 borderRadius: '12px', 
                 overflow: 'hidden',
                 marginBottom: '40px'
@@ -3025,13 +3013,13 @@ export default function AppV2() {
           <div style={{
             width: '8px',
             height: '8px',
-            background: '#4a9eff',
+            background: '#10B981',
             borderRadius: '50%'
           }} />
           <span style={{
             fontSize: '11px',
             fontWeight: '600',
-            color: '#4a9eff',
+            color: '#10B981',
             letterSpacing: '0.1em',
             fontFamily: "'JetBrains Mono', monospace"
           }}>LIVE</span>
