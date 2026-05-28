@@ -1776,7 +1776,7 @@ export default function AppV2() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontWeight: '700', fontSize: '18px', color: '#38bdf8', lineHeight: 1 }}>SentinelEHR</span>
-            <span style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enterprise Security</span>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COMPLIANCE INTELLIGENCE</span>
           </div>
         </div>
 
