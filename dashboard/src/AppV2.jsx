@@ -1912,7 +1912,7 @@ export default function AppV2() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main style={{ marginLeft: '260px', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <main style={{ marginLeft: '260px', display: 'flex', flexDirection: 'column', minHeight: '100vh', flex: 1, minWidth: 0 }}>
         {/* Top Bar */}
         <header style={{
           height: '64px',
