@@ -446,7 +446,7 @@ const InvestigateResults = React.memo(({ results }) => {
                       }}>{a.adjusted_severity}</span>
                     </td> 
                     <td style={{ padding: '14px 20px' }}> 
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      <div className="flex flex-wrap gap-1">
                         {a.rules_triggered.split(',').map(r => ( 
                           <span 
                             key={r} 
@@ -2392,7 +2392,7 @@ export default function AppV2() {
                         </td> 
                         <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
                         <td style={{ padding: '14px 20px' }}> 
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '160px' }}>
+                          <div className="flex flex-wrap gap-1">
                             {a.rules_triggered.split(',').map(r => ( 
                               <span 
                                 key={r} 
@@ -2460,7 +2460,7 @@ export default function AppV2() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}> 
                       <div> 
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Rules Triggered</div> 
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                        <div className="flex flex-wrap gap-1 mb-4">
                           {alertDetail.rules_triggered?.split(',').map(r => (
                             <span 
                               key={r} 
