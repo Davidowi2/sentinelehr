@@ -553,6 +553,8 @@ const SettingsField = ({ label, value, subtext, disabled, type = 'text' }) => (
       <Select value={value} disabled={disabled} style={{ width: '100%', opacity: disabled ? 0.6 : 1 }} />
     ) : (
       <input 
+        id="settings-field"
+        name="settings-field"
         type="text" 
         readOnly 
         value={value} 
@@ -626,6 +628,8 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
           <div style={{ position: 'relative' }}>
             <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#879298' }} />
             <input 
+              id="employee-search"
+              name="employee-search"
               type="text" 
               value={investigateId} 
               onChange={e => setInvestigateId(e.target.value)} 
@@ -886,6 +890,7 @@ export default function AppV2() {
   const [alertNote, setAlertNote] = useState('') 
   const [alertStatusUpdate, setAlertStatusUpdate] = useState('') 
   const [savingAlert, setSavingAlert] = useState(false) 
+  const [createCaseStatus, setCreateCaseStatus] = useState({ loading: false, message: '', type: '' })
   
   const [cases, setCases] = useState([]) 
   const [casesTotal, setCasesTotal] = useState(0) 
@@ -1067,6 +1072,26 @@ export default function AppV2() {
     } catch(e) { console.error(e) } 
     setSavingAlert(false) 
   } 
+
+  const handleCreateCaseFromAlert = async (alertId) => {
+    setCreateCaseStatus({ loading: true, message: '', type: '' });
+    try {
+      const res = await fetch(`${API_BASE}/alerts/${alertId}/create-case`, {
+        method: 'POST',
+        headers: authHeaders()
+      });
+      if (res.ok) {
+        setCreateCaseStatus({ loading: false, message: 'Case created successfully', type: 'success' });
+        fetchCases();
+        setTimeout(() => setCreateCaseStatus({ loading: false, message: '', type: '' }), 3000);
+      } else {
+        setCreateCaseStatus({ loading: false, message: 'Failed to create case — check if case already exists', type: 'error' });
+      }
+    } catch (e) {
+      console.error(e);
+      setCreateCaseStatus({ loading: false, message: 'Failed to create case — check connection', type: 'error' });
+    }
+  };
   
   const fetchCases = async () => { 
     if (!token) return 
@@ -1399,6 +1424,9 @@ export default function AppV2() {
                     fontSize: '20px'
                   }}>mail</span>
                   <input 
+                    id="corporate-email"
+                    name="email"
+                    autoComplete="username"
                     type="text" 
                     value={loginForm.username}
                     onChange={e => setLoginForm({...loginForm, username: e.target.value})}
@@ -1452,6 +1480,9 @@ export default function AppV2() {
                     fontSize: '20px'
                   }}>lock</span>
                   <input 
+                    id="password"
+                    name="password"
+                    autoComplete="current-password"
                     type="password" 
                     value={loginForm.password}
                     onChange={e => setLoginForm({...loginForm, password: e.target.value})}
@@ -1907,6 +1938,8 @@ export default function AppV2() {
           }}>
             <span className="material-symbols-outlined" style={{ color: '#879298', fontSize: '20px' }}>search</span>
             <input 
+              id="global-search"
+              name="global-search"
               type="text" 
               placeholder="Search alerts, cases, employees..."
               style={{
@@ -2448,6 +2481,46 @@ export default function AppV2() {
                           <Search size={16} />
                           Investigate Employee
                         </button>
+                        
+                        <button 
+                          onClick={() => handleCreateCaseFromAlert(alertDetail.alert_id)}
+                          disabled={createCaseStatus.loading}
+                          style={{
+                            marginTop: '8px',
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '10px',
+                            background: '#0f172a',
+                            border: '1px solid #22c55e',
+                            color: '#22c55e',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: createCaseStatus.loading ? 'default' : 'pointer',
+                            opacity: createCaseStatus.loading ? 0.7 : 1,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={e => !createCaseStatus.loading && (e.currentTarget.style.background = 'rgba(34,197,94,0.1)')}
+                          onMouseLeave={e => !createCaseStatus.loading && (e.currentTarget.style.background = '#0f172a')}
+                        >
+                          <Plus size={16} />
+                          {createCaseStatus.loading ? 'Creating...' : 'Create Case from Alert'}
+                        </button>
+                        
+                        {createCaseStatus.message && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            fontSize: '12px', 
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            color: createCaseStatus.type === 'success' ? '#22c55e' : '#f43f5e'
+                          }}>
+                            {createCaseStatus.message}
+                          </div>
+                        )}
                       </div> 
                       <div> 
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div> 
@@ -2556,27 +2629,6 @@ export default function AppV2() {
                     fontFamily: "'JetBrains Mono', monospace",
                     fontWeight: '600'
                   }}>{cases.length} of {casesTotal}</div>
-                  <button 
-                    style={{ 
-                      background: '#2563eb', 
-                      color: '#fff', 
-                      border: 'none', 
-                      borderRadius: '8px', 
-                      padding: '8px 16px', 
-                      fontSize: '13px', 
-                      fontWeight: '600', 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-                    Create New Case
-                  </button>
                 </div>
               </div> 
         
