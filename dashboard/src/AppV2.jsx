@@ -32,8 +32,8 @@ const THEMES = {
     --surface-container-lowest: #000f21;
     --outline-variant: #3e484d;
     --outline: #879298;
-    --primary: #38bdf8;
-    --primary-container: #269dbe;
+    --primary: #4a9eff;
+    --primary-container: #2563eb;
     --on-primary-container: #002e3b;
     --on-surface: #d3e4fe;
     --on-surface-variant: #bdc8ce;
@@ -58,9 +58,9 @@ const THEMES = {
     --text-primary: #d3e4fe;
     --text-secondary: #bdc8ce;
     --text-muted: #879298;
-    --accent: #38bdf8;
-    --accent-hover: #269dbe;
-    --accent-subtle: rgba(108,211,247,0.12);
+    --accent: #4a9eff;
+    --accent-hover: #2563eb;
+    --accent-subtle: rgba(74,158,255,0.12);
   `,
   light: `
     --surface-dim: #d3e4fe;
@@ -71,8 +71,8 @@ const THEMES = {
     --surface-container-lowest: #ffffff;
     --outline-variant: #bdc8ce;
     --outline: #879298;
-    --primary: #269dbe;
-    --primary-container: #38bdf8;
+    --primary: #2563eb;
+    --primary-container: #4a9eff;
     --on-primary-container: #002e3b;
     --on-surface: #0f172a;
     --on-surface-variant: #475569;
@@ -97,7 +97,7 @@ const THEMES = {
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --text-muted: #94a3b8;
-    --accent: #269dbe;
+    --accent: #2563eb;
     --accent-hover: #1e7a99;
     --accent-subtle: rgba(38,157,190,0.08);
   `
@@ -306,8 +306,8 @@ const InvestigateResults = React.memo(({ results }) => {
             padding: '20px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Activity size={16} style={{ color: '#38bdf8' }} />
-              <div style={{ fontSize: '10px', fontWeight: '600', color: '#38bdf8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Investigation Insight</div>
+              <Activity size={16} style={{ color: '#4a9eff' }} />
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#4a9eff', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Investigation Insight</div>
             </div>
             <div style={{ fontSize: '14px', color: '#d3e4fe', lineHeight: '1.6' }}>
               This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
@@ -327,12 +327,12 @@ const InvestigateResults = React.memo(({ results }) => {
                 width: '128px',
                 height: '128px',
                 borderRadius: '50%',
-                border: '4px solid #38bdf8',
+                border: '4px solid #4a9eff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <div style={{ fontSize: '36px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
                   {topScore.toFixed(2)}
                 </div>
               </div>
@@ -388,7 +388,7 @@ const InvestigateResults = React.memo(({ results }) => {
                   top: '50%', 
                   transform: 'translateY(-50%)',
                   fontSize: '48px', 
-                  color: '#38bdf8',
+                  color: '#4a9eff',
                   opacity: 0.2
                 }}>
                   {stat.icon}
@@ -402,7 +402,7 @@ const InvestigateResults = React.memo(({ results }) => {
       {/* Alert History - col-span-12 */}
       <div style={{ gridColumn: 'span 12' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Bell size={18} color="#38bdf8" />
+          <Bell size={18} color="#4a9eff" />
           <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#d3e4fe' }}>Recent Alert History</h3>
         </div>
         <div style={{
@@ -468,7 +468,7 @@ const InvestigateResults = React.memo(({ results }) => {
                         ))} 
                       </div>
                     </td> 
-                    <td style={{ padding: '14px 20px', fontSize: '14px', color: '#38bdf8', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}> 
+                    <td style={{ padding: '14px 20px', fontSize: '14px', color: '#4a9eff', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}> 
                       {(a.anomaly_score ?? 0).toFixed(2)} 
                     </td> 
                   </tr> 
@@ -484,7 +484,7 @@ const InvestigateResults = React.memo(({ results }) => {
       {/* Open Cases */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Folder size={18} color="#38bdf8" />
+          <Folder size={18} color="#4a9eff" />
           <h3 style={{ fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#d3e4fe' }}>Open Cases</h3>
         </div>
         <div style={{
@@ -510,7 +510,7 @@ const InvestigateResults = React.memo(({ results }) => {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   > 
-                    <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
+                    <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
                     <td style={{ padding: '14px 20px' }}> 
                       <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}> 
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f97316' }} /> 
@@ -655,7 +655,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
                 width: '100%',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={e => e.target.style.borderColor = '#38bdf8'}
+              onFocus={e => e.target.style.borderColor = '#4a9eff'}
               onBlur={e => e.target.style.borderColor = '#3e484d'}
             /> 
           </div>
@@ -665,7 +665,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
           disabled={investigating} 
           style={{ 
             padding: '10px 24px', 
-            background: '#0891b2', 
+            background: '#2563eb', 
             color: '#fff', 
             border: 'none', 
             borderRadius: '8px', 
@@ -680,8 +680,8 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
             gap: '8px',
             transition: 'all 0.2s'
           }}
-          onMouseEnter={e => !investigating && (e.currentTarget.style.background = '#0e7490')}
-          onMouseLeave={e => !investigating && (e.currentTarget.style.background = '#0891b2')}
+          onMouseEnter={e => !investigating && (e.currentTarget.style.background = '#1d4ed8')}
+          onMouseLeave={e => !investigating && (e.currentTarget.style.background = '#2563eb')}
         > 
           <Search size={16} />
           {investigating ? 'Searching...' : 'Run Query'} 
@@ -722,7 +722,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
       }}>
         <span className="material-symbols-outlined" style={{
           fontSize: '80px',
-          color: '#38bdf8',
+          color: '#4a9eff',
           opacity: 0.3,
           marginBottom: '24px'
         }}>troubleshoot</span>
@@ -1365,7 +1365,7 @@ export default function AppV2() {
               <div style={{
                 width: '40px',
                 height: '40px',
-                background: '#0891b2',
+                background: '#2563eb',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -1373,7 +1373,7 @@ export default function AppV2() {
               }}>
                 <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '24px' }}>security</span>
               </div>
-              <span style={{ fontWeight: '700', fontSize: '20px', color: '#38bdf8' }}>SentinelEHR</span>
+              <span style={{ fontWeight: '700', fontSize: '20px', color: '#4a9eff' }}>SentinelEHR</span>
             </div>
             <div style={{ 
               fontSize: '10px', 
@@ -1433,8 +1433,8 @@ export default function AppV2() {
                       transition: 'all 0.2s ease'
                     }}
                     onFocus={e => {
-                      e.target.style.borderColor = '#38bdf8';
-                      e.target.style.boxShadow = '0 0 0 1px rgba(56,189,248,0.2)';
+                      e.target.style.borderColor = '#4a9eff';
+                      e.target.style.boxShadow = '0 0 0 1px rgba(74,158,255,0.2)';
                     }}
                     onBlur={e => {
                       e.target.style.borderColor = '#334155';
@@ -1485,8 +1485,8 @@ export default function AppV2() {
                       transition: 'all 0.2s ease'
                     }}
                     onFocus={e => {
-                      e.target.style.borderColor = '#38bdf8';
-                      e.target.style.boxShadow = '0 0 0 1px rgba(56,189,248,0.2)';
+                      e.target.style.borderColor = '#4a9eff';
+                      e.target.style.boxShadow = '0 0 0 1px rgba(74,158,255,0.2)';
                     }}
                     onBlur={e => {
                       e.target.style.borderColor = '#334155';
@@ -1522,7 +1522,7 @@ export default function AppV2() {
                 style={{
                   width: '100%',
                   padding: '16px',
-                  background: '#269dbe',
+                  background: '#2563eb',
                   color: '#FFFFFF',
                   border: 'none',
                   borderRadius: '8px',
@@ -1538,8 +1538,8 @@ export default function AppV2() {
                   justifyContent: 'center',
                   gap: '8px'
                 }}
-                onMouseEnter={e => !loggingIn && (e.target.style.background = '#0e7490')}
-                onMouseLeave={e => !loggingIn && (e.target.style.background = '#269dbe')}
+                onMouseEnter={e => !loggingIn && (e.target.style.background = '#1d4ed8')}
+                onMouseLeave={e => !loggingIn && (e.target.style.background = '#2563eb')}
               >
                 {loggingIn ? 'Authenticating...' : 'Sign In'}
                 {!loggingIn && <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_forward</span>}
@@ -1557,7 +1557,7 @@ export default function AppV2() {
             alignItems: 'center',
             gap: '16px'
           }}>
-            <span className="material-symbols-outlined" style={{ color: '#38bdf8', fontSize: '24px' }}>verified_user</span>
+            <span className="material-symbols-outlined" style={{ color: '#4a9eff', fontSize: '24px' }}>verified_user</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>HIPAA §164.312(b) COMPLIANT</div>
@@ -1595,7 +1595,7 @@ export default function AppV2() {
             position: 'absolute',
             width: '400px',
             height: '400px',
-            background: 'rgba(108,211,247,0.2)',
+            background: 'rgba(74,158,255,0.2)',
             filter: 'blur(80px)',
             borderRadius: '50%',
             top: '50%',
@@ -1611,7 +1611,7 @@ export default function AppV2() {
               position: 'absolute',
               width: '360px',
               height: '360px',
-              border: '2px dashed rgba(108,211,247,0.2)',
+              border: '2px dashed rgba(74,158,255,0.2)',
               borderRadius: '50%',
               top: '50%',
               left: '50%',
@@ -1624,7 +1624,7 @@ export default function AppV2() {
               width: '320px',
               height: '320px',
               background: '#1b2b3f',
-              border: '1px solid rgba(108,211,247,0.3)',
+              border: '1px solid rgba(74,158,255,0.3)',
               borderRadius: '50%',
               display: 'flex',
               flexDirection: 'column',
@@ -1635,14 +1635,14 @@ export default function AppV2() {
               {/* Shield Icon */}
               <span className="material-symbols-outlined" style={{ 
                 fontSize: '160px', 
-                color: '#38bdf8',
+                color: '#4a9eff',
                 fontVariationSettings: "'FILL' 1"
               }}>shield_with_heart</span>
 
               {/* Pulse Lines */}
-              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(108,211,247,0.4)', top: '25%', animation: 'pulse 2s infinite' }} />
-              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(108,211,247,0.4)', top: '50%', animation: 'pulse 2s infinite', animationDelay: '0.3s' }} />
-              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(108,211,247,0.4)', top: '75%', animation: 'pulse 2s infinite', animationDelay: '0.6s' }} />
+              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(74,158,255,0.4)', top: '25%', animation: 'pulse 2s infinite' }} />
+              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(74,158,255,0.4)', top: '50%', animation: 'pulse 2s infinite', animationDelay: '0.3s' }} />
+              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(74,158,255,0.4)', top: '75%', animation: 'pulse 2s infinite', animationDelay: '0.6s' }} />
             </div>
           </div>
 
@@ -1665,9 +1665,9 @@ export default function AppV2() {
               padding: '20px'
             }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>System Uptime</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>99.99%</div>
               <div style={{ width: '100%', height: '4px', background: '#1e293b', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ width: '99%', height: '100%', background: '#38bdf8' }} />
+                <div style={{ width: '99%', height: '100%', background: '#4a9eff' }} />
               </div>
             </div>
 
@@ -1679,10 +1679,10 @@ export default function AppV2() {
               padding: '20px'
             }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Latency</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", marginBottom: '12px' }}>0.4ms</div>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '20px' }}>
                 {[40, 60, 45, 70, 55, 80, 65, 50].map((h, i) => (
-                  <div key={i} style={{ flex: 1, height: `${h}%`, background: '#38bdf8', borderRadius: '2px' }} />
+                  <div key={i} style={{ flex: 1, height: `${h}%`, background: '#4a9eff', borderRadius: '2px' }} />
                 ))}
               </div>
             </div>
@@ -1699,17 +1699,17 @@ export default function AppV2() {
               alignItems: 'center'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Events Monitored</div>
               </div>
               <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>PHI Stored</div>
               </div>
               <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Alert Precision</div>
               </div>
             </div>
@@ -1722,7 +1722,7 @@ export default function AppV2() {
             right: '-100px',
             width: '500px',
             height: '500px',
-            background: 'rgba(108,211,247,0.1)',
+            background: 'rgba(74,158,255,0.1)',
             filter: 'blur(120px)',
             borderRadius: '50%',
             pointerEvents: 'none'
@@ -1765,7 +1765,7 @@ export default function AppV2() {
           <div style={{
             width: '40px',
             height: '40px',
-            background: '#269dbe',
+            background: '#2563eb',
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
@@ -1775,7 +1775,7 @@ export default function AppV2() {
             <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '24px' }}>shield</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontWeight: '700', fontSize: '18px', color: '#38bdf8', lineHeight: 1 }}>SentinelEHR</span>
+            <span style={{ fontWeight: '700', fontSize: '18px', color: '#4a9eff', lineHeight: 1 }}>SentinelEHR</span>
             <span style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COMPLIANCE INTELLIGENCE</span>
           </div>
         </div>
@@ -1820,8 +1820,8 @@ export default function AppV2() {
                     padding: '12px 20px',
                     background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
                     border: 'none',
-                    borderLeft: isActive ? '2px solid #38bdf8' : '2px solid transparent',
-                    color: isActive ? '#38bdf8' : '#bdc8ce',
+                    borderLeft: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                    color: isActive ? '#4a9eff' : '#bdc8ce',
                     cursor: 'pointer',
                     gap: '12px',
                     transition: 'all 0.2s',
@@ -1851,8 +1851,8 @@ export default function AppV2() {
                 padding: '12px 20px',
                 background: activeView === 'settings' ? 'rgba(255,255,255,0.05)' : 'transparent',
                 border: 'none',
-                borderLeft: activeView === 'settings' ? '2px solid #38bdf8' : '2px solid transparent',
-                color: activeView === 'settings' ? '#38bdf8' : '#bdc8ce',
+                borderLeft: activeView === 'settings' ? '2px solid #3b82f6' : '2px solid transparent',
+                color: activeView === 'settings' ? '#4a9eff' : '#bdc8ce',
                 cursor: 'pointer',
                 gap: '12px',
                 transition: 'all 0.2s',
@@ -1952,8 +1952,8 @@ export default function AppV2() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: '#269dbe',
-                border: '2px solid rgba(108,211,247,0.3)',
+                background: '#2563eb',
+                border: '2px solid rgba(74,158,255,0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2010,7 +2010,7 @@ export default function AppV2() {
                       ? summary.top_anomaly_score.toFixed(2) 
                       : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), 
                     sub: '90-day highest anomaly', 
-                    color: '#38bdf8',
+                    color: '#4a9eff',
                     icon: 'monitoring',
                     iconFill: 0
                   } 
@@ -2028,7 +2028,7 @@ export default function AppV2() {
                       transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'rgba(108,211,247,0.4)';
+                      e.currentTarget.style.borderColor = 'rgba(74,158,255,0.4)';
                       e.currentTarget.querySelector('.bottom-bar').style.width = '100%';
                     }}
                     onMouseLeave={e => {
@@ -2269,7 +2269,7 @@ export default function AppV2() {
                   disabled={exportingAlerts}
                   style={{ 
                     padding: '10px 20px',
-                    background: '#0891b2',
+                    background: '#2563eb',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
@@ -2284,8 +2284,8 @@ export default function AppV2() {
                     opacity: exportingAlerts ? 0.7 : 1,
                     transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => !exportingAlerts && (e.currentTarget.style.background = '#0e7490')}
-                  onMouseLeave={e => !exportingAlerts && (e.currentTarget.style.background = '#0891b2')}
+                  onMouseEnter={e => !exportingAlerts && (e.currentTarget.style.background = '#1d4ed8')}
+                  onMouseLeave={e => !exportingAlerts && (e.currentTarget.style.background = '#2563eb')}
                 > 
                   <Download size={18} />
                   {exportingAlerts ? 'Exporting...' : 'Export CSV'} 
@@ -2378,7 +2378,7 @@ export default function AppV2() {
                             onClick={() => {setSelectedAlert(a.alert_id); fetchAlertDetail(a.alert_id)}} 
                             style={{ 
                               padding: '4px 12px', 
-                              background: '#0891b2', 
+                              background: '#2563eb', 
                               color: '#fff', 
                               border: 'none', 
                               borderRadius: '6px', 
@@ -2389,8 +2389,8 @@ export default function AppV2() {
                               letterSpacing: '0.05em',
                               transition: 'all 0.2s'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#0e7490'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#0891b2'}
+                            onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
                           >REVIEW</button> 
                         </td> 
                       </tr> 
@@ -2447,15 +2447,15 @@ export default function AppV2() {
                             gap: '8px',
                             padding: '10px',
                             background: '#0f172a',
-                            border: '1px solid #38bdf8',
-                            color: '#38bdf8',
+                            border: '1px solid #4a9eff',
+                            color: '#4a9eff',
                             borderRadius: '8px',
                             fontSize: '14px',
                             fontWeight: '500',
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                           }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.1)'}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(74,158,255,0.1)'}
                           onMouseLeave={e => e.currentTarget.style.background = '#0f172a'}
                         >
                           <Search size={16} />
@@ -2571,7 +2571,7 @@ export default function AppV2() {
                   }}>{cases.length} of {casesTotal}</div>
                   <button 
                     style={{ 
-                      background: '#0891b2', 
+                      background: '#2563eb', 
                       color: '#fff', 
                       border: 'none', 
                       borderRadius: '8px', 
@@ -2584,8 +2584,8 @@ export default function AppV2() {
                       gap: '8px',
                       transition: 'all 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#0e7490'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#0891b2'}
+                    onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
                     Create New Case
@@ -2623,7 +2623,7 @@ export default function AppV2() {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#38bdf8', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
                           <span style={{
@@ -2678,8 +2678,8 @@ export default function AppV2() {
                               transition: 'all 0.2s'
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = '#38bdf8';
-                              e.currentTarget.style.color = '#38bdf8';
+                              e.currentTarget.style.borderColor = '#4a9eff';
+                              e.currentTarget.style.color = '#4a9eff';
                             }}
                             onMouseLeave={e => {
                               e.currentTarget.style.borderColor = '#3e484d';
@@ -2785,7 +2785,7 @@ export default function AppV2() {
           <span style={{
             fontSize: '12px',
             fontWeight: '600',
-            color: '#38bdf8',
+            color: '#4a9eff',
             letterSpacing: '0.05em'
           }}>SentinelEHR Security Ops</span>
           <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
@@ -2810,15 +2810,15 @@ export default function AppV2() {
           <div style={{
             width: '8px',
             height: '8px',
-            background: '#38bdf8',
+            background: '#4a9eff',
             borderRadius: '50%',
-            boxShadow: '0 0 12px rgba(108,211,247,0.6)',
+            boxShadow: '0 0 12px rgba(74,158,255,0.6)',
             animation: 'pulse 2s infinite'
           }} />
           <span style={{
             fontSize: '11px',
             fontWeight: '600',
-            color: '#38bdf8',
+            color: '#4a9eff',
             letterSpacing: '0.1em',
             fontFamily: "'JetBrains Mono', monospace"
           }}>LIVE</span>
@@ -3020,11 +3020,11 @@ export default function AppV2() {
         }
         
         .active-glow {
-          box-shadow: 0px 0px 12px rgba(108,211,247,0.2);
+          box-shadow: 0px 0px 12px rgba(74,158,255,0.2);
         }
         
         .glow-primary {
-          box-shadow: 0px 0px 12px rgba(108,211,247,0.2);
+          box-shadow: 0px 0px 12px rgba(74,158,255,0.2);
         }
         
         ::-webkit-scrollbar {
