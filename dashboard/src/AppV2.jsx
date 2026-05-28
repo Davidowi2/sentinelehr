@@ -1935,55 +1935,6 @@ export default function AppV2() {
           
           {/* Right: Actions and User */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Sensors Icon */}
-            <button style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#bdc8ce',
-              cursor: 'pointer',
-              padding: '8px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>sensors</span>
-            </button>
-            
-            {/* Notifications Icon with Badge */}
-            <button style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#bdc8ce',
-              cursor: 'pointer',
-              padding: '8px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>notifications</span>
-              <div style={{
-                position: 'absolute',
-                top: '6px',
-                right: '6px',
-                width: '8px',
-                height: '8px',
-                background: '#f43f5e',
-                borderRadius: '50%',
-                border: '2px solid #000f21'
-              }} />
-            </button>
-            
             {/* Vertical Divider */}
             <div style={{ width: '1px', height: '32px', background: '#3e484d' }} />
             
