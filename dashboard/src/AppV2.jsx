@@ -3010,7 +3010,7 @@ export default function AppV2() {
                 style={{
                   flex: 1,
                   padding: '12px',
-                  background: '#f97316',
+                  background: '#f43f5e',
                   border: 'none',
                   borderRadius: '8px',
                   color: '#fff',
@@ -3019,8 +3019,8 @@ export default function AppV2() {
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#ea580c'}
-                onMouseLeave={e => e.currentTarget.style.background = '#f97316'}
+                onMouseEnter={e => e.currentTarget.style.background = '#b91c1c'}
+                onMouseLeave={e => e.currentTarget.style.background = '#f43f5e'}
               >
                 Yes
               </button>
