@@ -1690,7 +1690,7 @@ export default function AppV2() {
         {/* RIGHT PANEL */}
         <div style={{ 
           flex: 1, 
-          background: '#031427',
+          background: '#071a2e',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
@@ -1699,78 +1699,54 @@ export default function AppV2() {
           overflow: 'hidden',
           padding: '60px'
         }}>
-          {/* Dot Grid Background */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: 'radial-gradient(circle at 2px 2px, #3e484d 1px, transparent 0)',
-            backgroundSize: '40px 40px',
-            opacity: 0.2,
-            pointerEvents: 'none'
-          }} />
-
-          {/* Teal Glow Blob Behind Shield */}
-          <div style={{
-            position: 'absolute',
-            width: '400px',
-            height: '400px',
-            background: 'rgba(74,158,255,0.2)',
-            filter: 'blur(80px)',
-            borderRadius: '50%',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            pointerEvents: 'none'
-          }} />
-
-          {/* Shield Circle with Animation */}
-          <div style={{ position: 'relative', marginBottom: '48px', zIndex: 1 }}>
-            {/* Spinning Dashed Ring */}
+          {/* Clean centered shield icon */}
+          <div style={{ position: 'relative', marginBottom: '40px', zIndex: 1 }}>
             <div style={{
-              position: 'absolute',
-              width: '360px',
-              height: '360px',
-              border: '2px dashed rgba(74,158,255,0.2)',
-              borderRadius: '50%',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              animation: 'spin 20s linear infinite'
-            }} />
-
-            {/* Shield Circle */}
-            <div style={{
-              width: '320px',
-              height: '320px',
-              background: '#1b2b3f',
-              border: '1px solid rgba(74,158,255,0.3)',
+              width: '160px',
+              height: '160px',
+              background: '#0f2a45',
+              border: '1px solid #3e484d',
               borderRadius: '50%',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative'
+              justifyContent: 'center'
             }}>
-              {/* Shield Icon */}
-              <Shield size={80} style={{ 
+              <Shield size={64} style={{ 
                 color: '#4a9eff'
               }} />
-
-              {/* Pulse Lines */}
-              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(74,158,255,0.4)', top: '25%', animation: 'pulse 2s infinite' }} />
-              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(74,158,255,0.4)', top: '50%', animation: 'pulse 2s infinite', animationDelay: '0.3s' }} />
-              <div style={{ position: 'absolute', width: '60%', height: '2px', background: 'rgba(74,158,255,0.4)', top: '75%', animation: 'pulse 2s infinite', animationDelay: '0.6s' }} />
             </div>
           </div>
 
-          {/* Bento Grid Stats */}
+          {/* Product description */}
+          <div style={{
+            maxWidth: '420px',
+            textAlign: 'center',
+            zIndex: 1,
+            marginTop: '24px'
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#d3e4fe',
+              marginBottom: '12px',
+              lineHeight: 1.3
+            }}>HIPAA Compliance Intelligence</h2>
+            <p style={{
+              fontSize: '14px',
+              color: '#879298',
+              lineHeight: 1.6,
+              margin: 0
+            }}>Real-time monitoring and anomaly detection for EHR access patterns. Protect patient privacy with automated alert triage and investigation workflows.</p>
+          </div>
+
+          {/* Stats summary */}
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: '1fr', 
-            gap: '16px', 
+            gap: '12px', 
             maxWidth: '420px',
             width: '100%',
-            marginTop: '32px',
+            marginTop: '40px',
             marginBottom: '32px',
             zIndex: 1
           }}>
@@ -1830,7 +1806,7 @@ export default function AppV2() {
       {/* SIDEBAR */}
       <aside style={{
         width: '260px',
-        background: '#031427',
+        background: '#071a2e',
         borderRight: '1px solid #3e484d',
         display: 'flex',
         flexDirection: 'column',
@@ -2212,8 +2188,8 @@ export default function AppV2() {
               <div className="w-full" style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(4, 1fr)', 
-                gap: '16px', 
-                marginBottom: '32px' 
+                gap: '24px', 
+                marginBottom: '40px' 
               }}> 
                 {[ 
                   { 
@@ -2253,19 +2229,17 @@ export default function AppV2() {
                       background: '#102034', 
                       border: '1px solid #3e484d', 
                       borderRadius: '12px', 
-                      padding: '16px', 
+                      padding: '28px', 
                       position: 'relative', 
                       overflow: 'hidden',
                       cursor: 'pointer',
-                      transition: 'all 0.3s ease'
+                      transition: 'border-color 0.2s ease'
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'rgba(74,158,255,0.4)';
-                      e.currentTarget.querySelector('.bottom-bar').style.width = '100%';
+                      e.currentTarget.style.borderColor = 'rgba(74,158,255,0.5)';
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.borderColor = '#3e484d';
-                      e.currentTarget.querySelector('.bottom-bar').style.width = '0%';
                     }}
                   > 
                     <div style={{ 
@@ -2321,9 +2295,7 @@ export default function AppV2() {
                 border: '1px solid #3e484d', 
                 borderRadius: '12px', 
                 overflow: 'hidden',
-                marginBottom: '32px',
-                backgroundImage: 'radial-gradient(circle at 2px 2px, #1e293b 1px, transparent 0)',
-                backgroundSize: '24px 24px'
+                marginBottom: '40px'
               }}> 
                 <div style={{ 
                   padding: '24px 28px 0',
@@ -2891,8 +2863,7 @@ export default function AppV2() {
                               background: c.status === 'Open' ? '#14b8a6' : 
                                          (c.status === 'Under Investigation' || c.status === 'Pending HR' || c.status === 'In Review') ? '#f97316' : 
                                          c.status === 'Escalated' ? '#f43f5e' : 
-                                         c.status === 'Resolved' ? '#64748b' : '#f97316',
-                              animation: c.status === 'Open' ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
+                                         c.status === 'Resolved' ? '#64748b' : '#f97316'
                             }} /> 
                             {c.status} 
                           </span> 
@@ -3055,9 +3026,7 @@ export default function AppV2() {
             width: '8px',
             height: '8px',
             background: '#4a9eff',
-            borderRadius: '50%',
-            boxShadow: '0 0 12px rgba(74,158,255,0.6)',
-            animation: 'pulse 2s infinite'
+            borderRadius: '50%'
           }} />
           <span style={{
             fontSize: '11px',
@@ -3236,16 +3205,6 @@ export default function AppV2() {
       )}
 
       <style>{`
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.4; }
-          100% { opacity: 1; }
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
         .login-input::placeholder {
           color: #475569;
           opacity: 1;
@@ -3259,20 +3218,12 @@ export default function AppV2() {
           border-color: #334155 !important;
         }
         
-        .active-glow {
-          box-shadow: 0px 0px 12px rgba(74,158,255,0.2);
-        }
-        
-        .glow-primary {
-          box-shadow: 0px 0px 12px rgba(74,158,255,0.2);
-        }
-        
         ::-webkit-scrollbar {
           width: 6px;
         }
         
         ::-webkit-scrollbar-track {
-          background: #031427;
+          background: #071a2e;
         }
         
         ::-webkit-scrollbar-thumb {
@@ -3286,7 +3237,7 @@ export default function AppV2() {
         
         * {
           scrollbar-width: thin;
-          scrollbar-color: #3e484d #031427;
+          scrollbar-color: #3e484d #071a2e;
         }
       `}</style>
     </div>
