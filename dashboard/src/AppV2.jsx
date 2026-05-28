@@ -1579,7 +1579,7 @@ export default function AppV2() {
             <span className="material-symbols-outlined" style={{ color: '#4a9eff', fontSize: '24px' }}>verified_user</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
               <div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>HIPAA §164.312(b) COMPLIANT</div>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>ZERO PHI STORAGE ARCHITECTURE</div>
               </div>
               <div style={{ width: '1px', height: '24px', background: '#3e484d' }} />
               <div style={{ fontSize: '10px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>ENCRYPTION: AES-256-GCM</div>
