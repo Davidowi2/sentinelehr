@@ -532,7 +532,7 @@ const InvestigateResults = React.memo(({ results }) => {
 });
 
 const SettingsSection = ({ title, icon, children }) => (
-  <div style={{ 
+  <div className="w-full" style={{ 
     background: 'var(--bg-surface)', border: '1px solid var(--border)', 
     borderRadius: '12px', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)'
   }}>
@@ -569,7 +569,7 @@ const SettingsField = ({ label, value, subtext, disabled, type = 'text' }) => (
 );
 
 const SettingsView = () => (
-  <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+  <div style={{ width: '100%' }}>
     <SettingsSection title="Monitor Configuration" icon={<Activity size={20} />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         <SettingsField label="Epic Connection Status" value="Demo Mode — Synthetic Data" disabled />
@@ -619,7 +619,7 @@ const SettingsView = () => (
 const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating }) => (
   <div> 
     {/* Query Section */}
-    <div style={{
+    <div className="w-full" style={{
       background: '#0b1c30',
       border: '1px solid #3e484d',
       borderRadius: '12px',
@@ -709,7 +709,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
 
     {/* Empty State */}
     {!investigateResults && !investigating && (
-      <div style={{
+      <div className="w-full" style={{
         background: '#0b1c30',
         border: '1px solid #3e484d',
         borderRadius: '12px',
@@ -1968,9 +1968,9 @@ export default function AppV2() {
         </header>
 
         {/* Content Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', paddingBottom: '72px' }}>
+        <div className="w-full px-6 py-6" style={{ flex: 1, overflowY: 'auto', paddingBottom: '72px' }}>
           {activeView === 'overview' && ( 
-            <div style={{ maxWidth: '1400px', margin: '0 auto' }}> 
+            <div style={{ width: '100%' }}> 
           
               {/* Stat cards */} 
               <div style={{ 
