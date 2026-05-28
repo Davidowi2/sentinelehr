@@ -2453,45 +2453,6 @@ export default function AppV2() {
                   </div> 
                 )} 
               </div>
-
-              {/* Mini Stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                {[
-                  { label: 'System Health', value: '99.98%', icon: 'health_and_safety' },
-                  { label: 'Risk Level', value: 'STABLE', icon: 'shield' },
-                  { label: 'Mean Response', value: '2.4h', icon: 'schedule' }
-                ].map((stat, idx) => (
-                  <div key={idx} style={{
-                    background: '#0b1c30',
-                    border: '1px solid #3e484d',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}>
-                    <div>
-                      <div style={{
-                        fontSize: '10px',
-                        fontWeight: '600',
-                        letterSpacing: '0.1em',
-                        textTransform: 'uppercase',
-                        color: '#879298',
-                        marginBottom: '8px'
-                      }}>{stat.label}</div>
-                      <div style={{
-                        fontSize: '24px',
-                        fontWeight: '700',
-                        color: '#38bdf8',
-                        fontFamily: "'JetBrains Mono', monospace"
-                      }}>{stat.value}</div>
-                    </div>
-                    <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(108,211,247,0.2)' }}>
-                      {stat.icon}
-                    </span>
-                  </div>
-                ))}
-              </div>
         
               {selectedAlert && ( 
                 <Drawer title="Alert Review" id={`ALT-${selectedAlert}`} onClose={handleCloseAlertDrawer} loading={!alertDetail}> 
