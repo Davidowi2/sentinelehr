@@ -1976,7 +1976,7 @@ export default function AppV2() {
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(4, 1fr)', 
-                gap: '20px', 
+                gap: '16px', 
                 marginBottom: '32px' 
               }}> 
                 {[ 
@@ -2021,7 +2021,7 @@ export default function AppV2() {
                       background: '#102034', 
                       border: '1px solid #3e484d', 
                       borderRadius: '12px', 
-                      padding: '20px', 
+                      padding: '16px', 
                       position: 'relative', 
                       overflow: 'hidden',
                       cursor: 'pointer',
@@ -2043,11 +2043,11 @@ export default function AppV2() {
                       marginBottom: '16px'
                     }}>
                       <div style={{ 
-                        fontSize: '10px', 
+                        fontSize: '12px', 
                         fontWeight: '600', 
-                        letterSpacing: '0.1em', 
+                        letterSpacing: '0.05em', 
                         textTransform: 'uppercase', 
-                        color: '#879298'
+                        color: '#64748b'
                       }}>{card.label}</div>
                       <span 
                         className="material-symbols-outlined" 
@@ -2061,7 +2061,7 @@ export default function AppV2() {
                       </span>
                     </div>
                     <div style={{ 
-                      fontSize: '48px', 
+                      fontSize: '36px', 
                       fontWeight: '700', 
                       color: card.color, 
                       lineHeight: 1, 
@@ -2070,8 +2070,8 @@ export default function AppV2() {
                       marginBottom: '12px' 
                     }}>{card.value}</div> 
                     <div style={{ 
-                      fontSize: '14px', 
-                      color: '#94a3b8',
+                      fontSize: '12px', 
+                      color: '#475569',
                       fontFamily: "'Inter', sans-serif"
                     }}>{card.sub}</div>
                     <div 
