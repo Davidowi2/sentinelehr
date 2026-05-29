@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from contextlib import asynccontextmanager
 from slowapi import Limiter, _rate_limit_exceeded_handler 
 from slowapi.util import get_remote_address 
 from slowapi.errors import RateLimitExceeded 
@@ -26,7 +27,15 @@ from datetime import datetime, timedelta
 
 # ─── SETUP ──────────────────────────────────────────────────
 load_dotenv()
-app = FastAPI(title="SentinelEHR API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Run database seeding on startup
+    seed_database()
+    yield
+    # Cleanup on shutdown (if needed)
+
+app = FastAPI(title="SentinelEHR API", lifespan=lifespan)
 
 limiter = Limiter(key_func=get_remote_address) 
 app.state.limiter = limiter 
@@ -44,7 +53,69 @@ DEMO_USERS = {
         os.getenv("DEMO2_PASSWORD", "erie-demo-2026"), 
 } 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret") 
-JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8")) 
+JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8"))
+
+# ─── DATABASE SEEDING ───────────────────────────────────────
+
+def seed_database():
+    """Create users table and seed initial users if table is empty"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Create users table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                organization VARCHAR(255),
+                organization_id INTEGER DEFAULT 1,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                last_login TIMESTAMP
+            )
+        """)
+        conn.commit()
+        print("[DATABASE] Users table created/verified")
+        
+        # Check if any users exist
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()['count']
+        
+        if user_count == 0:
+            print("[DATABASE] No users found. Seeding default users...")
+            
+            # Seed users with bcrypt hashed passwords
+            seed_users = [
+                ("demo@sentinelehr.com", "hbh-demo-2026", "compliance_officer", "SentinelEHR Demo", 1),
+                ("it_demo@sentinelehr.com", "it-demo-2026", "it_director", "SentinelEHR Demo", 1),
+                ("admin@sentinelehr.com", "sentinelehr2026", "admin", "SentinelEHR Demo", 1)
+            ]
+            
+            for email, password, role, org, org_id in seed_users:
+                # Hash password using bcrypt
+                password_hash = case_logic.hash_password(password)
+                
+                cursor.execute("""
+                    INSERT INTO users (email, password_hash, role, organization, organization_id, is_active)
+                    VALUES (%s, %s, %s, %s, %s, TRUE)
+                """, (email, password_hash, role, org, org_id))
+                
+                print(f"[DATABASE] Seeded user: {email} ({role})")
+            
+            conn.commit()
+            print("[DATABASE] Database seeding complete")
+        else:
+            print(f"[DATABASE] Users table already has {user_count} user(s). Skipping seed.")
+        
+        cursor.close()
+        conn.close()
+        
+    except Exception as e:
+        print(f"[DATABASE ERROR] Failed to seed database: {str(e)}")
+        # Don't raise exception - allow app to start even if seeding fails
 
 # ─── SECURITY HELPERS ───────────────────────────────────────
 # In-memory store for failed login attempts: {ip: [timestamp1, timestamp2, ...]}
