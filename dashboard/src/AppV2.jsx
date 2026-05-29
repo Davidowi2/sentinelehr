@@ -582,159 +582,289 @@ const SettingsField = ({ label, value, subtext, disabled, type = 'text' }) => (
   </div>
 );
 
-const SettingsView = ({ thresholds, setThresholds, handleSaveThresholds, savingThresholds, thresholdMessage }) => (
-  <div style={{ width: '100%' }}>
-    <SettingsSection title="Monitor Configuration" icon={<Activity size={20} />}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <SettingsField label="Epic Connection Status" value="Demo Mode — Synthetic Data" disabled />
-        <SettingsField label="Monitoring Window" value="2026-01-05 to 2026-03-31" disabled />
-        <SettingsField label="Employees Monitored" value="80" disabled />
-      </div>
-    </SettingsSection>
+const SettingsView = ({ 
+  thresholds, 
+  setThresholds, 
+  handleSaveThresholds, 
+  savingThresholds, 
+  thresholdMessage,
+  userEmail,
+  userRole,
+  token
+}) => {
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '' });
+  const [passwordStatus, setPasswordStatus] = useState({ loading: false, message: '', type: '' });
 
-    <SettingsSection title="Alert Thresholds" icon={<AlertTriangle size={20} />}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Critical Threshold</label>
-          <input 
-            type="number"
-            step="0.1"
-            min="0"
-            max="1"
-            value={thresholds.critical}
-            onChange={(e) => setThresholds({...thresholds, critical: parseFloat(e.target.value) || 0})}
-            style={{ 
-              background: 'var(--bg-elevated)', 
-              border: '1px solid var(--border)', 
-              borderRadius: '6px', 
-              padding: '10px 14px', 
-              fontSize: '13px', 
-              color: 'var(--text-primary)', 
-              fontFamily: "'JetBrains Mono', monospace", 
-              outline: 'none', 
-              width: '100%',
-              cursor: 'text'
-            }}
-            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-          />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>High Threshold</label>
-          <input 
-            type="number"
-            step="0.1"
-            min="0"
-            max="1"
-            value={thresholds.high}
-            onChange={(e) => setThresholds({...thresholds, high: parseFloat(e.target.value) || 0})}
-            style={{ 
-              background: 'var(--bg-elevated)', 
-              border: '1px solid var(--border)', 
-              borderRadius: '6px', 
-              padding: '10px 14px', 
-              fontSize: '13px', 
-              color: 'var(--text-primary)', 
-              fontFamily: "'JetBrains Mono', monospace", 
-              outline: 'none', 
-              width: '100%',
-              cursor: 'text'
-            }}
-            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-          />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Medium Threshold</label>
-          <input 
-            type="number"
-            step="0.1"
-            min="0"
-            max="1"
-            value={thresholds.medium}
-            onChange={(e) => setThresholds({...thresholds, medium: parseFloat(e.target.value) || 0})}
-            style={{ 
-              background: 'var(--bg-elevated)', 
-              border: '1px solid var(--border)', 
-              borderRadius: '6px', 
-              padding: '10px 14px', 
-              fontSize: '13px', 
-              color: 'var(--text-primary)', 
-              fontFamily: "'JetBrains Mono', monospace", 
-              outline: 'none', 
-              width: '100%',
-              cursor: 'text'
-            }}
-            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-          />
-        </div>
-      </div>
-      
-      {/* Success/Error Message */}
-      {thresholdMessage.text && (
-        <div style={{ 
-          marginTop: '16px',
-          padding: '12px 16px', 
-          background: thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', 
-          border: `1px solid ${thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`, 
-          borderRadius: '8px', 
-          color: thresholdMessage.type === 'success' ? '#10B981' : '#f43f5e', 
-          fontSize: '13px',
-          fontWeight: '500',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          {thresholdMessage.type === 'success' ? '✓' : '⚠'} {thresholdMessage.text}
-        </div>
-      )}
-      
-      {/* Save Button */}
-      <button
-        onClick={handleSaveThresholds}
-        disabled={savingThresholds}
-        style={{
-          marginTop: '16px',
-          padding: '12px 24px',
-          background: savingThresholds ? 'var(--text-muted)' : 'var(--accent)',
-          color: savingThresholds ? 'var(--bg-elevated)' : '#0b1326',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '12px',
-          fontWeight: '700',
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          cursor: savingThresholds ? 'not-allowed' : 'pointer',
-          opacity: savingThresholds ? 0.7 : 1,
-          transition: 'all 0.2s ease',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}
-        onMouseEnter={(e) => !savingThresholds && (e.target.style.background = 'var(--accent-hover)')}
-        onMouseLeave={(e) => !savingThresholds && (e.target.style.background = 'var(--accent)')}
-      >
-        {savingThresholds ? 'Saving...' : 'Save Thresholds'}
-      </button>
-    </SettingsSection>
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordStatus({ loading: true, message: '', type: '' });
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(passwordForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPasswordStatus({ loading: false, message: 'Password updated successfully', type: 'success' });
+        setPasswordForm({ current_password: '', new_password: '' });
+        setTimeout(() => setShowPasswordForm(false), 2000);
+      } else {
+        setPasswordStatus({ loading: false, message: data.detail || 'Failed to update password', type: 'error' });
+      }
+    } catch (err) {
+      setPasswordStatus({ loading: false, message: 'Connection error', type: 'error' });
+    }
+  };
 
-    <SettingsSection title="Account" icon={<User size={20} />}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <SettingsField label="Username" value="demo" disabled />
-        <SettingsField label="Role" value="Compliance Officer" disabled />
-      </div>
-      <button disabled style={{ 
-        marginTop: '8px', padding: '12px', background: 'var(--bg-elevated)', 
-        color: 'var(--text-muted)', border: '1px solid var(--border)', 
-        borderRadius: '8px', fontSize: '12px', fontWeight: '600', 
-        textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'not-allowed'
-      }}>
-        Change Password
-      </button>
-    </SettingsSection>
-  </div>
-);
+  return (
+    <div style={{ width: '100%' }}>
+      <SettingsSection title="Monitor Configuration" icon={<Activity size={20} />}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <SettingsField label="Epic Connection Status" value="Demo Mode — Synthetic Data" disabled />
+          <SettingsField label="Monitoring Window" value="2026-01-05 to 2026-03-31" disabled />
+          <SettingsField label="Employees Monitored" value="80" disabled />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="Alert Thresholds" icon={<AlertTriangle size={20} />}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Critical Threshold</label>
+            <input 
+              type="number"
+              step="0.1"
+              min="0"
+              max="1"
+              value={thresholds.critical}
+              onChange={(e) => setThresholds({...thresholds, critical: parseFloat(e.target.value) || 0})}
+              style={{ 
+                background: 'var(--bg-elevated)', 
+                border: '1px solid var(--border)', 
+                borderRadius: '6px', 
+                padding: '10px 14px', 
+                fontSize: '13px', 
+                color: 'var(--text-primary)', 
+                fontFamily: "'JetBrains Mono', monospace", 
+                outline: 'none', 
+                width: '100%',
+                cursor: 'text'
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>High Threshold</label>
+            <input 
+              type="number"
+              step="0.1"
+              min="0"
+              max="1"
+              value={thresholds.high}
+              onChange={(e) => setThresholds({...thresholds, high: parseFloat(e.target.value) || 0})}
+              style={{ 
+                background: 'var(--bg-elevated)', 
+                border: '1px solid var(--border)', 
+                borderRadius: '6px', 
+                padding: '10px 14px', 
+                fontSize: '13px', 
+                color: 'var(--text-primary)', 
+                fontFamily: "'JetBrains Mono', monospace", 
+                outline: 'none', 
+                width: '100%',
+                cursor: 'text'
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Medium Threshold</label>
+            <input 
+              type="number"
+              step="0.1"
+              min="0"
+              max="1"
+              value={thresholds.medium}
+              onChange={(e) => setThresholds({...thresholds, medium: parseFloat(e.target.value) || 0})}
+              style={{ 
+                background: 'var(--bg-elevated)', 
+                border: '1px solid var(--border)', 
+                borderRadius: '6px', 
+                padding: '10px 14px', 
+                fontSize: '13px', 
+                color: 'var(--text-primary)', 
+                fontFamily: "'JetBrains Mono', monospace", 
+                outline: 'none', 
+                width: '100%',
+                cursor: 'text'
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+        </div>
+        
+        {/* Success/Error Message */}
+        {thresholdMessage.text && (
+          <div style={{ 
+            marginTop: '16px',
+            padding: '12px 16px', 
+            background: thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', 
+            border: `1px solid ${thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`, 
+            borderRadius: '8px', 
+            color: thresholdMessage.type === 'success' ? '#10B981' : '#f43f5e', 
+            fontSize: '13px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            {thresholdMessage.type === 'success' ? '✓' : '⚠'} {thresholdMessage.text}
+          </div>
+        )}
+        
+        {/* Save Button */}
+        <button
+          onClick={handleSaveThresholds}
+          disabled={savingThresholds}
+          style={{
+            marginTop: '16px',
+            padding: '12px 24px',
+            background: savingThresholds ? 'var(--text-muted)' : 'var(--accent)',
+            color: savingThresholds ? 'var(--bg-elevated)' : '#0b1326',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            cursor: savingThresholds ? 'not-allowed' : 'pointer',
+            opacity: savingThresholds ? 0.7 : 1,
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+          onMouseEnter={(e) => !savingThresholds && (e.target.style.background = 'var(--accent-hover)')}
+          onMouseLeave={(e) => !savingThresholds && (e.target.style.background = 'var(--accent)')}
+        >
+          {savingThresholds ? 'Saving...' : 'Save Thresholds'}
+        </button>
+      </SettingsSection>
+
+      <SettingsSection title="Account" icon={<User size={20} />}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <SettingsField label="Username" value={userEmail || 'demo'} disabled />
+          <SettingsField label="Role" value={userRole || 'Compliance Officer'} disabled />
+        </div>
+        
+        {!showPasswordForm ? (
+          <button 
+            onClick={() => setShowPasswordForm(true)}
+            style={{ 
+              marginTop: '16px', padding: '12px 20px', background: 'var(--bg-elevated)', 
+              color: 'var(--text-primary)', border: '1px solid var(--border)', 
+              borderRadius: '8px', fontSize: '12px', fontWeight: '600', 
+              textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.borderColor = 'var(--accent)'}
+            onMouseLeave={(e) => e.target.style.borderColor = 'var(--border)'}
+          >
+            Change Password
+          </button>
+        ) : (
+          <form onSubmit={handleChangePassword} style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Password</label>
+              <input 
+                type="password"
+                required
+                value={passwordForm.current_password}
+                onChange={(e) => setPasswordForm({...passwordForm, current_password: e.target.value})}
+                style={{ 
+                  background: 'var(--bg-elevated)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '6px', 
+                  padding: '10px 14px', 
+                  fontSize: '13px', 
+                  color: 'var(--text-primary)', 
+                  outline: 'none'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>New Password</label>
+              <input 
+                type="password"
+                required
+                minLength={8}
+                value={passwordForm.new_password}
+                onChange={(e) => setPasswordForm({...passwordForm, new_password: e.target.value})}
+                style={{ 
+                  background: 'var(--bg-elevated)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '6px', 
+                  padding: '10px 14px', 
+                  fontSize: '13px', 
+                  color: 'var(--text-primary)', 
+                  outline: 'none'
+                }}
+              />
+            </div>
+            
+            {passwordStatus.message && (
+              <div style={{ 
+                padding: '10px 14px', 
+                background: passwordStatus.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', 
+                border: `1px solid ${passwordStatus.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`, 
+                borderRadius: '6px', 
+                color: passwordStatus.type === 'success' ? '#10B981' : '#f43f5e', 
+                fontSize: '12px'
+              }}>
+                {passwordStatus.message}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                type="submit"
+                disabled={passwordStatus.loading}
+                style={{ 
+                  padding: '10px 20px', background: 'var(--accent)', 
+                  color: '#0b1326', border: 'none', 
+                  borderRadius: '6px', fontSize: '12px', fontWeight: '700', 
+                  textTransform: 'uppercase', cursor: 'pointer'
+                }}
+              >
+                {passwordStatus.loading ? 'Updating...' : 'Confirm'}
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowPasswordForm(false)}
+                style={{ 
+                  padding: '10px 20px', background: 'transparent', 
+                  color: 'var(--text-muted)', border: '1px solid var(--border)', 
+                  borderRadius: '6px', fontSize: '12px', fontWeight: '600', 
+                  textTransform: 'uppercase', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </SettingsSection>
+    </div>
+  );
+};
+
 
 const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating }) => (
   <div> 
@@ -3122,6 +3252,9 @@ export default function AppV2() {
               handleSaveThresholds={handleSaveThresholds}
               savingThresholds={savingThresholds}
               thresholdMessage={thresholdMessage}
+              userEmail={userEmail}
+              userRole={userRole}
+              token={token}
             />
           )}
         </div>

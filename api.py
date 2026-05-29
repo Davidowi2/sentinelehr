@@ -837,6 +837,36 @@ def list_users(
   users = [dict(r) for r in cursor.fetchall()] 
   conn.close() 
   return {"users": users} 
+
+@app.post('/users/change-password') 
+def change_password(body: dict, token_data = Depends(verify_token)): 
+    current_password = body.get('current_password') 
+    new_password = body.get('new_password') 
+    
+    if not current_password or not new_password: 
+        raise HTTPException(status_code=400, detail='Both current and new password required') 
+    if len(new_password) < 8: 
+        raise HTTPException(status_code=400, detail='New password must be at least 8 characters') 
+    
+    try: 
+        conn = get_connection() 
+        cursor = conn.cursor() 
+        cursor.execute('SELECT id, password_hash FROM users WHERE email = %s', (token_data['username'],)) 
+        user = cursor.fetchone() 
+        
+        if not user or not case_logic.verify_password(current_password, user['password_hash']): 
+            conn.close() 
+            raise HTTPException(status_code=401, detail='Current password is incorrect') 
+        
+        new_hash = case_logic.hash_password(new_password) 
+        cursor.execute('UPDATE users SET password_hash = %s WHERE id = %s', (new_hash, user['id'])) 
+        conn.commit() 
+        conn.close() 
+        return {'message': 'Password updated successfully'} 
+    except HTTPException: 
+        raise 
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e)) 
  
 # CASE MANAGEMENT 
  
