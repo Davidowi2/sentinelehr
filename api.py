@@ -94,6 +94,27 @@ def seed_database():
         conn.commit()
         print("[DATABASE] Updated NULL organization values")
         
+        # Rename 'active' column to 'is_active' if it exists (migration for existing tables)
+        try:
+            cursor.execute("""
+                ALTER TABLE users RENAME COLUMN active TO is_active
+            """)
+            conn.commit()
+            print("[DATABASE] Renamed 'active' column to 'is_active'")
+        except Exception as e:
+            # Column might already be named is_active or doesn't exist
+            print(f"[DATABASE] Column rename skipped: {str(e)}")
+        
+        # Print all column names for debugging
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'users' 
+            ORDER BY ordinal_position
+        """)
+        columns = [row['column_name'] for row in cursor.fetchall()]
+        print(f"[DATABASE] Users table columns: {', '.join(columns)}")
+        
         # Check if any users exist
         cursor.execute("SELECT COUNT(*) FROM users")
         user_count = cursor.fetchone()['count']
