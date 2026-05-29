@@ -246,9 +246,11 @@ def seed_database():
         
         try: 
             cursor.execute(''' 
-                ALTER TABLE cases DROP CONSTRAINT IF EXISTS cases_alert_id_fkey; 
-                ALTER TABLE cases ADD CONSTRAINT cases_alert_id_fkey 
-                FOREIGN KEY (case_id) REFERENCES alerts(alert_id) ON DELETE RESTRICT 
+                CREATE TABLE IF NOT EXISTS deleted_alerts_log ( 
+                    alert_id INTEGER, 
+                    deleted_at TIMESTAMP DEFAULT NOW(), 
+                    deleted_by VARCHAR(255) 
+                ) 
             ''') 
             conn.commit() 
             print('[DATABASE] Cascade deletion protection applied') 
