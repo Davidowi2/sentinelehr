@@ -99,6 +99,34 @@ def seed_database():
         print('[DATABASE] Settings table verified')
         
         try: 
+            cursor.execute(''' 
+                CREATE TABLE IF NOT EXISTS organizations ( 
+                    id SERIAL PRIMARY KEY, 
+                    name VARCHAR(255) NOT NULL, 
+                    type VARCHAR(100), 
+                    epic_host VARCHAR(255), 
+                    epic_port INTEGER, 
+                    epic_db_user VARCHAR(255), 
+                    epic_db_password_encrypted VARCHAR(500), 
+                    subscription_tier VARCHAR(50) DEFAULT 'design_partner', 
+                    is_active BOOLEAN DEFAULT TRUE, 
+                    created_at TIMESTAMP DEFAULT NOW(), 
+                    contact_name VARCHAR(255), 
+                    contact_email VARCHAR(255) 
+                ) 
+            ''') 
+            cursor.execute(''' 
+                INSERT INTO organizations (id, name, type, subscription_tier) 
+                VALUES (1, 'SentinelEHR Demo', 'demo', 'demo') 
+                ON CONFLICT (id) DO NOTHING 
+            ''') 
+            conn.commit() 
+            print('[DATABASE] Organizations table verified') 
+        except Exception as e: 
+            conn.rollback() 
+            print(f'[DATABASE] Organizations table skip: {str(e)}') 
+        
+        try: 
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
             cursor.execute('UPDATE users SET organization_id = 1 WHERE organization_id IS NULL') 
             conn.commit() 
