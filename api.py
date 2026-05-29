@@ -105,6 +105,16 @@ def seed_database():
             # Column might already be named is_active or doesn't exist
             print(f"[DATABASE] Column rename skipped: {str(e)}")
         
+        # Add last_login column if it doesn't exist (migration for existing tables)
+        try:
+            cursor.execute("""
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP
+            """)
+            conn.commit()
+            print("[DATABASE] last_login column verified")
+        except Exception as e:
+            print(f"[DATABASE] last_login column error: {str(e)}")
+        
         # Print all column names for debugging
         cursor.execute("""
             SELECT column_name 
