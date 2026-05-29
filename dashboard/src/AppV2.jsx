@@ -35,22 +35,22 @@ import {
 
 const THEMES = {
   dark: `
-    --surface-dim: #031427;
-    --surface-container-low: #0b1c30;
-    --surface-container: #102034;
-    --surface-container-high: #1b2b3f;
-    --surface-container-highest: #26364a;
-    --surface-container-lowest: #000f21;
-    --outline-variant: #3e484d;
-    --outline: #879298;
-    --primary: #4a9eff;
-    --primary-container: #2563eb;
-    --on-primary-container: #002e3b;
+    --surface-dim: #0b1326;
+    --surface-container-low: #131b2e;
+    --surface-container: #131b2e;
+    --surface-container-high: #222a3d;
+    --surface-container-highest: #2a3449;
+    --surface-container-lowest: #060e20;
+    --outline-variant: rgba(140,144,159,0.2);
+    --outline: #8c909f;
+    --primary: #adc6ff;
+    --primary-container: #8aa8e8;
+    --on-primary-container: #0b1326;
     --on-surface: #d3e4fe;
     --on-surface-variant: #bdc8ce;
     --error: #ffb4ab;
     --tertiary: #ffb873;
-    --background: #031427;
+    --background: #0b1326;
     --critical: #f43f5e;
     --critical-bg: rgba(244,63,94,0.1);
     --high: #f97316;
@@ -61,17 +61,17 @@ const THEMES = {
     --warning: #f97316;
     --shadow: 0 4px 24px rgba(0,0,0,0.4);
     
-    --bg-app: #031427;
-    --bg-surface: #102034;
-    --bg-elevated: #1b2b3f;
-    --bg-hover: #26364a;
-    --border: #3e484d;
+    --bg-app: #0b1326;
+    --bg-surface: #131b2e;
+    --bg-elevated: #222a3d;
+    --bg-hover: #2a3449;
+    --border: rgba(140,144,159,0.2);
     --text-primary: #d3e4fe;
     --text-secondary: #bdc8ce;
-    --text-muted: #879298;
-    --accent: #4a9eff;
-    --accent-hover: #2563eb;
-    --accent-subtle: rgba(74,158,255,0.12);
+    --text-muted: #8c909f;
+    --accent: #adc6ff;
+    --accent-hover: #8aa8e8;
+    --accent-subtle: rgba(173,198,255,0.12);
   `,
   light: `
     --surface-dim: #d3e4fe;
@@ -203,8 +203,8 @@ const Select = (props) => (
 
 const TableCard = ({ children }) => ( 
   <div style={{ 
-    background: '#0d1f35', borderRadius: '10px', 
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: '#131b2e', borderRadius: '10px', 
+    border: '1px solid rgba(140,144,159,0.2)',
     overflow: 'hidden' 
   }}>{children}</div> 
 ); 
@@ -288,7 +288,7 @@ const InvestigateResults = React.memo(({ results }) => {
       {/* Top Row: Profile + Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
         {/* Employee Profile - col-span-8 */}
-        <div style={{ gridColumn: 'span 8', background: '#0b1c30', border: '1px solid #3e484d', borderRadius: '12px', padding: '28px' }}>
+        <div style={{ gridColumn: 'span 8', background: '#0b1c30', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '12px', padding: '28px' }}>
           <div style={{ marginBottom: '24px' }}>
             <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Employee Profile</div>
             <div style={{ fontSize: '28px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{results.emp_id}</div>
@@ -312,13 +312,13 @@ const InvestigateResults = React.memo(({ results }) => {
           {/* Investigation Insight */}
           <div style={{ 
             background: '#000f21', 
-            border: '1px solid #3e484d', 
+            border: '1px solid rgba(140,144,159,0.2)', 
             borderRadius: '10px', 
             padding: '20px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Activity size={16} style={{ color: '#4a9eff' }} />
-              <div style={{ fontSize: '10px', fontWeight: '600', color: '#4a9eff', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Investigation Insight</div>
+              <Activity size={16} style={{ color: '#adc6ff' }} />
+              <div style={{ fontSize: '10px', fontWeight: '600', color: '#adc6ff', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Investigation Insight</div>
             </div>
             <div style={{ fontSize: '14px', color: '#d3e4fe', lineHeight: '1.6' }}>
               This employee triggered sensitive record access rules on {totalAlerts} of {daysMonitored || 1} monitored days, 
@@ -331,7 +331,7 @@ const InvestigateResults = React.memo(({ results }) => {
         {/* Mini Stats - col-span-4 */}
         <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Anomaly Gauge */}
-          <div style={{ background: '#0b1c30', border: '1px solid #3e484d', borderRadius: '12px', padding: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#0b1c30', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '12px', padding: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ position: 'relative', width: '128px', height: '128px', marginBottom: '16px' }}>
               <div style={{
                 position: 'relative',
@@ -343,7 +343,7 @@ const InvestigateResults = React.memo(({ results }) => {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <div style={{ fontSize: '36px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
                   {topScore.toFixed(2)}
                 </div>
               </div>
@@ -379,7 +379,7 @@ const InvestigateResults = React.memo(({ results }) => {
             ].map(stat => (
               <div key={stat.label} style={{ 
                 background: '#0b1c30', 
-                border: '1px solid #3e484d', 
+                border: '1px solid rgba(140,144,159,0.2)', 
                 borderRadius: '12px', 
                 padding: '16px',
                 position: 'relative',
@@ -398,7 +398,7 @@ const InvestigateResults = React.memo(({ results }) => {
                   right: '12px', 
                   top: '50%', 
                   transform: 'translateY(-50%)',
-                  color: '#4a9eff',
+                  color: '#adc6ff',
                   opacity: 0.2
                 }}>
                   {stat.icon}
@@ -417,7 +417,7 @@ const InvestigateResults = React.memo(({ results }) => {
         </div>
         <div style={{
           background: '#0b1c30',
-          border: '1px solid #3e484d',
+          border: '1px solid rgba(140,144,159,0.2)',
           borderRadius: '12px',
           overflow: 'hidden'
         }}>
@@ -464,7 +464,7 @@ const InvestigateResults = React.memo(({ results }) => {
                             style={{ 
                               fontSize: '10px', 
                               background: '#26364a', 
-                              border: '1px solid #3e484d', 
+                              border: '1px solid rgba(140,144,159,0.2)', 
                               padding: '3px 8px', 
                               borderRadius: '6px', 
                               color: '#bdc8ce',
@@ -478,7 +478,7 @@ const InvestigateResults = React.memo(({ results }) => {
                         ))} 
                       </div>
                     </td> 
-                    <td style={{ padding: '14px 20px', fontSize: '14px', color: '#4a9eff', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}> 
+                    <td style={{ padding: '14px 20px', fontSize: '14px', color: '#adc6ff', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}> 
                       {(a.anomaly_score ?? 0).toFixed(2)} 
                     </td> 
                   </tr> 
@@ -499,7 +499,7 @@ const InvestigateResults = React.memo(({ results }) => {
         </div>
         <div style={{
           background: '#0b1c30',
-          border: '1px solid #3e484d',
+          border: '1px solid rgba(140,144,159,0.2)',
           borderRadius: '12px',
           overflow: 'hidden'
         }}>
@@ -520,7 +520,7 @@ const InvestigateResults = React.memo(({ results }) => {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   > 
-                    <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
+                    <td style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>{c.case_id}</td> 
                     <td style={{ padding: '14px 20px' }}> 
                       <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}> 
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f97316' }} /> 
@@ -620,7 +620,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
     {/* Query Section */}
     <div className="w-full" style={{
       background: '#0b1c30',
-      border: '1px solid #3e484d',
+      border: '1px solid rgba(140,144,159,0.2)',
       borderRadius: '12px',
       padding: '24px',
       marginBottom: '24px'
@@ -646,7 +646,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
               placeholder="Enter EMP-ID (e.g. 10042)" 
               style={{ 
                 background: '#000f21', 
-                border: '1px solid #3e484d', 
+                border: '1px solid rgba(140,144,159,0.2)', 
                 borderRadius: '8px', 
                 padding: '10px 14px 10px 40px', 
                 fontSize: '13px', 
@@ -712,7 +712,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
     {!investigateResults && !investigating && (
       <div className="w-full" style={{
         background: '#0b1c30',
-        border: '1px solid #3e484d',
+        border: '1px solid rgba(140,144,159,0.2)',
         borderRadius: '12px',
         padding: '64px',
         textAlign: 'center',
@@ -722,7 +722,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
         justifyContent: 'center'
       }}>
         <ScanSearch size={48} style={{
-          color: '#4a9eff',
+          color: '#adc6ff',
           opacity: 0.3,
           marginBottom: '24px'
         }} />
@@ -1473,7 +1473,7 @@ export default function AppV2() {
           flexDirection: 'column', 
           justifyContent: 'space-between',
           padding: '48px',
-          borderRight: '1px solid #3e484d'
+          borderRight: '1px solid rgba(140,144,159,0.2)'
         }}>
           {/* Top: Logo */}
           <div>
@@ -1489,7 +1489,7 @@ export default function AppV2() {
               }}>
                 <Shield size={20} style={{ color: '#fff' }} />
               </div>
-              <span style={{ fontWeight: '700', fontSize: '20px', color: '#4a9eff' }}>SentinelEHR</span>
+              <span style={{ fontWeight: '700', fontSize: '20px', color: '#adc6ff' }}>SentinelEHR</span>
             </div>
             <div style={{ 
               fontSize: '10px', 
@@ -1676,12 +1676,12 @@ export default function AppV2() {
             alignItems: 'center',
             gap: '16px'
           }}>
-            <ShieldCheck size={20} style={{ color: '#4a9eff' }} />
+            <ShieldCheck size={20} style={{ color: '#adc6ff' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>ZERO PHI STORAGE ARCHITECTURE</div>
               </div>
-              <div style={{ width: '1px', height: '24px', background: '#3e484d' }} />
+              <div style={{ width: '1px', height: '24px', background: 'rgba(140,144,159,0.2)' }} />
               <div style={{ fontSize: '10px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>ENCRYPTION: AES-256-GCM</div>
             </div>
           </div>
@@ -1705,14 +1705,14 @@ export default function AppV2() {
               width: '160px',
               height: '160px',
               background: '#0f2a45',
-              border: '1px solid #3e484d',
+              border: '1px solid rgba(140,144,159,0.2)',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
               <Shield size={64} style={{ 
-                color: '#4a9eff'
+                color: '#adc6ff'
               }} />
             </div>
           </div>
@@ -1752,8 +1752,8 @@ export default function AppV2() {
           }}>
             {/* Card 3: Full Width Stats */}
             <div style={{ 
-              background: '#0d1f35',
-              border: '1px solid rgba(255,255,255,0.08)', 
+              background: '#131b2e',
+              border: '1px solid rgba(140,144,159,0.2)',
               borderRadius: '12px', 
               padding: '20px',
               display: 'flex',
@@ -1761,17 +1761,17 @@ export default function AppV2() {
               alignItems: 'center'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>325K</div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Events Monitored</div>
               </div>
-              <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
+              <div style={{ width: '1px', height: '40px', background: 'rgba(140,144,159,0.2)' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>PHI Stored</div>
               </div>
-              <div style={{ width: '1px', height: '40px', background: '#3e484d' }} />
+              <div style={{ width: '1px', height: '40px', background: 'rgba(140,144,159,0.2)' }} />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Alert Precision</div>
               </div>
             </div>
@@ -1806,8 +1806,8 @@ export default function AppV2() {
       {/* SIDEBAR */}
       <aside style={{
         width: '260px',
-        background: '#071a2e',
-        borderRight: '1px solid #3e484d',
+        background: '#060e20',
+        borderRight: '1px solid rgba(140,144,159,0.2)',
         display: 'flex',
         flexDirection: 'column',
         position: 'fixed',
@@ -1837,7 +1837,7 @@ export default function AppV2() {
             <Shield size={20} style={{ color: '#fff' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontWeight: '700', fontSize: '18px', color: '#4a9eff', lineHeight: 1 }}>SentinelEHR</span>
+            <span style={{ fontWeight: '700', fontSize: '18px', color: '#adc6ff', lineHeight: 1 }}>SentinelEHR</span>
             <span style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COMPLIANCE INTELLIGENCE</span>
           </div>
         </div>
@@ -1880,10 +1880,10 @@ export default function AppV2() {
                     display: 'flex',
                     alignItems: 'center',
                     padding: '12px 20px',
-                    background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    background: isActive ? '#222a3d' : 'transparent',
                     border: 'none',
-                    borderLeft: isActive ? '2px solid #3b82f6' : '2px solid transparent',
-                    color: isActive ? '#4a9eff' : '#bdc8ce',
+                    borderLeft: isActive ? '2px solid #adc6ff' : '2px solid transparent',
+                    color: isActive ? '#adc6ff' : '#bdc8ce',
                     cursor: 'pointer',
                     gap: '12px',
                     transition: 'all 0.2s',
@@ -1901,7 +1901,7 @@ export default function AppV2() {
 
           {/* Settings and Sign Out at bottom */}
           <div style={{ marginTop: 'auto' }}>
-            <div style={{ height: '1px', background: '#3e484d', margin: '16px 0' }} />
+            <div style={{ height: '1px', background: 'rgba(140,144,159,0.2)', margin: '16px 0' }} />
             
             {/* Settings */}
             <button
@@ -1911,10 +1911,10 @@ export default function AppV2() {
                 display: 'flex',
                 alignItems: 'center',
                 padding: '12px 20px',
-                background: activeView === 'settings' ? 'rgba(255,255,255,0.05)' : 'transparent',
+                background: activeView === 'settings' ? '#222a3d' : 'transparent',
                 border: 'none',
-                borderLeft: activeView === 'settings' ? '2px solid #3b82f6' : '2px solid transparent',
-                color: activeView === 'settings' ? '#4a9eff' : '#bdc8ce',
+                borderLeft: activeView === 'settings' ? '2px solid #adc6ff' : '2px solid transparent',
+                color: activeView === 'settings' ? '#adc6ff' : '#bdc8ce',
                 cursor: 'pointer',
                 gap: '12px',
                 transition: 'all 0.2s',
@@ -1930,7 +1930,7 @@ export default function AppV2() {
         </nav>
 
         {/* Bottom Actions */}
-        <div style={{ padding: '8px 0', borderTop: '1px solid #3e484d' }}>
+        <div style={{ padding: '8px 0', borderTop: '1px solid rgba(140,144,159,0.2)' }}>
           <button 
             onClick={() => setShowLogoutConfirm(true)}
             style={{
@@ -1980,7 +1980,7 @@ export default function AppV2() {
             borderRadius: '8px',
             padding: '8px 16px',
             width: '320px',
-            border: '1px solid #3e484d',
+            border: '1px solid rgba(140,144,159,0.2)',
             position: 'relative'
           }}>
             <Search size={20} style={{ color: '#879298' }} />
@@ -2010,8 +2010,8 @@ export default function AppV2() {
                 left: 0,
                 right: 0,
                 marginTop: '8px',
-                background: '#0d1f35',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: '#131b2e',
+                border: '1px solid rgba(140,144,159,0.2)',
                 borderRadius: '8px',
                 maxHeight: '400px',
                 overflowY: 'auto',
@@ -2027,7 +2027,7 @@ export default function AppV2() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       color: '#879298',
-                      borderBottom: '1px solid #3e484d'
+                      borderBottom: '1px solid rgba(140,144,159,0.2)'
                     }}>
                       Alerts
                     </div>
@@ -2045,7 +2045,7 @@ export default function AppV2() {
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>
                             Alert #{alert.alert_id}
                           </span>
                           <span style={{ fontSize: '10px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>
@@ -2070,7 +2070,7 @@ export default function AppV2() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       color: '#879298',
-                      borderBottom: '1px solid #3e484d'
+                      borderBottom: '1px solid rgba(140,144,159,0.2)'
                     }}>
                       Cases
                     </div>
@@ -2088,7 +2088,7 @@ export default function AppV2() {
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>
                             {c.case_id}
                           </span>
                           <span style={{ fontSize: '10px', color: '#879298', fontFamily: "'JetBrains Mono', monospace" }}>
@@ -2113,7 +2113,7 @@ export default function AppV2() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       color: '#879298',
-                      borderBottom: '1px solid #3e484d'
+                      borderBottom: '1px solid rgba(140,144,159,0.2)'
                     }}>
                       Employees
                     </div>
@@ -2130,7 +2130,7 @@ export default function AppV2() {
                         onMouseEnter={(e) => e.currentTarget.style.background = '#1b2b3f'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace" }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>
                           EMP-{empId}
                         </div>
                         <div style={{ fontSize: '11px', color: '#879298' }}>
@@ -2147,7 +2147,7 @@ export default function AppV2() {
           {/* Right: Actions and User */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {/* Vertical Divider */}
-            <div style={{ width: '1px', height: '32px', background: '#3e484d' }} />
+            <div style={{ width: '1px', height: '32px', background: 'rgba(140,144,159,0.2)' }} />
             
             {/* User Info */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2217,7 +2217,7 @@ export default function AppV2() {
                       ? summary.top_anomaly_score.toFixed(2) 
                       : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), 
                     sub: '90-day highest anomaly', 
-                    color: '#4a9eff',
+                    color: '#adc6ff',
                     icon: <Activity size={20} />
                   } 
                 ].map((card, idx) => ( 
@@ -2226,8 +2226,8 @@ export default function AppV2() {
                     style={{ 
                       flex: 1,
                       minWidth: 0,
-                      background: '#0d1f35', 
-                      border: '1px solid rgba(255,255,255,0.08)', 
+                      background: '#131b2e',
+                      border: '1px solid rgba(140,144,159,0.2)',
                       borderRadius: '12px', 
                       padding: '28px', 
                       position: 'relative', 
@@ -2279,8 +2279,8 @@ export default function AppV2() {
           
               {/* Chart card */}
               <div className="w-full" style={{ 
-                background: '#0d1f35', 
-                border: '1px solid rgba(255,255,255,0.08)', 
+                background: '#131b2e',
+                border: '1px solid rgba(140,144,159,0.2)',
                 borderRadius: '12px', 
                 overflow: 'hidden',
                 marginBottom: '40px'
@@ -2377,7 +2377,7 @@ export default function AppV2() {
               {/* Filter Bar */}
               <div style={{
                 background: '#0b1c30',
-                border: '1px solid #3e484d',
+                border: '1px solid rgba(140,144,159,0.2)',
                 borderRadius: '12px',
                 padding: '20px 24px',
                 marginBottom: '24px',
@@ -2400,7 +2400,7 @@ export default function AppV2() {
                       onChange={e => {setAlertSeverity(e.target.value); setAlertsOffset(0)}}
                       style={{
                         background: '#000f21',
-                        border: '1px solid #3e484d',
+                        border: '1px solid rgba(140,144,159,0.2)',
                         borderRadius: '8px',
                         padding: '10px 14px',
                         fontSize: '13px',
@@ -2431,7 +2431,7 @@ export default function AppV2() {
                       onChange={e => {setAlertStatus(e.target.value); setAlertsOffset(0)}}
                       style={{
                         background: '#000f21',
-                        border: '1px solid #3e484d',
+                        border: '1px solid rgba(140,144,159,0.2)',
                         borderRadius: '8px',
                         padding: '10px 14px',
                         fontSize: '13px',
@@ -2487,7 +2487,7 @@ export default function AppV2() {
               {/* Table */}
               <div style={{
                 background: '#0b1c30',
-                border: '1px solid #3e484d',
+                border: '1px solid rgba(140,144,159,0.2)',
                 borderRadius: '12px',
                 overflow: 'auto',
                 marginBottom: '24px'
@@ -2536,7 +2536,7 @@ export default function AppV2() {
                                 style={{ 
                                   fontSize: '10px', 
                                   background: '#26364a', 
-                                  border: '1px solid #3e484d', 
+                                  border: '1px solid rgba(140,144,159,0.2)', 
                                   padding: '3px 8px', 
                                   borderRadius: '6px', 
                                   color: '#bdc8ce',
@@ -2584,8 +2584,8 @@ export default function AppV2() {
                 </table> 
                 {alertsTotal > LIMIT && ( 
                   <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(62,72,77,0.3)', display: 'flex', gap: '12px', justifyContent: 'center' }}> 
-                    <button onClick={() => setAlertsOffset(Math.max(0, alertsOffset - LIMIT))} disabled={alertsOffset === 0} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: alertsOffset === 0 ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Previous</button> 
-                    <button onClick={() => setAlertsOffset(alertsOffset + LIMIT)} disabled={alertsOffset + LIMIT >= alertsTotal} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: alertsOffset + LIMIT >= alertsTotal ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Next</button> 
+                    <button onClick={() => setAlertsOffset(Math.max(0, alertsOffset - LIMIT))} disabled={alertsOffset === 0} style={{ padding: '8px 16px', background: '#102034', border: '1px solid rgba(140,144,159,0.2)', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: alertsOffset === 0 ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Previous</button> 
+                    <button onClick={() => setAlertsOffset(alertsOffset + LIMIT)} disabled={alertsOffset + LIMIT >= alertsTotal} style={{ padding: '8px 16px', background: '#102034', border: '1px solid rgba(140,144,159,0.2)', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: alertsOffset + LIMIT >= alertsTotal ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Next</button> 
                   </div> 
                 )} 
               </div>
@@ -2633,7 +2633,7 @@ export default function AppV2() {
                             padding: '10px',
                             background: '#0f172a',
                             border: '1px solid #4a9eff',
-                            color: '#4a9eff',
+                            color: '#adc6ff',
                             borderRadius: '8px',
                             fontSize: '14px',
                             fontWeight: '500',
@@ -2709,7 +2709,7 @@ export default function AppV2() {
             <div> 
               <div style={{
                 background: '#0b1c30',
-                border: '1px solid #3e484d',
+                border: '1px solid rgba(140,144,159,0.2)',
                 borderRadius: '12px',
                 padding: '20px 24px',
                 marginBottom: '24px',
@@ -2732,7 +2732,7 @@ export default function AppV2() {
                       onChange={e => {setCaseStatusFilter(e.target.value); setCasesOffset(0)}}
                       style={{
                         background: '#000f21',
-                        border: '1px solid #3e484d',
+                        border: '1px solid rgba(140,144,159,0.2)',
                         borderRadius: '8px',
                         padding: '10px 14px',
                         fontSize: '13px',
@@ -2764,7 +2764,7 @@ export default function AppV2() {
                       onChange={e => {setCasePriorityFilter(e.target.value); setCasesOffset(0)}}
                       style={{
                         background: '#000f21',
-                        border: '1px solid #3e484d',
+                        border: '1px solid rgba(140,144,159,0.2)',
                         borderRadius: '8px',
                         padding: '10px 14px',
                         fontSize: '13px',
@@ -2799,7 +2799,7 @@ export default function AppV2() {
         
               <div style={{
                 background: '#0b1c30',
-                border: '1px solid #3e484d',
+                border: '1px solid rgba(140,144,159,0.2)',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 marginBottom: '24px'
@@ -2827,7 +2827,7 @@ export default function AppV2() {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#4a9eff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
                           <span style={{
@@ -2868,7 +2868,7 @@ export default function AppV2() {
                             onClick={(e) => { e.stopPropagation(); handleGenerateReport(c.case_id); }}
                             style={{ 
                               background: 'transparent', 
-                              border: '1px solid #3e484d', 
+                              border: '1px solid rgba(140,144,159,0.2)', 
                               color: '#bdc8ce', 
                               borderRadius: '6px', 
                               padding: '6px 12px', 
@@ -2899,8 +2899,8 @@ export default function AppV2() {
                 </table> 
                 {casesTotal > LIMIT && ( 
                   <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(62,72,77,0.3)', display: 'flex', gap: '12px', justifyContent: 'center' }}> 
-                    <button onClick={() => setCasesOffset(Math.max(0, casesOffset - LIMIT))} disabled={casesOffset === 0} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset === 0 ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Previous</button> 
-                    <button onClick={() => setCasesOffset(casesOffset + LIMIT)} disabled={casesOffset + LIMIT >= casesTotal} style={{ padding: '8px 16px', background: '#102034', border: '1px solid #3e484d', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset + LIMIT >= casesTotal ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Next</button> 
+                    <button onClick={() => setCasesOffset(Math.max(0, casesOffset - LIMIT))} disabled={casesOffset === 0} style={{ padding: '8px 16px', background: '#102034', border: '1px solid rgba(140,144,159,0.2)', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset === 0 ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Previous</button> 
+                    <button onClick={() => setCasesOffset(casesOffset + LIMIT)} disabled={casesOffset + LIMIT >= casesTotal} style={{ padding: '8px 16px', background: '#102034', border: '1px solid rgba(140,144,159,0.2)', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset + LIMIT >= casesTotal ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Next</button> 
                   </div> 
                 )} 
               </div> 
@@ -2977,7 +2977,7 @@ export default function AppV2() {
         right: 0,
         height: '44px',
         background: '#060e20',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
+        borderTop: '1px solid rgba(140,144,159,0.2)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -3051,7 +3051,7 @@ export default function AppV2() {
         }}>
           <div style={{
             background: '#1e293b',
-            border: '1px solid #3e484d',
+            border: '1px solid rgba(140,144,159,0.2)',
             borderRadius: '12px',
             padding: '32px',
             maxWidth: '400px',
@@ -3079,7 +3079,7 @@ export default function AppV2() {
                   flex: 1,
                   padding: '12px',
                   background: 'transparent',
-                  border: '1px solid #3e484d',
+                  border: '1px solid rgba(140,144,159,0.2)',
                   borderRadius: '8px',
                   color: '#94a3b8',
                   fontSize: '14px',
@@ -3132,7 +3132,7 @@ export default function AppV2() {
         }}>
           <div style={{
             background: '#1e293b',
-            border: '1px solid #3e484d',
+            border: '1px solid rgba(140,144,159,0.2)',
             borderRadius: '12px',
             padding: '32px',
             maxWidth: '400px',
@@ -3160,7 +3160,7 @@ export default function AppV2() {
                   flex: 1,
                   padding: '12px',
                   background: 'transparent',
-                  border: '1px solid #3e484d',
+                  border: '1px solid rgba(140,144,159,0.2)',
                   borderRadius: '8px',
                   color: '#94a3b8',
                   fontSize: '14px',
