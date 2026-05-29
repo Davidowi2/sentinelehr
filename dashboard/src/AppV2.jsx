@@ -580,7 +580,7 @@ const SettingsField = ({ label, value, subtext, disabled, type = 'text' }) => (
   </div>
 );
 
-const SettingsView = () => (
+const SettingsView = ({ thresholds, setThresholds, handleSaveThresholds, savingThresholds, thresholdMessage }) => (
   <div style={{ width: '100%' }}>
     <SettingsSection title="Monitor Configuration" icon={<Activity size={20} />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -592,10 +592,129 @@ const SettingsView = () => (
 
     <SettingsSection title="Alert Thresholds" icon={<AlertTriangle size={20} />}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-        <SettingsField label="Critical Threshold" value="0.7" disabled />
-        <SettingsField label="High Threshold" value="0.4" disabled />
-        <SettingsField label="Medium Threshold" value="0.2" disabled />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Critical Threshold</label>
+          <input 
+            type="number"
+            step="0.1"
+            min="0"
+            max="1"
+            value={thresholds.critical}
+            onChange={(e) => setThresholds({...thresholds, critical: parseFloat(e.target.value) || 0})}
+            style={{ 
+              background: 'var(--bg-elevated)', 
+              border: '1px solid var(--border)', 
+              borderRadius: '6px', 
+              padding: '10px 14px', 
+              fontSize: '13px', 
+              color: 'var(--text-primary)', 
+              fontFamily: "'JetBrains Mono', monospace", 
+              outline: 'none', 
+              width: '100%',
+              cursor: 'text'
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>High Threshold</label>
+          <input 
+            type="number"
+            step="0.1"
+            min="0"
+            max="1"
+            value={thresholds.high}
+            onChange={(e) => setThresholds({...thresholds, high: parseFloat(e.target.value) || 0})}
+            style={{ 
+              background: 'var(--bg-elevated)', 
+              border: '1px solid var(--border)', 
+              borderRadius: '6px', 
+              padding: '10px 14px', 
+              fontSize: '13px', 
+              color: 'var(--text-primary)', 
+              fontFamily: "'JetBrains Mono', monospace", 
+              outline: 'none', 
+              width: '100%',
+              cursor: 'text'
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Medium Threshold</label>
+          <input 
+            type="number"
+            step="0.1"
+            min="0"
+            max="1"
+            value={thresholds.medium}
+            onChange={(e) => setThresholds({...thresholds, medium: parseFloat(e.target.value) || 0})}
+            style={{ 
+              background: 'var(--bg-elevated)', 
+              border: '1px solid var(--border)', 
+              borderRadius: '6px', 
+              padding: '10px 14px', 
+              fontSize: '13px', 
+              color: 'var(--text-primary)', 
+              fontFamily: "'JetBrains Mono', monospace", 
+              outline: 'none', 
+              width: '100%',
+              cursor: 'text'
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+          />
+        </div>
       </div>
+      
+      {/* Success/Error Message */}
+      {thresholdMessage.text && (
+        <div style={{ 
+          marginTop: '16px',
+          padding: '12px 16px', 
+          background: thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', 
+          border: `1px solid ${thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`, 
+          borderRadius: '8px', 
+          color: thresholdMessage.type === 'success' ? '#10B981' : '#f43f5e', 
+          fontSize: '13px',
+          fontWeight: '500',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          {thresholdMessage.type === 'success' ? '✓' : '⚠'} {thresholdMessage.text}
+        </div>
+      )}
+      
+      {/* Save Button */}
+      <button
+        onClick={handleSaveThresholds}
+        disabled={savingThresholds}
+        style={{
+          marginTop: '16px',
+          padding: '12px 24px',
+          background: savingThresholds ? 'var(--text-muted)' : 'var(--accent)',
+          color: savingThresholds ? 'var(--bg-elevated)' : '#0b1326',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '12px',
+          fontWeight: '700',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          cursor: savingThresholds ? 'not-allowed' : 'pointer',
+          opacity: savingThresholds ? 0.7 : 1,
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+        onMouseEnter={(e) => !savingThresholds && (e.target.style.background = 'var(--accent-hover)')}
+        onMouseLeave={(e) => !savingThresholds && (e.target.style.background = 'var(--accent)')}
+      >
+        {savingThresholds ? 'Saving...' : 'Save Thresholds'}
+      </button>
     </SettingsSection>
 
     <SettingsSection title="Account" icon={<User size={20} />}>
@@ -918,6 +1037,9 @@ export default function AppV2() {
   const [savingCase, setSavingCase] = useState(false) 
   
   const [investigateId, setInvestigateId] = useState('') 
+  const [thresholds, setThresholds] = useState({ critical: 0.7, high: 0.4, medium: 0.2 })
+  const [savingThresholds, setSavingThresholds] = useState(false)
+  const [thresholdMessage, setThresholdMessage] = useState({ type: '', text: '' }) 
   const [investigateResults, setInvestigateResults] = useState(null) 
   const [investigating, setInvestigating] = useState(false) 
   
@@ -1209,6 +1331,42 @@ export default function AppV2() {
       setInvestigateResults({ error: "Failed to connect to investigation service." });
     } 
     setInvestigating(false); 
+  };
+
+  const handleSaveThresholds = async () => {
+    if (!token) return;
+    setSavingThresholds(true);
+    setThresholdMessage({ type: '', text: '' });
+    
+    try {
+      const res = await fetch(`${API_BASE}/settings/thresholds`, {
+        method: 'PUT',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          critical_threshold: thresholds.critical,
+          high_threshold: thresholds.high,
+          medium_threshold: thresholds.medium
+        })
+      });
+      
+      if (res.ok) {
+        setThresholdMessage({ type: 'success', text: 'Thresholds updated' });
+        setTimeout(() => setThresholdMessage({ type: '', text: '' }), 3000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setThresholdMessage({ 
+          type: 'error', 
+          text: data.message || 'Failed to update thresholds' 
+        });
+      }
+    } catch(e) {
+      console.error(e);
+      setThresholdMessage({ type: 'error', text: 'Network error. Please try again.' });
+    }
+    setSavingThresholds(false);
   };
 
   const handleLookup = async (id) => {
@@ -2929,7 +3087,15 @@ export default function AppV2() {
             />
           )} 
         
-          {activeView === 'settings' && <SettingsView />}
+          {activeView === 'settings' && (
+            <SettingsView 
+              thresholds={thresholds}
+              setThresholds={setThresholds}
+              handleSaveThresholds={handleSaveThresholds}
+              savingThresholds={savingThresholds}
+              thresholdMessage={thresholdMessage}
+            />
+          )}
         </div>
       </main>
 
