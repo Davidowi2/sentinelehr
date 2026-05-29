@@ -80,6 +80,20 @@ def seed_database():
         conn.commit()
         print("[DATABASE] Users table created/verified")
         
+        # Add organization column if it doesn't exist (migration for existing tables)
+        cursor.execute("""
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS organization VARCHAR(255) DEFAULT 'SentinelEHR Demo'
+        """)
+        conn.commit()
+        print("[DATABASE] Organization column verified")
+        
+        # Update any existing users with NULL organization
+        cursor.execute("""
+            UPDATE users SET organization = 'SentinelEHR Demo' WHERE organization IS NULL
+        """)
+        conn.commit()
+        print("[DATABASE] Updated NULL organization values")
+        
         # Check if any users exist
         cursor.execute("SELECT COUNT(*) FROM users")
         user_count = cursor.fetchone()['count']
