@@ -216,6 +216,18 @@ def seed_database():
         else:
             print(f"[DATABASE] Users table already has {user_count} user(s). Skipping seed.")
         
+        try: 
+            cursor.execute(''' 
+                ALTER TABLE cases DROP CONSTRAINT IF EXISTS cases_alert_id_fkey; 
+                ALTER TABLE cases ADD CONSTRAINT cases_alert_id_fkey 
+                FOREIGN KEY (case_id) REFERENCES alerts(alert_id) ON DELETE RESTRICT 
+            ''') 
+            conn.commit() 
+            print('[DATABASE] Cascade deletion protection applied') 
+        except Exception as e: 
+            conn.rollback() 
+            print(f'[DATABASE] Cascade protection skip: {str(e)}') 
+            
         cursor.close()
         conn.close()
         
