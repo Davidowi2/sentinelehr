@@ -217,13 +217,13 @@ def get_current_user_from_token(token_data: dict):
     conn = get_connection() 
     cursor = conn.cursor() 
     cursor.execute( 
-      "SELECT user_id, username, role FROM users WHERE username = %s", 
+      'SELECT id, email, role FROM users WHERE email = %s', 
       (username,) 
     ) 
     user = cursor.fetchone() 
     conn.close() 
     if user: 
-      return dict(user) 
+      return {'user_id': user['id'], 'username': user['email'], 'role': user['role']} 
   except: 
     pass 
   # Fallback for env var admin 
