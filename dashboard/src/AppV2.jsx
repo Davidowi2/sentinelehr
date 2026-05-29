@@ -30,7 +30,9 @@ import {
   Lock,
   ScanSearch,
   ShieldCheck,
-  AlertOctagon
+  AlertOctagon,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const THEMES = {
@@ -1001,6 +1003,7 @@ export default function AppV2() {
   const [userEmail, setUserEmail] = useState(null);
   const [userOrganization, setUserOrganization] = useState(null);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1813,14 +1816,14 @@ export default function AppV2() {
                     id="password"
                     name="password"
                     autoComplete="current-password"
-                    type="password" 
+                    type={showPassword ? 'text' : 'password'} 
                     value={loginForm.password}
                     onChange={e => setLoginForm({...loginForm, password: e.target.value})}
                     required
                     placeholder="••••••••"
                     style={{
                       width: '100%',
-                      padding: '14px 16px 14px 48px',
+                      padding: '14px 48px 14px 48px',
                       backgroundColor: '#131b2e',
                       color: '#d3e4fe',
                       border: '1px solid rgba(140,144,159,0.2)',
@@ -1840,6 +1843,30 @@ export default function AppV2() {
                       e.target.style.boxShadow = 'none';
                     }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '16px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: '#879298',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '4px',
+                      borderRadius: '4px',
+                      transition: 'color 0.2s ease'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#adc6ff'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#879298'}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
               </div>
 
