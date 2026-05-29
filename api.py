@@ -80,6 +80,24 @@ def seed_database():
         conn.commit()
         print("[DATABASE] Users table created/verified")
         
+        # Create settings table and seed defaults
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value VARCHAR(255) NOT NULL,
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        ''')
+        cursor.execute('''
+            INSERT INTO settings (key, value) VALUES 
+            ('critical_threshold', '0.7'), 
+            ('high_threshold', '0.4'), 
+            ('medium_threshold', '0.2') 
+            ON CONFLICT (key) DO NOTHING 
+        ''')
+        conn.commit()
+        print('[DATABASE] Settings table verified')
+        
         # Add organization column if it doesn't exist (migration for existing tables)
         cursor.execute("""
             ALTER TABLE users ADD COLUMN IF NOT EXISTS organization VARCHAR(255) DEFAULT 'SentinelEHR Demo'
@@ -1083,14 +1101,14 @@ def update_thresholds(
         if body.high_threshold <= body.medium_threshold:
             raise HTTPException(status_code=400, detail="High threshold must be greater than medium threshold")
         
-        # Store thresholds in environment/config (in production, use database)
-        # For now, we'll accept and acknowledge the update
-        # In a real implementation, you'd store this in a settings table
-        
-        print(f"[SETTINGS] Thresholds updated by {token_data.get('username')}:")
-        print(f"  Critical: {body.critical_threshold}")
-        print(f"  High: {body.high_threshold}")
-        print(f"  Medium: {body.medium_threshold}")
+        # Store thresholds in database
+        conn = get_connection() 
+        cursor = conn.cursor() 
+        cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.critical_threshold), 'critical_threshold')) 
+        cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.high_threshold), 'high_threshold')) 
+        cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.medium_threshold), 'medium_threshold')) 
+        conn.commit() 
+        conn.close() 
         
         return {
             "message": "Thresholds updated successfully",
@@ -1110,12 +1128,30 @@ def get_thresholds(
     token_data = Depends(require_role('admin', 'compliance_officer'))
 ):
     """Get current alert severity thresholds"""
-    # Return default thresholds (in production, fetch from database)
-    return {
-        "critical_threshold": 0.7,
-        "high_threshold": 0.4,
-        "medium_threshold": 0.2
-    }
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT key, value FROM settings WHERE key IN ('critical_threshold', 'high_threshold', 'medium_threshold')")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Convert to dictionary with float values
+        thresholds = {row['key']: float(row['value']) for row in rows}
+        
+        # Ensure we have all keys, otherwise use defaults
+        return {
+            "critical_threshold": thresholds.get('critical_threshold', 0.7),
+            "high_threshold": thresholds.get('high_threshold', 0.4),
+            "medium_threshold": thresholds.get('medium_threshold', 0.2)
+        }
+    except Exception as e:
+        # Fallback to defaults if database fails
+        print(f"[DATABASE ERROR] Failed to fetch thresholds: {str(e)}")
+        return {
+            "critical_threshold": 0.7,
+            "high_threshold": 0.4,
+            "medium_threshold": 0.2
+        }
 
 # ─── SERVER STARTUP ─────────────────────────────────────────
 if __name__ == "__main__":
