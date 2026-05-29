@@ -98,6 +98,15 @@ def seed_database():
         conn.commit()
         print('[DATABASE] Settings table verified')
         
+        try: 
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
+            cursor.execute('UPDATE users SET organization_id = 1 WHERE organization_id IS NULL') 
+            conn.commit() 
+            print('[DATABASE] organization_id verified on users') 
+        except Exception as e: 
+            conn.rollback() 
+            print(f'[DATABASE] organization_id skip on users: {str(e)}') 
+        
         # Add organization_id to core tables 
         for table in ['alerts', 'cases', 'employees', 'anomaly_scores', 'audit_events']: 
             try: 
