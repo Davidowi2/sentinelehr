@@ -102,18 +102,18 @@ def seed_database():
             conn.commit()
             print("[DATABASE] Renamed 'active' column to 'is_active'")
         except Exception as e:
+            conn.rollback()
             # Column might already be named is_active or doesn't exist
             print(f"[DATABASE] Column rename skipped: {str(e)}")
         
         # Add last_login column if it doesn't exist (migration for existing tables)
         try:
-            cursor.execute("""
-                ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP
-            """)
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP')
             conn.commit()
-            print("[DATABASE] last_login column verified")
+            print('[DATABASE] last_login column verified')
         except Exception as e:
-            print(f"[DATABASE] last_login column error: {str(e)}")
+            conn.rollback()
+            print(f'[DATABASE] last_login skip: {str(e)}')
         
         # Print all column names for debugging
         cursor.execute("""
@@ -159,6 +159,7 @@ def seed_database():
         conn.close()
         
     except Exception as e:
+        conn.rollback()
         print(f"[DATABASE ERROR] Failed to seed database: {str(e)}")
         # Don't raise exception - allow app to start even if seeding fails
 
