@@ -461,7 +461,7 @@ def logout(token_data = Depends(verify_token)):
     # Currently stateless, so just returning success
     return {"message": "Logged out successfully"}
 
-@app.get("/health")
+@app.api_route("/health", methods=['GET', 'HEAD'])
 def health_check():
     try:
         conn = get_db()
