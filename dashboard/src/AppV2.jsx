@@ -2975,44 +2975,53 @@ export default function AppV2() {
         bottom: 0,
         left: '260px',
         right: 0,
-        height: '48px',
-        background: '#0b1c30',
-        borderTop: '1px solid #3e484d',
+        height: '44px',
+        background: '#060e20',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 24px',
         zIndex: 30
       }}>
+        {/* Left: Monitoring Window */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            color: '#879298',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            fontFamily: "'JetBrains Mono', monospace"
+          }}>MONITORING WINDOW: Jan 5 – Mar 31, 2026</span>
+        </div>
+
+        {/* Center: Stats */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <span style={{
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: '600',
-            color: '#4a9eff',
-            letterSpacing: '0.05em'
-          }}>SentinelEHR Security Ops</span>
-          <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
-          <span style={{
-            fontSize: '11px',
-            color: '#bdc8ce'
-          }}>SentinelEHR Demo</span>
-          <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
-          <span style={{
-            fontSize: '11px',
-            color: '#bdc8ce',
+            color: '#879298',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
             fontFamily: "'JetBrains Mono', monospace"
-          }}>{summary?.total_employees_monitored ?? 80} Employees</span>
-          <div style={{ width: '1px', height: '20px', background: '#3e484d' }} />
+          }}>{summary?.total_employees_monitored ?? 80} EMPLOYEES</span>
+          <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)' }} />
           <span style={{
             fontSize: '11px',
-            color: '#bdc8ce',
+            fontWeight: '600',
+            color: '#879298',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
             fontFamily: "'JetBrains Mono', monospace"
-          }}>{summary?.total_active ?? alertsTotal ?? 0} Active Signals</span>
+          }}>{summary?.total_active ?? alertsTotal ?? 0} ACTIVE ALERTS</span>
         </div>
+
+        {/* Right: LIVE Indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
-            width: '8px',
-            height: '8px',
+            width: '6px',
+            height: '6px',
             background: '#10B981',
             borderRadius: '50%'
           }} />
@@ -3020,7 +3029,8 @@ export default function AppV2() {
             fontSize: '11px',
             fontWeight: '600',
             color: '#10B981',
-            letterSpacing: '0.1em',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
             fontFamily: "'JetBrains Mono', monospace"
           }}>LIVE</span>
         </div>
