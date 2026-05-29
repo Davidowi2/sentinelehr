@@ -98,6 +98,40 @@ def seed_database():
         conn.commit()
         print('[DATABASE] Settings table verified')
         
+        # Add organization_id to core tables 
+        for table in ['alerts', 'cases', 'employees', 'anomaly_scores', 'audit_events']: 
+            try: 
+                cursor.execute(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
+                cursor.execute(f'UPDATE {table} SET organization_id = 1 WHERE organization_id IS NULL') 
+                conn.commit() 
+                print(f'[DATABASE] organization_id verified on {table}') 
+            except Exception as e: 
+                conn.rollback() 
+                print(f'[DATABASE] organization_id skip on {table}: {str(e)}') 
+        
+        # Recreate active_alerts view with organization_id 
+        try: 
+            cursor.execute('DROP VIEW IF EXISTS active_alerts') 
+            cursor.execute(''' 
+                CREATE VIEW active_alerts AS 
+                SELECT alert_id, emp_id, alert_date, rules_triggered, rule_count, 
+                       severity, explanation, event_count, out_of_panel, off_hours_count, 
+                       export_print_count, break_glass_count, vip_out_of_panel, 
+                       cross_dept_count, is_acknowledged, created_at, status, 
+                       reviewer_notes, priority_rank, reviewed_by, reviewed_at, 
+                       anomaly_score, adjusted_severity, case_id, sensitive_out_of_panel, 
+                       organization_id 
+                FROM alerts 
+                WHERE adjusted_severity <> 'Suppressed' 
+                AND status <> 'resolved' 
+                ORDER BY priority_rank 
+            ''') 
+            conn.commit() 
+            print('[DATABASE] active_alerts view recreated with organization_id') 
+        except Exception as e: 
+            conn.rollback() 
+            print(f'[DATABASE] active_alerts view error: {str(e)}') 
+        
         # Add organization column if it doesn't exist (migration for existing tables)
         cursor.execute("""
             ALTER TABLE users ADD COLUMN IF NOT EXISTS organization VARCHAR(255) DEFAULT 'SentinelEHR Demo'
