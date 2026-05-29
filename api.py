@@ -462,32 +462,32 @@ def test_email(token_data = Depends(require_role('admin'))):
 def get_summary(request: Request, token_data = Depends(verify_token)):
     # Everyone can see summary
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
         
         # Total active alerts and breakdown
-        cursor.execute("""
-            SELECT 
-                COUNT(*) as total_active,
-                SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END) as critical,
-                SUM(CASE WHEN adjusted_severity = 'High' THEN 1 ELSE 0 END) as high,
-                SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium,
-                MAX(anomaly_score) as top_anomaly_score
-            FROM active_alerts
-            WHERE alert_date >= NOW() - INTERVAL '180 days'
-        """)
+        cursor.execute(''' 
+            SELECT COUNT(*) as total_active, 
+                SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END) as critical, 
+                SUM(CASE WHEN adjusted_severity = 'High' THEN 1 ELSE 0 END) as high, 
+                SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium, 
+                MAX(anomaly_score) as top_anomaly_score 
+            FROM active_alerts 
+            WHERE alert_date >= NOW() - INTERVAL '180 days' 
+            AND organization_id = %s 
+        ''', (org_id,)) 
         alert_stats = cursor.fetchone()
         
         # Total employees monitored
-        cursor.execute("SELECT COUNT(*) FROM employees")
+        cursor.execute('SELECT COUNT(*) FROM employees WHERE organization_id = %s', (org_id,)) 
         total_employees = cursor.fetchone()['count']
         
         # Date range
-        cursor.execute("""
-            SELECT MIN(alert_date), MAX(alert_date) 
-            FROM alerts 
-            WHERE adjusted_severity != 'Suppressed'
-        """)
+        cursor.execute(''' 
+            SELECT MIN(alert_date), MAX(alert_date) FROM alerts 
+            WHERE adjusted_severity != 'Suppressed' AND organization_id = %s 
+        ''', (org_id,)) 
         dates = cursor.fetchone()
         
         conn.close()
@@ -518,11 +518,12 @@ def get_alerts(
     token_data = Depends(verify_token)
 ):
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
         
-        query = "SELECT * FROM alerts WHERE alert_date >= NOW() - INTERVAL '180 days'"
-        params = []
+        query = "SELECT * FROM alerts WHERE alert_date >= NOW() - INTERVAL '180 days' AND organization_id = %s" 
+        params = [org_id] 
         
         if severity:
             query += " AND adjusted_severity = %s"
@@ -559,9 +560,10 @@ def get_alerts(
 @app.get("/alerts/{alert_id}")
 def get_alert(alert_id: int, token_data = Depends(verify_token)):
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM alerts WHERE alert_id = %s", (alert_id,))
+        cursor.execute('SELECT * FROM alerts WHERE alert_id = %s AND organization_id = %s', (alert_id, org_id)) 
         alert = cursor.fetchone()
         conn.close()
         
@@ -576,11 +578,12 @@ def get_alert(alert_id: int, token_data = Depends(verify_token)):
 @app.patch("/alerts/{alert_id}/status")
 def update_alert_status(alert_id: int, update: StatusUpdate, token_data = Depends(require_role('compliance_officer', 'admin'))):
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
         
         # Check if alert exists
-        cursor.execute("SELECT * FROM alerts WHERE alert_id = %s", (alert_id,))
+        cursor.execute('SELECT * FROM alerts WHERE alert_id = %s AND organization_id = %s', (alert_id, org_id)) 
         if not cursor.fetchone():
             conn.close()
             raise HTTPException(status_code=404, detail={"error": "Alert not found"})
@@ -595,13 +598,13 @@ def update_alert_status(alert_id: int, update: StatusUpdate, token_data = Depend
                 reviewer_notes = COALESCE(%s, reviewer_notes), 
                 reviewed_by = COALESCE(%s, reviewed_by),
                 reviewed_at = COALESCE(%s, reviewed_at)
-            WHERE alert_id = %s
-        """, (update.status, update.reviewer_notes, update.reviewed_by, reviewed_at, alert_id))
+            WHERE alert_id = %s AND organization_id = %s
+        """, (update.status, update.reviewer_notes, update.reviewed_by, reviewed_at, alert_id, org_id))
         
         conn.commit()
         
         # Return updated alert
-        cursor.execute("SELECT * FROM alerts WHERE alert_id = %s", (alert_id,))
+        cursor.execute('SELECT * FROM alerts WHERE alert_id = %s AND organization_id = %s', (alert_id, org_id)) 
         updated_alert = dict(cursor.fetchone())
         conn.close()
         
@@ -615,18 +618,19 @@ def update_alert_status(alert_id: int, update: StatusUpdate, token_data = Depend
 @limiter.limit("30/minute") 
 def get_employee_profile(request: Request, emp_id: int, token_data = Depends(require_role('compliance_officer', 'admin'))):
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
         
         # 1. Employee info
-        cursor.execute("SELECT role, dept_id, is_float FROM employees WHERE emp_id = %s", (emp_id,))
+        cursor.execute('SELECT role, dept_id, is_float FROM employees WHERE emp_id = %s AND organization_id = %s', (emp_id, org_id)) 
         emp = cursor.fetchone()
         if not emp:
             conn.close()
             raise HTTPException(status_code=404, detail={"error": "Employee not found"})
             
         # 2. Top anomaly score
-        cursor.execute("SELECT MAX(anomaly_score) as top_score FROM anomaly_scores WHERE emp_id = %s", (emp_id,))
+        cursor.execute('SELECT MAX(anomaly_score) as top_score FROM anomaly_scores WHERE emp_id = %s AND organization_id = %s', (emp_id, org_id)) 
         score_row = cursor.fetchone()
         top_score = float(score_row['top_score']) if score_row and score_row['top_score'] is not None else 0.0
 
@@ -634,10 +638,10 @@ def get_employee_profile(request: Request, emp_id: int, token_data = Depends(req
         cursor.execute("""
             SELECT alert_id, alert_date, adjusted_severity, rules_triggered, anomaly_score
             FROM alerts
-            WHERE emp_id = %s
+            WHERE emp_id = %s AND organization_id = %s
             ORDER BY alert_date DESC
             LIMIT 20
-        """, (emp_id,))
+        """, (emp_id, org_id))
         alerts = [dict(row) for row in cursor.fetchall()]
 
         # 4. Open cases
@@ -645,8 +649,8 @@ def get_employee_profile(request: Request, emp_id: int, token_data = Depends(req
             SELECT case_id, status, priority, window_start, window_end, created_at, 
                    (EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400)::int as days_open
             FROM cases
-            WHERE emp_id = %s AND status != 'Resolved' AND status != 'Closed'
-        """, (emp_id,))
+            WHERE emp_id = %s AND status != 'Resolved' AND status != 'Closed' AND organization_id = %s
+        """, (emp_id, org_id))
         cases = [dict(row) for row in cursor.fetchall()]
         
         conn.close()
@@ -682,11 +686,12 @@ def get_digest(request: Request, days: int = 180, token_data = Depends(verify_to
 @limiter.limit("30/minute")
 def investigate_employee(request: Request, emp_id: int, token_data = Depends(require_role('compliance_officer', 'admin'))):
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
         
         # Get employee info
-        cursor.execute("SELECT * FROM employees WHERE emp_id = %s", (emp_id,))
+        cursor.execute('SELECT * FROM employees WHERE emp_id = %s AND organization_id = %s', (emp_id, org_id)) 
         emp = cursor.fetchone()
         if not emp:
             conn.close()
@@ -696,10 +701,10 @@ def investigate_employee(request: Request, emp_id: int, token_data = Depends(req
         cursor.execute("""
             SELECT action_datetime, pat_id, workstation_id, anomaly_type, action_c
             FROM audit_events
-            WHERE emp_id = %s
+            WHERE emp_id = %s AND organization_id = %s
             ORDER BY action_datetime DESC
             LIMIT 500
-        """, (emp_id,))
+        """, (emp_id, org_id))
         rows = cursor.fetchall()
         
         # Map action codes to names
@@ -717,11 +722,11 @@ def investigate_employee(request: Request, emp_id: int, token_data = Depends(req
             events.append(ev)
         
         # Get total alerts count
-        cursor.execute("SELECT COUNT(*) FROM alerts WHERE emp_id = %s", (emp_id,))
+        cursor.execute("SELECT COUNT(*) FROM alerts WHERE emp_id = %s AND organization_id = %s", (emp_id, org_id)) 
         total_alerts = cursor.fetchone()['count']
         
         # Get max OCR risk score from cases
-        cursor.execute("SELECT MAX(ocr_risk_score) as max_ocr FROM cases WHERE emp_id = %s", (emp_id,))
+        cursor.execute("SELECT MAX(ocr_risk_score) as max_ocr FROM cases WHERE emp_id = %s AND organization_id = %s", (emp_id, org_id)) 
         max_ocr_row = cursor.fetchone()
         max_ocr = float(max_ocr_row['max_ocr']) if max_ocr_row and max_ocr_row['max_ocr'] is not None else 0.0
         
@@ -804,10 +809,13 @@ def list_cases(
   offset: int = 0, 
   token_data = Depends(verify_token) 
 ): 
+  org_id = token_data.get('org_id', 1) 
   conn = get_connection() 
   case_logic.flag_overdue_cases(conn) 
   conditions = [] 
   params = [] 
+  conditions.append('organization_id = %s') 
+  params.append(org_id) 
   if status: 
     conditions.append("status = %s") 
     params.append(status) 
@@ -847,13 +855,14 @@ def get_case(
   case_id: str, 
   token_data = Depends(verify_token) 
 ): 
+  org_id = token_data.get('org_id', 1) 
   conn = get_connection() 
   case_logic.flag_overdue_cases(conn) 
   cursor = conn.cursor() 
   cursor.execute( 
     """SELECT c.*, EXTRACT(DAY FROM NOW() - c.window_start) as days_open 
-       FROM cases c WHERE c.case_id = %s""", 
-    (case_id,) 
+       FROM cases c WHERE c.case_id = %s AND c.organization_id = %s""", 
+    (case_id, org_id) 
   ) 
   case = cursor.fetchone() 
   if not case: 
@@ -880,11 +889,21 @@ def update_case_status(
   body: dict, 
   token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
+  org_id = token_data.get('org_id', 1) 
   new_status = body.get("status") 
   note = body.get("note", "") 
   
   if not new_status: 
     raise HTTPException(400, "Status required") 
+  
+  # Verify case exists for this organization
+  conn = get_connection()
+  cursor = conn.cursor()
+  cursor.execute("SELECT 1 FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+  if not cursor.fetchone():
+    conn.close()
+    raise HTTPException(404, "Case not found")
+  conn.close()
   
   user = get_current_user_from_token(token_data)
   success = case_logic.update_case_status( 
@@ -900,9 +919,20 @@ def add_note(
   body: dict, 
   token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
+  org_id = token_data.get('org_id', 1) 
   note_text = body.get("note", "").strip() 
   if not note_text: 
     raise HTTPException(400, "Note cannot be empty") 
+  
+  # Verify case exists for this organization
+  conn = get_connection()
+  cursor = conn.cursor()
+  cursor.execute("SELECT 1 FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+  if not cursor.fetchone():
+    conn.close()
+    raise HTTPException(404, "Case not found")
+  conn.close()
+  
   user = get_current_user_from_token(token_data)
   case_logic.add_case_note(case_id, user['user_id'], note_text) 
   return {"case_id": case_id, "note_added": True} 
@@ -913,13 +943,14 @@ def assign_case(
   body: dict, 
   token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
+  org_id = token_data.get('org_id', 1) 
   assign_to_id = body.get("user_id") 
   user = get_current_user_from_token(token_data)
   conn = get_connection() 
   cursor = conn.cursor() 
   cursor.execute( 
-    "SELECT assigned_to FROM cases WHERE case_id = %s", 
-    (case_id,) 
+    "SELECT assigned_to FROM cases WHERE case_id = %s AND organization_id = %s", 
+    (case_id, org_id) 
   ) 
   current = cursor.fetchone() 
   if not current: 
@@ -928,8 +959,8 @@ def assign_case(
   old_assigned = current['assigned_to'] 
   cursor.execute( 
     """UPDATE cases SET assigned_to = %s, 
-       updated_at = NOW() WHERE case_id = %s""", 
-    (assign_to_id, case_id) 
+       updated_at = NOW() WHERE case_id = %s AND organization_id = %s""", 
+    (assign_to_id, case_id, org_id) 
   ) 
   cursor.execute( 
     """INSERT INTO case_audit_log 
@@ -947,10 +978,21 @@ def set_outcome(
   body: dict, 
   token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
+  org_id = token_data.get('org_id', 1) 
   outcome = body.get("outcome") 
   valid = ['Legitimate Access','Policy Violation','Training Required','Termination Recommended','No Action'] 
   if outcome not in valid: 
     raise HTTPException(400, f"Invalid outcome") 
+  
+  # Verify case exists for this organization
+  conn = get_connection()
+  cursor = conn.cursor()
+  cursor.execute("SELECT 1 FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+  if not cursor.fetchone():
+    conn.close()
+    raise HTTPException(404, "Case not found")
+  conn.close()
+  
   user = get_current_user_from_token(token_data)
   case_logic.set_case_outcome(case_id, outcome, user['user_id']) 
   return {"case_id": case_id, "outcome": outcome} 
@@ -960,11 +1002,12 @@ def export_case(
   case_id: str, 
   token_data = Depends(require_role('admin','compliance_officer','it_director')) 
 ): 
+  org_id = token_data.get('org_id', 1) 
   conn = get_connection() 
   case_logic.flag_overdue_cases(conn) 
   cursor = conn.cursor() 
   cursor.execute( 
-    "SELECT * FROM cases WHERE case_id = %s", (case_id,) 
+    "SELECT * FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id) 
   ) 
   case = cursor.fetchone() 
   if not case: 
@@ -1018,11 +1061,12 @@ def export_alerts(
     token_data = Depends(require_role('compliance_officer', 'admin'))
 ):
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
         
-        query = "SELECT alert_id, alert_date, emp_id, adjusted_severity, rules_triggered, anomaly_score, explanation FROM alerts WHERE 1=1"
-        params = []
+        query = 'SELECT alert_id, alert_date, emp_id, adjusted_severity, rules_triggered, anomaly_score, explanation FROM alerts WHERE organization_id = %s' 
+        params = [org_id] 
         
         if severity:
             query += " AND adjusted_severity = %s"
@@ -1072,18 +1116,19 @@ def export_case_report(
     token_data = Depends(require_role('compliance_officer', 'admin'))
 ):
     try:
+        org_id = token_data.get('org_id', 1) 
         conn = get_db()
         cursor = conn.cursor()
         
         # 1. Fetch case metadata
-        cursor.execute("SELECT * FROM cases WHERE case_id = %s", (case_id,))
+        cursor.execute('SELECT * FROM cases WHERE case_id = %s AND organization_id = %s', (case_id, org_id)) 
         case = cursor.fetchone()
         if not case:
             conn.close()
             raise HTTPException(status_code=404, detail="Case not found")
             
         # 2. Fetch employee info
-        cursor.execute("SELECT emp_id, role, dept_id FROM employees WHERE emp_id = %s", (case['emp_id'],))
+        cursor.execute("SELECT emp_id, role, dept_id FROM employees WHERE emp_id = %s AND organization_id = %s", (case['emp_id'], org_id)) 
         employee = cursor.fetchone()
         
         # 3. Fetch linked alerts
@@ -1092,7 +1137,7 @@ def export_case_report(
         alerts = []
         if alert_ids:
             placeholders = ', '.join(['%s'] * len(alert_ids))
-            cursor.execute(f"SELECT * FROM alerts WHERE alert_id IN ({placeholders})", tuple(alert_ids))
+            cursor.execute(f"SELECT * FROM alerts WHERE alert_id IN ({placeholders}) AND organization_id = %s", tuple(alert_ids) + (org_id,)) 
             alerts = [dict(r) for r in cursor.fetchall()]
             
         # 4. Fetch audit log / timeline
