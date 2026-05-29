@@ -10,14 +10,14 @@ def setup_database():
     # 0. Users Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        user_id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL, -- compliance_officer, it_director, admin
-        email TEXT,
-        is_active BOOLEAN DEFAULT TRUE,
+        organization TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_login TIMESTAMP
+        last_login TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE
     )
     """)
     
@@ -26,16 +26,16 @@ def setup_database():
     if cursor.fetchone()['count'] == 0:
         print("Seeding initial users...")
         users_to_seed = [
-            ("demo", "hbh-demo-2026", "compliance_officer", "demo@sentinelehr.com"),
-            ("it_demo", "it-demo-2026", "it_director", "it_demo@sentinelehr.com"),
-            ("admin", "sentinelehr2026", "admin", "admin@sentinelehr.com")
+            ("demo@sentinelehr.com", "hbh-demo-2026", "compliance_officer", "SentinelEHR Demo"),
+            ("it_demo@sentinelehr.com", "it-demo-2026", "it_director", "SentinelEHR Demo"),
+            ("admin@sentinelehr.com", "sentinelehr2026", "admin", "SentinelEHR")
         ]
-        for uname, pwd, role, email in users_to_seed:
+        for email, pwd, role, org in users_to_seed:
             hashed = case_logic.hash_password(pwd)
             cursor.execute("""
-                INSERT INTO users (username, password_hash, role, email)
+                INSERT INTO users (email, password_hash, role, organization)
                 VALUES (%s, %s, %s, %s)
-            """, (uname, hashed, role, email))
+            """, (email, hashed, role, org))
         print("Users seeded.")
 
     # 1. Employees Table

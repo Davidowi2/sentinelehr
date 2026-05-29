@@ -183,41 +183,59 @@ class StatusUpdate(BaseModel):
 @app.post("/login") 
 @limiter.limit("10/minute") 
 def login(request: Request, body: dict): 
-    username = body.get("username", "") 
+    email = body.get("email", "").lower().strip()
     password = body.get("password", "") 
     ip_address = get_remote_address(request)
     
     if not check_login_rate_limit(ip_address):
-        audit_log_login(username, ip_address, "BLOCKED (Rate Limit)")
+        audit_log_login(email, ip_address, "BLOCKED (Rate Limit)")
         raise HTTPException(status_code=429, detail="Too many failed login attempts. Please try again in 15 minutes.")
+
+    # Validate email and password
+    if not email or not password:
+        record_failed_login(ip_address)
+        audit_log_login(email, ip_address, "FAILED (Missing credentials)")
+        raise HTTPException(status_code=400, detail="Email and password are required")
 
     # Check database users 
     try: 
         conn = get_connection() 
         cursor = conn.cursor() 
         cursor.execute( 
-            "SELECT id, password_hash, role, active FROM users WHERE username = %s", 
-            (username,) 
+            "SELECT id, email, password_hash, role, organization, is_active FROM users WHERE email = %s", 
+            (email,) 
         ) 
         user = cursor.fetchone() 
         conn.close() 
         
-        if user and user['active'] and case_logic.verify_password(password, user['password_hash']): 
-            audit_log_login(username, ip_address, "SUCCESS")
-            token = create_token(username, user['role']) 
+        if user and user['is_active'] and case_logic.verify_password(password, user['password_hash']): 
+            # Update last login
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s",
+                (user['id'],)
+            )
+            conn.commit()
+            conn.close()
+            
+            audit_log_login(email, ip_address, "SUCCESS")
+            token = create_token(user['email'], user['role']) 
             return { 
                 "access_token": token, 
                 "token_type": "bearer", 
                 "role": user['role'], 
-                "user_id": user['id'] 
+                "user_id": user['id'],
+                "email": user['email'],
+                "organization": user['organization']
             } 
     except Exception as e: 
         print(f"Login error: {str(e)}")
         pass 
     
     record_failed_login(ip_address)
-    audit_log_login(username, ip_address, "FAILED")
-    raise HTTPException(status_code=401, detail="Incorrect username or password") 
+    audit_log_login(email, ip_address, "FAILED")
+    raise HTTPException(status_code=401, detail="Incorrect email or password") 
 
 @app.post("/logout")
 def logout(token_data = Depends(verify_token)):
