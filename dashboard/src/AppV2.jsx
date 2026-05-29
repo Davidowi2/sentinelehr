@@ -2342,7 +2342,7 @@ export default function AppV2() {
                     color: '#adc6ff',
                     icon: <Activity size={20} />
                   } 
-                ].map((card, idx) => ( 
+                ].map((card, idx) => (
                   <div 
                     key={card.label} 
                     style={{ 
@@ -2350,17 +2350,18 @@ export default function AppV2() {
                       minWidth: 0,
                       background: '#131b2e',
                       border: '1px solid rgba(140,144,159,0.2)',
+                      borderBottom: '2px solid transparent',
                       borderRadius: '12px', 
-                      padding: '28px', 
+                      padding: '32px', 
                       position: 'relative', 
                       cursor: 'pointer',
-                      transition: 'border-color 0.2s ease'
+                      transition: 'border-bottom-color 0.2s ease'
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'rgba(74,158,255,0.5)';
+                      e.currentTarget.style.borderBottomColor = card.color;
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                      e.currentTarget.style.borderBottomColor = 'transparent';
                     }}
                   > 
                     <div style={{ 
@@ -2381,7 +2382,7 @@ export default function AppV2() {
                       </div>
                     </div>
                     <div style={{ 
-                      fontSize: '36px', 
+                      fontSize: '56px', 
                       fontWeight: '700', 
                       color: card.color, 
                       lineHeight: 1, 
@@ -2395,7 +2396,7 @@ export default function AppV2() {
                       fontFamily: "'Inter', sans-serif",
                       lineHeight: 1.6
                     }}>{card.sub}</div>
-                  </div> 
+                  </div>
                 ))} 
               </div> 
           
