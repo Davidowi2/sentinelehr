@@ -590,36 +590,12 @@ const SettingsView = ({
   thresholdMessage,
   userEmail,
   userRole,
-  token
+  token,
+  authHeaders
 }) => {
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '' });
-  const [passwordStatus, setPasswordStatus] = useState({ loading: false, message: '', type: '' });
-
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    setPasswordStatus({ loading: true, message: '', type: '' });
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(passwordForm)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setPasswordStatus({ loading: false, message: 'Password updated successfully', type: 'success' });
-        setPasswordForm({ current_password: '', new_password: '' });
-        setTimeout(() => setShowPasswordForm(false), 2000);
-      } else {
-        setPasswordStatus({ loading: false, message: data.detail || 'Failed to update password', type: 'error' });
-      }
-    } catch (err) {
-      setPasswordStatus({ loading: false, message: 'Connection error', type: 'error' });
-    }
-  };
+  const [showPasswordForm, setShowPasswordForm] = useState(false); 
+  const [passwordData, setPasswordData] = useState({current: '', new: '', confirm: ''}); 
+  const [passwordMsg, setPasswordMsg] = useState(null); 
 
   return (
     <div style={{ width: '100%' }}>
@@ -761,105 +737,81 @@ const SettingsView = ({
       <SettingsSection title="Account" icon={<User size={20} />}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <SettingsField label="Username" value={userEmail || 'demo'} disabled />
-          <SettingsField label="Role" value={userRole || 'Compliance Officer'} disabled />
+          <SettingsField label="Role" value={userRole ? userRole.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User'} disabled />
         </div>
         
-        {!showPasswordForm ? (
-          <button 
-            onClick={() => setShowPasswordForm(true)}
-            style={{ 
-              marginTop: '16px', padding: '12px 20px', background: 'var(--bg-elevated)', 
-              color: 'var(--text-primary)', border: '1px solid var(--border)', 
-              borderRadius: '8px', fontSize: '12px', fontWeight: '600', 
-              textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.target.style.borderColor = 'var(--accent)'}
-            onMouseLeave={(e) => e.target.style.borderColor = 'var(--border)'}
-          >
-            Change Password
-          </button>
-        ) : (
-          <form onSubmit={handleChangePassword} style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Password</label>
-              <input 
-                type="password"
-                required
-                value={passwordForm.current_password}
-                onChange={(e) => setPasswordForm({...passwordForm, current_password: e.target.value})}
-                style={{ 
-                  background: 'var(--bg-elevated)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '6px', 
-                  padding: '10px 14px', 
-                  fontSize: '13px', 
-                  color: 'var(--text-primary)', 
-                  outline: 'none'
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>New Password</label>
-              <input 
-                type="password"
-                required
-                minLength={8}
-                value={passwordForm.new_password}
-                onChange={(e) => setPasswordForm({...passwordForm, new_password: e.target.value})}
-                style={{ 
-                  background: 'var(--bg-elevated)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '6px', 
-                  padding: '10px 14px', 
-                  fontSize: '13px', 
-                  color: 'var(--text-primary)', 
-                  outline: 'none'
-                }}
-              />
-            </div>
-            
-            {passwordStatus.message && (
-              <div style={{ 
-                padding: '10px 14px', 
-                background: passwordStatus.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', 
-                border: `1px solid ${passwordStatus.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`, 
-                borderRadius: '6px', 
-                color: passwordStatus.type === 'success' ? '#10B981' : '#f43f5e', 
-                fontSize: '12px'
-              }}>
-                {passwordStatus.message}
-              </div>
-            )}
+        <button 
+          onClick={() => setShowPasswordForm(!showPasswordForm)} 
+          style={{ 
+            marginTop: '16px', padding: '12px 20px', background: 'var(--bg-elevated)', 
+            color: 'var(--text-primary)', border: '1px solid var(--border)', 
+            borderRadius: '8px', fontSize: '12px', fontWeight: '600', 
+            textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => e.target.style.borderColor = 'var(--accent)'}
+          onMouseLeave={(e) => e.target.style.borderColor = 'var(--border)'}
+        >
+          Change Password
+        </button>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
-                type="submit"
-                disabled={passwordStatus.loading}
-                style={{ 
-                  padding: '10px 20px', background: 'var(--accent)', 
-                  color: '#0b1326', border: 'none', 
-                  borderRadius: '6px', fontSize: '12px', fontWeight: '700', 
-                  textTransform: 'uppercase', cursor: 'pointer'
-                }}
-              >
-                {passwordStatus.loading ? 'Updating...' : 'Confirm'}
-              </button>
-              <button 
-                type="button"
-                onClick={() => setShowPasswordForm(false)}
-                style={{ 
-                  padding: '10px 20px', background: 'transparent', 
-                  color: 'var(--text-muted)', border: '1px solid var(--border)', 
-                  borderRadius: '6px', fontSize: '12px', fontWeight: '600', 
-                  textTransform: 'uppercase', cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
+        {showPasswordForm && ( 
+          <div style={{marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '400px'}}> 
+            <input type='password' placeholder='Current password' 
+              value={passwordData.current} 
+              onChange={e => setPasswordData({...passwordData, current: e.target.value})} 
+              style={{padding: '12px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)'}} 
+            /> 
+            <input type='password' placeholder='New password (min 8 characters)' 
+              value={passwordData.new} 
+              onChange={e => setPasswordData({...passwordData, new: e.target.value})} 
+              style={{padding: '12px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)'}} 
+            /> 
+            <input type='password' placeholder='Confirm new password' 
+              value={passwordData.confirm} 
+              onChange={e => setPasswordData({...passwordData, confirm: e.target.value})} 
+              style={{padding: '12px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)'}} 
+            /> 
+            <button onClick={async () => { 
+              if (passwordData.new !== passwordData.confirm) { 
+                setPasswordMsg({type: 'error', text: 'New passwords do not match'}); 
+                return; 
+              } 
+              if (passwordData.new.length < 8) { 
+                setPasswordMsg({type: 'error', text: 'Password must be at least 8 characters'}); 
+                return; 
+              } 
+              try { 
+                const res = await fetch('https://sentinelehr.onrender.com/users/change-password', { 
+                  method: 'POST', 
+                  headers: authHeaders(), 
+                  body: JSON.stringify({current_password: passwordData.current, new_password: passwordData.new}) 
+                }); 
+                const data = await res.json(); 
+                if (res.ok) { 
+                  setPasswordMsg({type: 'success', text: 'Password updated successfully'}); 
+                  setPasswordData({current: '', new: '', confirm: ''}); 
+                  setTimeout(() => setShowPasswordForm(false), 2000); 
+                } else { 
+                  setPasswordMsg({type: 'error', text: data.detail || 'Failed to update password'}); 
+                } 
+              } catch { 
+                setPasswordMsg({type: 'error', text: 'Connection error'}); 
+              } 
+            }} 
+            style={{padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', cursor: 'pointer'}}> 
+              UPDATE PASSWORD 
+            </button> 
+            {passwordMsg && ( 
+              <div style={{padding: '10px', borderRadius: '6px', 
+                background: passwordMsg.type === 'success' ? 'rgba(0,200,100,0.1)' : 'rgba(255,50,50,0.1)', 
+                color: passwordMsg.type === 'success' ? '#00c864' : '#ff4444', 
+                fontSize: '13px'}}> 
+                {passwordMsg.text} 
+              </div> 
+            )} 
+          </div> 
+        )} 
       </SettingsSection>
     </div>
   );
@@ -3255,6 +3207,7 @@ export default function AppV2() {
               userEmail={userEmail}
               userRole={userRole}
               token={token}
+              authHeaders={authHeaders}
             />
           )}
         </div>
