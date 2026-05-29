@@ -202,10 +202,10 @@ def audit_log_login(username: str, ip: str, result: str):
 
 security = HTTPBearer() 
  
-def create_token(username: str, role: str) -> str: 
+def create_token(username: str, role: str, org_id: int) -> str: 
     expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS) 
     return jwt.encode( 
-        {"sub": username, "role": role, "exp": expire}, 
+        {"sub": username, "role": role, "org_id": org_id, "exp": expire}, 
         JWT_SECRET, 
         algorithm="HS256" 
     ) 
@@ -221,10 +221,11 @@ def verify_token(
         ) 
         username = payload.get("sub") 
         role = payload.get("role")
+        org_id = payload.get('org_id', 1)
         if not username or not role: 
             raise HTTPException(status_code=401, 
                 detail="Invalid token") 
-        return {"username": username, "role": role} 
+        return {"username": username, "role": role, "org_id": org_id} 
     except JWTError: 
         raise HTTPException(status_code=401, 
             detail="Invalid or expired token") 
@@ -337,7 +338,7 @@ def login(request: Request, body: dict):
         conn = get_connection() 
         cursor = conn.cursor() 
         cursor.execute( 
-            "SELECT id, email, password_hash, role, organization, is_active FROM users WHERE email = %s", 
+            "SELECT id, email, password_hash, role, organization, organization_id, is_active FROM users WHERE email = %s", 
             (email,) 
         ) 
         user = cursor.fetchone() 
@@ -355,7 +356,7 @@ def login(request: Request, body: dict):
             conn.close()
             
             audit_log_login(email, ip_address, "SUCCESS")
-            token = create_token(user['email'], user['role']) 
+            token = create_token(user['email'], user['role'], user['organization_id']) 
             return { 
                 "access_token": token, 
                 "token_type": "bearer", 
