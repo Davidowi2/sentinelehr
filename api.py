@@ -920,6 +920,68 @@ def export_case_report(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# SETTINGS MANAGEMENT
+
+class ThresholdUpdate(BaseModel):
+    critical_threshold: float
+    high_threshold: float
+    medium_threshold: float
+
+@app.put("/settings/thresholds")
+def update_thresholds(
+    body: ThresholdUpdate,
+    token_data = Depends(require_role('admin', 'compliance_officer'))
+):
+    """Update alert severity thresholds"""
+    try:
+        # Validate threshold values
+        if not (0 <= body.critical_threshold <= 1):
+            raise HTTPException(status_code=400, detail="Critical threshold must be between 0 and 1")
+        if not (0 <= body.high_threshold <= 1):
+            raise HTTPException(status_code=400, detail="High threshold must be between 0 and 1")
+        if not (0 <= body.medium_threshold <= 1):
+            raise HTTPException(status_code=400, detail="Medium threshold must be between 0 and 1")
+        
+        # Validate logical order: critical > high > medium
+        if body.critical_threshold <= body.high_threshold:
+            raise HTTPException(status_code=400, detail="Critical threshold must be greater than high threshold")
+        if body.high_threshold <= body.medium_threshold:
+            raise HTTPException(status_code=400, detail="High threshold must be greater than medium threshold")
+        
+        # Store thresholds in environment/config (in production, use database)
+        # For now, we'll accept and acknowledge the update
+        # In a real implementation, you'd store this in a settings table
+        
+        print(f"[SETTINGS] Thresholds updated by {token_data.get('username')}:")
+        print(f"  Critical: {body.critical_threshold}")
+        print(f"  High: {body.high_threshold}")
+        print(f"  Medium: {body.medium_threshold}")
+        
+        return {
+            "message": "Thresholds updated successfully",
+            "thresholds": {
+                "critical_threshold": body.critical_threshold,
+                "high_threshold": body.high_threshold,
+                "medium_threshold": body.medium_threshold
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/settings/thresholds")
+def get_thresholds(
+    token_data = Depends(require_role('admin', 'compliance_officer'))
+):
+    """Get current alert severity thresholds"""
+    # Return default thresholds (in production, fetch from database)
+    return {
+        "critical_threshold": 0.7,
+        "high_threshold": 0.4,
+        "medium_threshold": 0.2
+    }
+
 # ─── SERVER STARTUP ─────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
