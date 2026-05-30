@@ -1731,7 +1731,7 @@ export default function AppV2() {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'100px',height:'100px',objectFit:'contain'}} />
+            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'100px',height:'100px',objectFit:'contain',mixBlendMode:'screen'}} />
             </div>
           </div>
 
@@ -1810,7 +1810,7 @@ export default function AppV2() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'28px',height:'28px',objectFit:'cover',borderRadius:'4px'}} />
+                <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'28px',height:'28px',objectFit:'cover',borderRadius:'4px',mixBlendMode:'screen'}} />
               </div>
               <span style={{ fontWeight: '700', fontSize: '20px', color: '#adc6ff' }}>SentinelEHR</span>
             </div>
@@ -2065,7 +2065,7 @@ export default function AppV2() {
             justifyContent: 'center',
             flexShrink: 0
           }}>
-            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'32px',height:'32px',objectFit:'cover',borderRadius:'6px'}} />
+            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'32px',height:'32px',objectFit:'cover',borderRadius:'6px',mixBlendMode:'screen'}} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontWeight: '700', fontSize: '18px', color: '#adc6ff', lineHeight: 1 }}>SentinelEHR</span>
