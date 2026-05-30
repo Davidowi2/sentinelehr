@@ -143,14 +143,14 @@ const NAV_ITEMS = [
 ];
 
 const RULE_DESCRIPTIONS = {
-  'R1': 'Out-of-panel access',
+  'R1': 'Volume Spike',
   'R2': 'Volume spike',
-  'R3': 'Off-hours access',
-  'R4': 'VIP record accessed',
+  'R3': 'Off-Hours Access',
+  'R4': 'VIP Record Access',
   'R6': 'Bulk export detected',
   'R7': 'Break-glass abuse',
-  'R8': 'Sensitive record — zero tolerance',
-  'R_SENSITIVE': 'Sensitive record snooping'
+  'R8': 'Sensitive Record Access',
+  'R_SENSITIVE': 'Sensitive Record Flag'
 };
 
 const SeverityBadge = ({ severity }) => { 
@@ -460,23 +460,24 @@ const InvestigateResults = React.memo(({ results }) => {
                     <td style={{ padding: '14px 20px' }}> 
                       <div className="flex flex-wrap gap-1">
                         {a.rules_triggered.split(',').map(r => ( 
-                          <span 
-                            key={r} 
-                            title={RULE_DESCRIPTIONS[r.trim()] || r}
-                            style={{ 
-                              fontSize: '10px', 
-                              background: '#26364a', 
-                              border: '1px solid rgba(140,144,159,0.2)', 
-                              padding: '3px 8px', 
-                              borderRadius: '6px', 
-                              color: '#bdc8ce',
-                              cursor: 'help',
-                              display: 'inline-block',
-                              marginBottom: '4px'
-                            }}
-                          >
-                            {r}
-                          </span> 
+                          <div key={r} className="tooltip">
+                            <span 
+                              style={{ 
+                                fontSize: '10px', 
+                                background: '#26364a', 
+                                border: '1px solid rgba(140,144,159,0.2)', 
+                                padding: '3px 8px', 
+                                borderRadius: '6px', 
+                                color: '#bdc8ce',
+                                cursor: 'help',
+                                display: 'inline-block',
+                                marginBottom: '4px'
+                              }}
+                            >
+                              {r}
+                            </span>
+                            <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
+                          </div> 
                         ))} 
                       </div>
                     </td> 
@@ -2347,8 +2348,24 @@ export default function AppV2() {
                             EMP-{alert.emp_id}
                           </span>
                         </div>
-                        <div style={{ fontSize: '11px', color: '#bdc8ce' }}>
-                          {alert.rules_triggered}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {alert.rules_triggered?.split(',').map(r => (
+                            <div key={r} className="tooltip">
+                              <span 
+                                style={{ 
+                                  fontSize: '9px', 
+                                  background: '#0b1c30', 
+                                  border: '1px solid rgba(140,144,159,0.1)', 
+                                  padding: '2px 6px', 
+                                  borderRadius: '4px', 
+                                  color: '#879298'
+                                }}
+                              >
+                                {r}
+                              </span>
+                              <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -2871,22 +2888,23 @@ export default function AppV2() {
                         <td style={{ padding: '14px 20px' }}> 
                           <div className="flex flex-wrap gap-1">
                             {a.rules_triggered.split(',').map(r => ( 
-                              <span 
-                                key={r} 
-                                title={RULE_DESCRIPTIONS[r.trim()] || r}
-                                style={{ 
-                                  fontSize: '10px', 
-                                  background: '#26364a', 
-                                  border: '1px solid rgba(140,144,159,0.2)', 
-                                  padding: '3px 8px', 
-                                  borderRadius: '6px', 
-                                  color: '#bdc8ce',
-                                  cursor: 'help',
-                                  display: 'inline-block'
-                                }}
-                              >
-                                {r}
-                              </span> 
+                              <div key={r} className="tooltip">
+                                <span 
+                                  style={{ 
+                                    fontSize: '10px', 
+                                    background: '#26364a', 
+                                    border: '1px solid rgba(140,144,159,0.2)', 
+                                    padding: '3px 8px', 
+                                    borderRadius: '6px', 
+                                    color: '#bdc8ce',
+                                    cursor: 'help',
+                                    display: 'inline-block'
+                                  }}
+                                >
+                                  {r}
+                                </span>
+                                <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
+                              </div> 
                             ))} 
                           </div>
                         </td> 
@@ -2939,21 +2957,22 @@ export default function AppV2() {
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Rules Triggered</div> 
                         <div className="flex flex-wrap gap-1 mb-4">
                           {alertDetail.rules_triggered?.split(',').map(r => (
-                            <span 
-                              key={r} 
-                              title={RULE_DESCRIPTIONS[r.trim()] || r}
-                              style={{ 
-                                fontSize: '11px', 
-                                background: 'var(--bg-elevated)', 
-                                border: '1px solid var(--border)', 
-                                padding: '4px 10px', 
-                                borderRadius: '6px', 
-                                color: 'var(--text-secondary)',
-                                cursor: 'help'
-                              }}
-                            >
-                              {r}
-                            </span>
+                            <div key={r} className="tooltip">
+                              <span 
+                                style={{ 
+                                  fontSize: '11px', 
+                                  background: 'var(--bg-elevated)', 
+                                  border: '1px solid var(--border)', 
+                                  padding: '4px 10px', 
+                                  borderRadius: '6px', 
+                                  color: 'var(--text-secondary)',
+                                  cursor: 'help'
+                                }}
+                              >
+                                {r}
+                              </span>
+                              <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
+                            </div>
                           ))}
                         </div>
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Explanation</div> 
@@ -3596,6 +3615,45 @@ export default function AppV2() {
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
+        }
+        .tooltip {
+          position: relative;
+          display: inline-block;
+        }
+        .tooltip .tooltiptext {
+          visibility: hidden;
+          width: 160px;
+          background-color: #1e293b;
+          color: #fff;
+          text-align: center;
+          border-radius: 6px;
+          padding: 6px 10px;
+          position: absolute;
+          z-index: 100;
+          bottom: 130%;
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0;
+          transition: opacity 0.2s;
+          font-size: 11px;
+          border: 1px solid rgba(140,144,159,0.3);
+          pointer-events: none;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+          white-space: nowrap;
+        }
+        .tooltip:hover .tooltiptext {
+          visibility: visible;
+          opacity: 1;
+        }
+        .tooltip .tooltiptext::after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          margin-left: -5px;
+          border-width: 5px;
+          border-style: solid;
+          border-color: #1e293b transparent transparent transparent;
         }
         .login-input::placeholder {
           color: #475569;
