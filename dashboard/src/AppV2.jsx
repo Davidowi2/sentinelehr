@@ -767,8 +767,8 @@ const SettingsView = ({
                   headers: authHeaders(), 
                   body: JSON.stringify({new_email: newEmail}) 
                 }); 
-                if (res.ok) alert('Email updated. Please log in again.'); 
-              } catch { alert('Failed to update email'); } 
+                if (res.ok) showToast('Email updated. Please log in again.'); 
+              } catch { showToast('Failed to update email', 'error'); } 
             }} 
             style={{padding:'12px 20px', background:'var(--accent)', border:'none', borderRadius:'8px', color:'#000', fontWeight:'700', cursor:'pointer', whiteSpace:'nowrap'}}> 
               UPDATE 
@@ -1173,6 +1173,12 @@ export default function AppV2() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
   const [unsavedWarningType, setUnsavedWarningType] = useState(null)
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
+  };
   
   const LIMIT = 50 
 
@@ -1606,7 +1612,7 @@ export default function AppV2() {
       if (!res.ok) {
         const err = await res.text();
         console.error('API error:', err);
-        alert('Failed to load report: ' + err);
+        showToast('Failed to load report: ' + err, 'error');
         return;
       }
       const data = await res.json();
@@ -1614,7 +1620,7 @@ export default function AppV2() {
       setCaseReport(data);
     } catch (err) {
       console.error('Report fetch failed:', err);
-      alert('Error: ' + err.message);
+      showToast('Error: ' + err.message, 'error');
     }
   };
   
@@ -3518,7 +3524,48 @@ export default function AppV2() {
         </div>
       )}
 
+      {/* Toast Notification */}
+      {toast.show && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          padding: '16px 24px',
+          background: toast.type === 'success' ? '#10b981' : '#f43f5e',
+          color: '#fff',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontWeight: '600',
+          fontSize: '14px',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          {toast.type === 'success' ? <Bell size={20} /> : <AlertTriangle size={20} />}
+          <span>{toast.message}</span>
+          <button 
+            onClick={() => setToast(prev => ({ ...prev, show: false }))}
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: 'rgba(255,255,255,0.7)', 
+              cursor: 'pointer',
+              marginLeft: '8px',
+              padding: '2px'
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
         .login-input::placeholder {
           color: #475569;
           opacity: 1;
