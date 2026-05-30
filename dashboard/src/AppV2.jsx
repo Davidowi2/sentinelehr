@@ -1829,7 +1829,7 @@ export default function AppV2() {
               <div style={{
                 width: '40px',
                 height: '40px',
-                background: '#adc6ff',
+                background: 'transparent',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -2080,7 +2080,7 @@ export default function AppV2() {
           alignItems: 'center',
           gap: '12px'
         }}>
-          <div style={{background:'transparent', border:'none', padding:0, display:'flex', alignItems:'center'}}>
+          <div style={{background:'transparent', border:'none', boxShadow:'none', padding:0, display:'flex', alignItems:'center'}}>
             <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'38px', height:'38px', objectFit:'contain'}} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
