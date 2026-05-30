@@ -599,6 +599,12 @@ const SettingsView = ({
 
   return (
     <div style={{ width: '100%' }}>
+      {userRole !== 'admin' && ( 
+        <div style={{padding:'12px 16px', background:'rgba(173,198,255,0.08)', border:'1px solid rgba(173,198,255,0.15)', borderRadius:'8px', marginBottom:'24px', fontSize:'13px', color:'var(--text-secondary)', display:'flex', alignItems:'center', gap:'8px'}}> 
+          <Info size={14} /> 
+          Some settings require admin access. Contact your administrator to make changes. 
+        </div> 
+      )}
       <SettingsSection title="Monitor Configuration" icon={<Activity size={20} />}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <SettingsField label="Epic Connection Status" value="Demo Mode — Synthetic Data" disabled />
@@ -608,130 +614,133 @@ const SettingsView = ({
       </SettingsSection>
 
       <SettingsSection title="Alert Thresholds" icon={<AlertTriangle size={20} />}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Critical Threshold</label>
-            <input 
-              type="number"
-              step="0.1"
-              min="0"
-              max="1"
-              value={thresholds.critical}
-              onChange={(e) => setThresholds({...thresholds, critical: parseFloat(e.target.value) || 0})}
-              style={{ 
-                background: 'var(--bg-elevated)', 
-                border: '1px solid var(--border)', 
-                borderRadius: '6px', 
-                padding: '10px 14px', 
-                fontSize: '13px', 
-                color: 'var(--text-primary)', 
-                fontFamily: "'JetBrains Mono', monospace", 
-                outline: 'none', 
-                width: '100%',
-                cursor: 'text'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-            />
+        {userRole !== 'admin' && <p style={{fontSize:'12px', color:'var(--text-secondary)', marginBottom:'12px'}}>View only — admin access required to modify thresholds.</p>}
+        <div style={{opacity: userRole === 'admin' ? 1 : 0.5, pointerEvents: userRole === 'admin' ? 'auto' : 'none'}}> 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Critical Threshold</label>
+              <input 
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                value={thresholds.critical}
+                onChange={(e) => setThresholds({...thresholds, critical: parseFloat(e.target.value) || 0})}
+                style={{ 
+                  background: 'var(--bg-elevated)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '6px', 
+                  padding: '10px 14px', 
+                  fontSize: '13px', 
+                  color: 'var(--text-primary)', 
+                  fontFamily: "'JetBrains Mono', monospace", 
+                  outline: 'none', 
+                  width: '100%',
+                  cursor: 'text'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>High Threshold</label>
+              <input 
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                value={thresholds.high}
+                onChange={(e) => setThresholds({...thresholds, high: parseFloat(e.target.value) || 0})}
+                style={{ 
+                  background: 'var(--bg-elevated)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '6px', 
+                  padding: '10px 14px', 
+                  fontSize: '13px', 
+                  color: 'var(--text-primary)', 
+                  fontFamily: "'JetBrains Mono', monospace", 
+                  outline: 'none', 
+                  width: '100%',
+                  cursor: 'text'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Medium Threshold</label>
+              <input 
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                value={thresholds.medium}
+                onChange={(e) => setThresholds({...thresholds, medium: parseFloat(e.target.value) || 0})}
+                style={{ 
+                  background: 'var(--bg-elevated)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '6px', 
+                  padding: '10px 14px', 
+                  fontSize: '13px', 
+                  color: 'var(--text-primary)', 
+                  fontFamily: "'JetBrains Mono', monospace", 
+                  outline: 'none', 
+                  width: '100%',
+                  cursor: 'text'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>High Threshold</label>
-            <input 
-              type="number"
-              step="0.1"
-              min="0"
-              max="1"
-              value={thresholds.high}
-              onChange={(e) => setThresholds({...thresholds, high: parseFloat(e.target.value) || 0})}
-              style={{ 
-                background: 'var(--bg-elevated)', 
-                border: '1px solid var(--border)', 
-                borderRadius: '6px', 
-                padding: '10px 14px', 
-                fontSize: '13px', 
-                color: 'var(--text-primary)', 
-                fontFamily: "'JetBrains Mono', monospace", 
-                outline: 'none', 
-                width: '100%',
-                cursor: 'text'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Medium Threshold</label>
-            <input 
-              type="number"
-              step="0.1"
-              min="0"
-              max="1"
-              value={thresholds.medium}
-              onChange={(e) => setThresholds({...thresholds, medium: parseFloat(e.target.value) || 0})}
-              style={{ 
-                background: 'var(--bg-elevated)', 
-                border: '1px solid var(--border)', 
-                borderRadius: '6px', 
-                padding: '10px 14px', 
-                fontSize: '13px', 
-                color: 'var(--text-primary)', 
-                fontFamily: "'JetBrains Mono', monospace", 
-                outline: 'none', 
-                width: '100%',
-                cursor: 'text'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-            />
-          </div>
+          
+          {/* Success/Error Message */}
+          {thresholdMessage.text && (
+            <div style={{ 
+              marginTop: '16px',
+              padding: '12px 16px', 
+              background: thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', 
+              border: `1px solid ${thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`, 
+              borderRadius: '8px', 
+              color: thresholdMessage.type === 'success' ? '#10B981' : '#f43f5e', 
+              fontSize: '13px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              {thresholdMessage.type === 'success' ? '✓' : '⚠'} {thresholdMessage.text}
+            </div>
+          )}
+          
+          {/* Save Button */}
+          <button
+            onClick={handleSaveThresholds}
+            disabled={savingThresholds}
+            style={{
+              marginTop: '16px',
+              padding: '12px 24px',
+              background: savingThresholds ? 'var(--text-muted)' : 'var(--accent)',
+              color: savingThresholds ? 'var(--bg-elevated)' : '#0b1326',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              cursor: savingThresholds ? 'not-allowed' : 'pointer',
+              opacity: savingThresholds ? 0.7 : 1,
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={(e) => !savingThresholds && (e.target.style.background = 'var(--accent-hover)')}
+            onMouseLeave={(e) => !savingThresholds && (e.target.style.background = 'var(--accent)')}
+          >
+            {savingThresholds ? 'Saving...' : 'Save Thresholds'}
+          </button>
         </div>
-        
-        {/* Success/Error Message */}
-        {thresholdMessage.text && (
-          <div style={{ 
-            marginTop: '16px',
-            padding: '12px 16px', 
-            background: thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', 
-            border: `1px solid ${thresholdMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`, 
-            borderRadius: '8px', 
-            color: thresholdMessage.type === 'success' ? '#10B981' : '#f43f5e', 
-            fontSize: '13px',
-            fontWeight: '500',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            {thresholdMessage.type === 'success' ? '✓' : '⚠'} {thresholdMessage.text}
-          </div>
-        )}
-        
-        {/* Save Button */}
-        <button
-          onClick={handleSaveThresholds}
-          disabled={savingThresholds}
-          style={{
-            marginTop: '16px',
-            padding: '12px 24px',
-            background: savingThresholds ? 'var(--text-muted)' : 'var(--accent)',
-            color: savingThresholds ? 'var(--bg-elevated)' : '#0b1326',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            cursor: savingThresholds ? 'not-allowed' : 'pointer',
-            opacity: savingThresholds ? 0.7 : 1,
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-          onMouseEnter={(e) => !savingThresholds && (e.target.style.background = 'var(--accent-hover)')}
-          onMouseLeave={(e) => !savingThresholds && (e.target.style.background = 'var(--accent)')}
-        >
-          {savingThresholds ? 'Saving...' : 'Save Thresholds'}
-        </button>
       </SettingsSection>
 
       <SettingsSection title="Account" icon={<User size={20} />}>
@@ -740,6 +749,33 @@ const SettingsView = ({
           <SettingsField label="Role" value={userRole ? userRole.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User'} disabled />
         </div>
         
+        <div style={{display:'flex', flexDirection:'column', gap:'8px'}}> 
+          <label style={{fontSize:'11px', fontWeight:'600', letterSpacing:'0.05em', color:'var(--text-secondary)'}}>EMAIL</label> 
+          <div style={{display:'flex', gap:'8px'}}> 
+            <input 
+              type='email' 
+              defaultValue={userEmail} 
+              id='emailUpdateInput' 
+              style={{flex:1, padding:'12px', background:'var(--bg-app)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text-primary)', fontSize:'14px'}} 
+            /> 
+            <button onClick={async () => { 
+              const newEmail = document.getElementById('emailUpdateInput').value; 
+              if (!newEmail || !newEmail.includes('@')) return; 
+              try { 
+                const res = await fetch('https://sentinelehr.onrender.com/users/update-email', { 
+                  method: 'POST', 
+                  headers: authHeaders(), 
+                  body: JSON.stringify({new_email: newEmail}) 
+                }); 
+                if (res.ok) alert('Email updated. Please log in again.'); 
+              } catch { alert('Failed to update email'); } 
+            }} 
+            style={{padding:'12px 20px', background:'var(--accent)', border:'none', borderRadius:'8px', color:'#000', fontWeight:'700', cursor:'pointer', whiteSpace:'nowrap'}}> 
+              UPDATE 
+            </button> 
+          </div> 
+        </div>
+
         <button 
           onClick={() => setShowPasswordForm(!showPasswordForm)} 
           style={{ 
