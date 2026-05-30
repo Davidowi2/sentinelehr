@@ -1169,6 +1169,7 @@ export default function AppV2() {
   const [caseReport, setCaseReport] = useState(null)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [exportingAlerts, setExportingAlerts] = useState(false)
+  const [alertDateFilter, setAlertDateFilter] = useState(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
   const [unsavedWarningType, setUnsavedWarningType] = useState(null)
@@ -1673,6 +1674,16 @@ export default function AppV2() {
         responsive: true, 
         maintainAspectRatio: false, 
         interaction: {mode:'index', intersect:false}, 
+        onClick: (event, elements) => {
+          if (!elements || elements.length === 0) return;
+          const index = elements[0].index;
+          const rawDate = last30[index]?.alert_date;
+          if (!rawDate) return;
+          // Normalise to YYYY-MM-DD
+          const dateStr = rawDate.split('T')[0];
+          setAlertDateFilter(dateStr);
+          setActiveView('alerts');
+        },
         plugins: { 
           legend: {display: false}, 
           tooltip: { 
@@ -2612,7 +2623,7 @@ export default function AppV2() {
                       fontSize: '13px' 
                     }}>No activity detected in the last 30 days.</div> 
                   ) : ( 
-                    <canvas ref={chartRef} style={{ width: '100%', height: '100%' }}/> 
+                    <canvas ref={chartRef} style={{ width: '100%', height: '100%', cursor: 'pointer' }}/> 
                   )} 
                 </div> 
               </div>
@@ -2622,6 +2633,48 @@ export default function AppV2() {
           
           {activeView === 'alerts' && ( 
             <div> 
+              {/* Date filter indicator — shown when drilled in from chart */}
+              {alertDateFilter && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 16px',
+                  marginBottom: '16px',
+                  background: 'rgba(173,198,255,0.08)',
+                  border: '1px solid rgba(173,198,255,0.25)',
+                  borderRadius: '8px'
+                }}>
+                  <Calendar size={15} style={{ color: '#adc6ff', flexShrink: 0 }} />
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#adc6ff' }}>
+                    Filtered by: {new Date(alertDateFilter + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </span>
+                  <button
+                    onClick={() => setAlertDateFilter(null)}
+                    title="Clear date filter"
+                    style={{
+                      marginLeft: 'auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      background: 'transparent',
+                      border: '1px solid rgba(173,198,255,0.3)',
+                      borderRadius: '6px',
+                      color: '#adc6ff',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(173,198,255,0.12)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <X size={13} /> Clear
+                  </button>
+                </div>
+              )}
+
               {/* Filter Bar */}
               <div style={{
                 background: '#0b1c30',
@@ -2754,7 +2807,10 @@ export default function AppV2() {
                   </thead> 
                   <tbody> 
                     {alertsLoading ? <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#879298' }}>Loading alerts...</td></tr> : 
-                     alerts.map(a => ( 
+                     alerts.filter(a => {
+                       if (!alertDateFilter) return true;
+                       return a.alert_date && a.alert_date.split('T')[0] === alertDateFilter;
+                     }).map(a => ( 
                       <tr 
                         key={a.alert_id} 
                         style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s', verticalAlign: 'middle' }}
