@@ -1721,18 +1721,7 @@ export default function AppV2() {
         }}>
           {/* Centered Shield Icon */}
           <div style={{ marginBottom: '32px' }}>
-            <div style={{
-              width: '120px',
-              height: '120px',
-              background: '#0b1326',
-              border: '1px solid rgba(140,144,159,0.2)',
-              borderRadius: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'100px',height:'100px',objectFit:'contain',mixBlendMode:'screen'}} />
-            </div>
+            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'160px', height:'160px', objectFit:'contain', mixBlendMode:'screen', filter:'brightness(1.2)'}} />
           </div>
 
           {/* Headline */}
@@ -1810,7 +1799,7 @@ export default function AppV2() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'28px',height:'28px',objectFit:'cover',borderRadius:'4px',mixBlendMode:'screen'}} />
+                <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'36px', height:'36px', objectFit:'contain', mixBlendMode:'screen'}} />
               </div>
               <span style={{ fontWeight: '700', fontSize: '20px', color: '#adc6ff' }}>SentinelEHR</span>
             </div>
@@ -2065,7 +2054,7 @@ export default function AppV2() {
             justifyContent: 'center',
             flexShrink: 0
           }}>
-            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'32px',height:'32px',objectFit:'cover',borderRadius:'6px',mixBlendMode:'screen'}} />
+            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'36px', height:'36px', objectFit:'contain', mixBlendMode:'screen', filter:'brightness(1.2)'}} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontWeight: '700', fontSize: '18px', color: '#adc6ff', lineHeight: 1 }}>SentinelEHR</span>
