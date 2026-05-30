@@ -444,7 +444,7 @@ def login(request: Request, body: dict):
             audit_log_login(email, ip_address, "FAILED (User not found)")
             raise HTTPException(status_code=401, detail="Incorrect email or password")
 
-        if user.get('locked_until') and user['locked_until'] > datetime.now(): 
+        if user.get('locked_until') and user['locked_until'] > datetime.utcnow(): 
             conn.close()
             audit_log_login(email, ip_address, "BLOCKED (Account Locked)")
             raise HTTPException(status_code=429, detail='Account temporarily locked. Too many failed attempts. Try again in 10 minutes.') 
