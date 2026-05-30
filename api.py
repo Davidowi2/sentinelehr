@@ -203,6 +203,16 @@ def seed_database():
         except Exception as e:
             conn.rollback()
             print(f'[DATABASE] last_login skip: {str(e)}')
+
+        # Add per-email brute-force tracking columns
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_attempts INTEGER DEFAULT 0')
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP')
+            conn.commit()
+            print('[DATABASE] failed_attempts / locked_until columns verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] brute-force columns skip: {str(e)}')
         
         # Print all column names for debugging
         cursor.execute("""
@@ -284,6 +294,82 @@ def record_failed_login(ip: str):
 def audit_log_login(username: str, ip: str, result: str):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] LOGIN ATTEMPT: user={username}, ip={ip}, result={result}")
+
+# ─── PER-EMAIL BRUTE-FORCE HELPERS ──────────────────────────
+EMAIL_LOCKOUT_WINDOW_MINUTES = 10
+EMAIL_MAX_ATTEMPTS = 5
+
+def check_email_lock(email: str):
+    """
+    Returns (is_locked: bool, seconds_remaining: int).
+    Reads locked_until from the DB; if it's in the future the account is locked.
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT failed_attempts, locked_until FROM users WHERE email = %s",
+            (email,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return False, 0
+        locked_until = row['locked_until']
+        if locked_until and locked_until > datetime.utcnow():
+            remaining = int((locked_until - datetime.utcnow()).total_seconds())
+            return True, remaining
+        return False, 0
+    except Exception as e:
+        print(f"[check_email_lock] error: {e}")
+        return False, 0
+
+def record_email_failure(email: str):
+    """
+    Increments failed_attempts for the email.
+    If the new count reaches EMAIL_MAX_ATTEMPTS, sets locked_until = now + window.
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT failed_attempts FROM users WHERE email = %s",
+            (email,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return
+        new_count = (row['failed_attempts'] or 0) + 1
+        if new_count >= EMAIL_MAX_ATTEMPTS:
+            lock_until = datetime.utcnow() + timedelta(minutes=EMAIL_LOCKOUT_WINDOW_MINUTES)
+            cursor.execute(
+                "UPDATE users SET failed_attempts = %s, locked_until = %s WHERE email = %s",
+                (new_count, lock_until, email)
+            )
+        else:
+            cursor.execute(
+                "UPDATE users SET failed_attempts = %s WHERE email = %s",
+                (new_count, email)
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[record_email_failure] error: {e}")
+
+def reset_email_failures(email: str):
+    """Clears failed_attempts and locked_until on successful login."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE email = %s",
+            (email,)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[reset_email_failures] error: {e}")
 
 security = HTTPBearer() 
  
@@ -409,7 +495,7 @@ def login(request: Request, body: dict):
     ip_address = get_remote_address(request)
     
     if not check_login_rate_limit(ip_address):
-        audit_log_login(email, ip_address, "BLOCKED (Rate Limit)")
+        audit_log_login(email, ip_address, "BLOCKED (IP Rate Limit)")
         raise HTTPException(status_code=429, detail="Too many failed login attempts. Please try again in 15 minutes.")
 
     # Validate email and password
@@ -417,6 +503,12 @@ def login(request: Request, body: dict):
         record_failed_login(ip_address)
         audit_log_login(email, ip_address, "FAILED (Missing credentials)")
         raise HTTPException(status_code=400, detail="Email and password are required")
+
+    # 2. Check email-based lockout
+    is_locked, seconds_remaining = check_email_lock(email)
+    if is_locked:
+        audit_log_login(email, ip_address, f"BLOCKED (Account Locked: {seconds_remaining}s)")
+        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again in 10 minutes.")
 
     # Check database users 
     try: 
@@ -430,11 +522,11 @@ def login(request: Request, body: dict):
         conn.close() 
         
         if user and user['is_active'] and case_logic.verify_password(password, user['password_hash']): 
-            # Update last login
+            # Update last login and reset failures
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s",
+                "UPDATE users SET last_login = CURRENT_TIMESTAMP, failed_attempts = 0, locked_until = NULL WHERE id = %s",
                 (user['id'],)
             )
             conn.commit()
@@ -454,6 +546,7 @@ def login(request: Request, body: dict):
         print(f"Login error: {str(e)}")
         pass 
     
+    record_email_failure(email)
     record_failed_login(ip_address)
     audit_log_login(email, ip_address, "FAILED")
     raise HTTPException(status_code=401, detail="Incorrect email or password") 
