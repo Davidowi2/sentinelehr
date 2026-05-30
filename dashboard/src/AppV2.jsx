@@ -1757,7 +1757,7 @@ export default function AppV2() {
         }}>
           {/* Centered Shield Icon */}
           <div style={{ marginBottom: '32px' }}>
-            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'160px', height:'160px', objectFit:'contain', mixBlendMode:'screen', filter:'brightness(1.2)'}} />
+            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'180px', height:'180px', objectFit:'contain', mixBlendMode:'screen', filter:'brightness(1.3)'}} />
           </div>
 
           {/* Headline */}
@@ -2080,17 +2080,8 @@ export default function AppV2() {
           alignItems: 'center',
           gap: '12px'
         }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            background: '#2563eb',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'36px', height:'36px', objectFit:'contain', mixBlendMode:'screen', filter:'brightness(1.2)'}} />
+          <div style={{background:'transparent', border:'none', padding:0, display:'flex', alignItems:'center'}}>
+            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'38px', height:'38px', objectFit:'contain', mixBlendMode:'screen', filter:'brightness(1.2)'}} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontWeight: '700', fontSize: '18px', color: '#adc6ff', lineHeight: 1 }}>SentinelEHR</span>
