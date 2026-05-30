@@ -762,7 +762,7 @@ const SettingsView = ({
               const newEmail = document.getElementById('emailUpdateInput').value; 
               if (!newEmail || !newEmail.includes('@')) return; 
               try { 
-                const res = await fetch('https://sentinelehr.onrender.com/users/update-email', { 
+                const res = await secureFetch('https://sentinelehr.onrender.com/users/update-email', { 
                   method: 'POST', 
                   headers: authHeaders(), 
                   body: JSON.stringify({new_email: newEmail}) 
@@ -818,7 +818,7 @@ const SettingsView = ({
                 return; 
               } 
               try { 
-                const res = await fetch('https://sentinelehr.onrender.com/users/change-password', { 
+                const res = await secureFetch('https://sentinelehr.onrender.com/users/change-password', { 
                   method: 'POST', 
                   headers: authHeaders(), 
                   body: JSON.stringify({current_password: passwordData.current, new_password: passwordData.new}) 
@@ -1250,6 +1250,37 @@ export default function AppV2() {
     setUserOrganization(null);
   };
 
+  const secureFetch = async (url, options = {}) => {
+    try {
+      const res = await fetch(url, options);
+      
+      if (res.status === 401) {
+        handleLogout();
+        showToast('Session expired. Please log in again.', 'error');
+        return res;
+      }
+
+      // Check for specific error message in JSON responses
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const clone = res.clone();
+        try {
+          const data = await clone.json();
+          if (data.detail && (String(data.detail).includes("Invalid or expired token") || String(data.detail).includes("token expired"))) {
+            handleLogout();
+            showToast('Session expired. Please log in again.', 'error');
+          }
+        } catch (e) {
+          // Not JSON or parse error, ignore
+        }
+      }
+
+      return res;
+    } catch (e) {
+      throw e;
+    }
+  };
+
   const handleCloseAlertDrawer = () => {
     if (alertNote && alertNote.trim().length > 0) {
       setUnsavedWarningType('alert');
@@ -1278,9 +1309,9 @@ export default function AppV2() {
     setDataLoading(true) 
     try { 
       const [sumRes, digRes] = await Promise.all([ 
-        fetch(`${API_BASE}/summary`, 
+        secureFetch(`${API_BASE}/summary`, 
           {headers: authHeaders()}), 
-        fetch(`${API_BASE}/digest?days=180`, 
+        secureFetch(`${API_BASE}/digest?days=180`, 
           {headers: authHeaders()}) 
       ]) 
       if (sumRes.ok) setSummary(await sumRes.json()) 
@@ -1304,7 +1335,7 @@ export default function AppV2() {
         severity: alertSeverity, 
         status: alertStatus 
       }) 
-      const res = await fetch(`${API_BASE}/alerts?${query}`, { 
+      const res = await secureFetch(`${API_BASE}/alerts?${query}`, { 
         headers: authHeaders() 
       }) 
       if (res.ok) { 
@@ -1318,7 +1349,7 @@ export default function AppV2() {
   
   const fetchAlertDetail = async (id) => { 
     try { 
-      const res = await fetch(`${API_BASE}/alerts/${id}`, { 
+      const res = await secureFetch(`${API_BASE}/alerts/${id}`, { 
         headers: authHeaders() 
       }) 
       if (res.ok) { 
@@ -1334,7 +1365,7 @@ export default function AppV2() {
     if (!selectedAlert) return 
     setSavingAlert(true) 
     try { 
-      const res = await fetch(`${API_BASE}/alerts/${selectedAlert}/status`, { 
+      const res = await secureFetch(`${API_BASE}/alerts/${selectedAlert}/status`, { 
         method: 'PATCH', 
         headers: authHeaders(), 
         body: JSON.stringify({ 
@@ -1353,7 +1384,7 @@ export default function AppV2() {
   const handleCreateCaseFromAlert = async (alertId) => {
     setCreateCaseStatus({ loading: true, message: '', type: '' });
     try {
-      const res = await fetch(`${API_BASE}/alerts/${alertId}/create-case`, {
+      const res = await secureFetch(`${API_BASE}/alerts/${alertId}/create-case`, {
         method: 'POST',
         headers: authHeaders()
       });
@@ -1380,7 +1411,7 @@ export default function AppV2() {
         status: caseStatusFilter, 
         priority: casePriorityFilter 
       }) 
-      const res = await fetch(`${API_BASE}/cases?${query}`, { 
+      const res = await secureFetch(`${API_BASE}/cases?${query}`, { 
         headers: authHeaders() 
       }) 
       if (res.ok) { 
@@ -1394,7 +1425,7 @@ export default function AppV2() {
   
   const fetchCaseDetail = async (id) => { 
     try { 
-      const res = await fetch(`${API_BASE}/cases/${id}`, { 
+      const res = await secureFetch(`${API_BASE}/cases/${id}`, { 
         headers: authHeaders() 
       }) 
       if (res.ok) { 
@@ -1412,7 +1443,7 @@ export default function AppV2() {
     setSavingCase(true) 
     try { 
       if (caseStatusUpdate !== caseDetail.status) { 
-        await fetch(`${API_BASE}/cases/${selectedCase}/status`, { 
+        await secureFetch(`${API_BASE}/cases/${selectedCase}/status`, { 
           method: 'PATCH', 
           headers: authHeaders(), 
           body: JSON.stringify({ 
@@ -1422,14 +1453,14 @@ export default function AppV2() {
         }) 
       } 
       if (caseOutcome && caseOutcome !== caseDetail.outcome) { 
-        await fetch(`${API_BASE}/cases/${selectedCase}/outcome`, { 
+        await secureFetch(`${API_BASE}/cases/${selectedCase}/outcome`, { 
           method: 'PATCH', 
           headers: authHeaders(), 
           body: JSON.stringify({ outcome: caseOutcome }) 
         }) 
       } 
       if (caseNote.trim()) { 
-        await fetch(`${API_BASE}/cases/${selectedCase}/notes`, { 
+        await secureFetch(`${API_BASE}/cases/${selectedCase}/notes`, { 
           method: 'POST', 
           headers: authHeaders(), 
           body: JSON.stringify({ note: caseNote }) 
@@ -1446,7 +1477,7 @@ export default function AppV2() {
     if (!investigateId) return; 
     setInvestigating(true); 
     try { 
-      const res = await fetch(`${API_BASE}/employees/${investigateId}/profile`, { 
+      const res = await secureFetch(`${API_BASE}/employees/${investigateId}/profile`, { 
         headers: authHeaders() 
       }); 
       if (res.ok) { 
@@ -1467,7 +1498,7 @@ export default function AppV2() {
     setThresholdMessage({ type: '', text: '' });
     
     try {
-      const res = await fetch(`${API_BASE}/settings/thresholds`, {
+      const res = await secureFetch(`${API_BASE}/settings/thresholds`, {
         method: 'PUT',
         headers: {
           ...authHeaders(),
@@ -1502,7 +1533,7 @@ export default function AppV2() {
     setInvestigating(true);
     setInvestigateId(id);
     try {
-      const res = await fetch(`${API_BASE}/employees/${id}/profile`, {
+      const res = await secureFetch(`${API_BASE}/employees/${id}/profile`, {
         headers: authHeaders()
       });
       if (res.ok) {
@@ -1581,7 +1612,7 @@ export default function AppV2() {
         severity: alertSeverity,
         status: alertStatus
       });
-      const res = await fetch(`${API_BASE}/export/alerts?${query}`, {
+      const res = await secureFetch(`${API_BASE}/export/alerts?${query}`, {
         headers: authHeaders()
       });
       if (res.ok) {
@@ -1605,7 +1636,7 @@ export default function AppV2() {
     console.log('Report button clicked for case:', caseId);
     try {
       const token = localStorage.getItem('sentinel_token');
-      const res = await fetch(`${API_BASE}/export/case/${caseId}`, {
+      const res = await secureFetch(`${API_BASE}/export/case/${caseId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       console.log('Response status:', res.status);
