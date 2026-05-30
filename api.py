@@ -867,6 +867,21 @@ def change_password(body: dict, token_data = Depends(verify_token)):
         raise 
     except Exception as e: 
         raise HTTPException(status_code=500, detail=str(e)) 
+
+@app.post('/users/update-email') 
+def update_email(body: dict, token_data = Depends(verify_token)): 
+    new_email = body.get('new_email', '').lower().strip() 
+    if not new_email or '@' not in new_email: 
+        raise HTTPException(status_code=400, detail='Valid email required') 
+    try: 
+        conn = get_connection() 
+        cursor = conn.cursor() 
+        cursor.execute('UPDATE users SET email = %s WHERE email = %s', (new_email, token_data['username'])) 
+        conn.commit() 
+        conn.close() 
+        return {'message': 'Email updated successfully'} 
+    except Exception as e: 
+        raise HTTPException(status_code=400, detail='Email already in use or update failed') 
  
 # CASE MANAGEMENT 
  
