@@ -1252,8 +1252,16 @@ export default function AppV2() {
   };
 
   const secureFetch = async (url, options = {}) => {
+    // Merge auth headers into options
+    const secureOptions = {
+      ...options,
+      headers: {
+        ...authHeaders(),
+        ...(options.headers || {})
+      }
+    };
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(url, secureOptions);
       
       if (res.status === 401) {
         // Clone response to read body without consuming original
@@ -1651,10 +1659,7 @@ export default function AppV2() {
   const handleGenerateReport = async (caseId) => {
     console.log('Report button clicked for case:', caseId);
     try {
-      const token = localStorage.getItem('sentinel_token');
-      const res = await secureFetch(`${API_BASE}/export/case/${caseId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await secureFetch(`${API_BASE}/export/case/${caseId}`);
       console.log('Response status:', res.status);
       if (!res.ok) {
         const err = await res.text();
