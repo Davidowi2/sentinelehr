@@ -18,14 +18,6 @@ MOCK_DATA_DIR = "./mock_data/"
 def get_db_connection():
     return get_connection()
 
-def setup_anomaly_tables(conn, org_id: int):
-    cursor = conn.cursor()
-    cursor.execute("""
-        DELETE FROM anomaly_scores 
-        WHERE organization_id = %s
-    """, (org_id,))
-    conn.commit()
-
 def build_feature_matrix(conn, org_id: int):
     print("Building feature matrix from audit events and baselines...")
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -101,88 +93,102 @@ def build_feature_matrix(conn, org_id: int):
 
 def run_anomaly_detector(org_id: int = 1):
     start_time = time.time()
-    conn = get_db_connection()
-    setup_anomaly_tables(conn, org_id)
-    
-    df_features = build_feature_matrix(conn, org_id)
-    if df_features.empty:
-        print("No features built. Exiting.")
-        conn.close()
-        return
-        
-    print(f"Training Isolation Forest on {len(df_features)} daily profiles...")
-    X = df_features[['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']].values
-    
-    # Standardize
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # Model
-    model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
-    model.fit(X_scaled)
-    
-    # score_samples returns negative values (more negative = more anomalous)
-    raw_scores = model.score_samples(X_scaled)
-    
-    # Normalize to 0-1 where 1.0 = most anomalous
-    min_score = raw_scores.min()
-    max_score = raw_scores.max()
-    normalized = (raw_scores - min_score) / (max_score - min_score)
-    df_features['normalized_score'] = 1.0 - normalized
-    
-    # Store scores
-    print("Storing anomaly scores...")
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    engine = create_engine(DATABASE_URL)
-    
-    scores_to_store = df_features[['emp_id', 'score_date', 'normalized_score']].copy()
-    scores_to_store.columns = ['emp_id', 'score_date', 'anomaly_score']
-    scores_to_store['organization_id'] = org_id
-    scores_to_store['created_at'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    
-    scores_to_store.to_sql('anomaly_scores', engine, if_exists='append', index=False)
-    
-    # Update audit_events with anomaly_type for future reference
-    # For now, let's just mark the top 1% as 'ML_ANOMALY'
-    threshold = np.percentile(df_features['normalized_score'], 99)
-    top_anomalies = df_features[df_features['normalized_score'] >= threshold]
-    
-    print(f"Updating audit_events for {len(top_anomalies)} anomalous user-days...")
-    cursor = conn.cursor()
-    for _, row in top_anomalies.iterrows():
-        # Check for sensitive snoop profile
-        anomaly_type = 'ML_ANOMALY'
-        if row['f10'] > 0: # is_sensitive_out_of_panel > 0
-            anomaly_type = 'SENSITIVE_SNOOP'
-            
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('BEGIN')
+
+        # DELETE existing anomaly scores for this org inside the transaction
         cursor.execute("""
-            UPDATE audit_events 
-            SET anomaly_type = %s 
-            WHERE emp_id = %s AND action_datetime::date = %s AND organization_id = %s
-        """, (anomaly_type, int(row['emp_id']), row['score_date'], org_id))
-    conn.commit()
-    
+            DELETE FROM anomaly_scores 
+            WHERE organization_id = %s
+        """, (org_id,))
+
+        df_features = build_feature_matrix(conn, org_id)
+        if df_features.empty:
+            print("No features built. Exiting.")
+            conn.rollback()
+            return
+
+        print(f"Training Isolation Forest on {len(df_features)} daily profiles...")
+        X = df_features[['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']].values
+
+        # Standardize
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        # Model
+        model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+        model.fit(X_scaled)
+
+        # score_samples returns negative values (more negative = more anomalous)
+        raw_scores = model.score_samples(X_scaled)
+
+        # Normalize to 0-1 where 1.0 = most anomalous
+        min_score = raw_scores.min()
+        max_score = raw_scores.max()
+        normalized = (raw_scores - min_score) / (max_score - min_score)
+        df_features['normalized_score'] = 1.0 - normalized
+
+        # Store scores
+        print("Storing anomaly scores...")
+        DATABASE_URL = os.getenv("DATABASE_URL")
+        if DATABASE_URL.startswith("postgres://"):
+            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        engine = create_engine(DATABASE_URL)
+
+        scores_to_store = df_features[['emp_id', 'score_date', 'normalized_score']].copy()
+        scores_to_store.columns = ['emp_id', 'score_date', 'anomaly_score']
+        scores_to_store['organization_id'] = org_id
+        scores_to_store['created_at'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+        scores_to_store.to_sql('anomaly_scores', engine, if_exists='append', index=False)
+
+        # Update audit_events with anomaly_type for future reference
+        # For now, let's just mark the top 1% as 'ML_ANOMALY'
+        threshold = np.percentile(df_features['normalized_score'], 99)
+        top_anomalies = df_features[df_features['normalized_score'] >= threshold]
+
+        print(f"Updating audit_events for {len(top_anomalies)} anomalous user-days...")
+        for _, row in top_anomalies.iterrows():
+            # Check for sensitive snoop profile
+            anomaly_type = 'ML_ANOMALY'
+            if row['f10'] > 0:  # is_sensitive_out_of_panel > 0
+                anomaly_type = 'SENSITIVE_SNOOP'
+
+            cursor.execute("""
+                UPDATE audit_events 
+                SET anomaly_type = %s 
+                WHERE emp_id = %s AND action_datetime::date = %s AND organization_id = %s
+            """, (anomaly_type, int(row['emp_id']), row['score_date'], org_id))
+
+        conn.commit()
+        print(f'[DETECTION] Rules engine complete for org {org_id}')
+
+    except Exception as e:
+        conn.rollback()
+        print(f'[DETECTION] Rules engine failed for org {org_id}, rolled back: {str(e)}')
+        raise
+    finally:
+        conn.close()
+
     # False Positive Reduction calculation
     # Let's say we only keep alerts with score > 2.0
     df_alerts = pd.read_sql_query("SELECT alert_id, emp_id, alert_date FROM alerts WHERE organization_id = %s", engine, params=(org_id,))
     df_alerts['alert_date'] = df_alerts['alert_date'].astype(str)
-    
+
     # Merge alerts with scores
     df_eval = df_alerts.merge(df_features, left_on=['emp_id', 'alert_date'], right_on=['emp_id', 'score_date'], how='left')
-    
+
     initial_alerts = len(df_alerts)
     reduced_alerts = len(df_eval[df_eval['normalized_score'] > 0.2])
     reduction = (initial_alerts - reduced_alerts) / initial_alerts if initial_alerts > 0 else 0
-    
+
     print(f"\n=== ANOMALY DETECTOR SUMMARY ===")
     print(f"Initial rules-based alerts:   {initial_alerts}")
     print(f"Post-ML filtered alerts:      {reduced_alerts}")
     print(f"False positive reduction:     {reduction:.1%}")
     print(f"Total processing time:        {time.time() - start_time:.2f}s")
-    
-    conn.close()
 
 if __name__ == "__main__":
     run_anomaly_detector()
