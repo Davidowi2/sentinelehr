@@ -1345,7 +1345,7 @@ export default function AppV2() {
       } 
       // Also fetch alerts for overview stats
       fetchAlerts();
-    } catch(e) { console.error(e) } 
+    } catch(e) { console.error('Failed to fetch overview data') } 
     setDataLoading(false) 
   };
   
@@ -1367,7 +1367,7 @@ export default function AppV2() {
         setAlerts(data.alerts || []) 
         setAlertsTotal(data.total_count || data.total || (data.alerts?.length || 0)) 
       } 
-    } catch(e) { console.error(e) } 
+    } catch(e) { console.error('Failed to fetch alerts') } 
     setAlertsLoading(false) 
   } 
   
@@ -1382,7 +1382,7 @@ export default function AppV2() {
         setAlertStatusUpdate(data.status) 
         setAlertNote(data.reviewer_notes || '') 
       } 
-    } catch(e) { console.error(e) } 
+    } catch(e) { console.error('Failed to fetch alert details') } 
   } 
   
   const saveAlertUpdate = async () => { 
@@ -1401,7 +1401,7 @@ export default function AppV2() {
         await fetchAlertDetail(selectedAlert) 
         fetchAlerts() 
       } 
-    } catch(e) { console.error(e) } 
+    } catch(e) { console.error('Failed to save alert update') } 
     setSavingAlert(false) 
   } 
 
@@ -1420,7 +1420,7 @@ export default function AppV2() {
         setCreateCaseStatus({ loading: false, message: 'Failed to create case — check if case already exists', type: 'error' });
       }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to create case');
       setCreateCaseStatus({ loading: false, message: 'Failed to create case — check connection', type: 'error' });
     }
   };
@@ -1443,7 +1443,7 @@ export default function AppV2() {
         setCases(data.cases || []) 
         setCasesTotal(data.total_count || 0) 
       } 
-    } catch(e) { console.error(e) } 
+    } catch(e) { console.error('Failed to fetch cases') } 
     setCasesLoading(false) 
   } 
   
@@ -1459,7 +1459,7 @@ export default function AppV2() {
         setCaseOutcome(data.outcome || '') 
         setCaseNote('') 
       } 
-    } catch(e) { console.error(e) } 
+    } catch(e) { console.error('Failed to fetch case details') } 
   } 
   
   const saveCaseUpdate = async () => { 
@@ -1492,7 +1492,7 @@ export default function AppV2() {
       } 
       await fetchCaseDetail(selectedCase) 
       fetchCases() 
-    } catch(e) { console.error(e) } 
+    } catch(e) { console.error('Failed to save case update') } 
     setSavingCase(false) 
   } 
 
@@ -1509,8 +1509,8 @@ export default function AppV2() {
       } else { 
         setInvestigateResults({ error: "Employee profile not found. Please verify the ID." }); 
       } 
-    } catch(e) { 
-      console.error(e); 
+    } catch (e) {
+      console.error('Investigation failed');
       setInvestigateResults({ error: "Failed to connect to investigation service." });
     } 
     setInvestigating(false); 
@@ -1546,7 +1546,7 @@ export default function AppV2() {
         });
       }
     } catch(e) {
-      console.error(e);
+      console.error('Threshold update failed');
       setThresholdMessage({ type: 'error', text: 'Network error. Please try again.' });
     }
     setSavingThresholds(false);
@@ -1566,7 +1566,7 @@ export default function AppV2() {
         setInvestigateResults({ error: "Employee profile not found. Please verify the ID." });
       }
     } catch(e) {
-      console.error(e);
+      console.error('Investigation failed');
       setInvestigateResults({ error: "Failed to connect to investigation service." });
     }
     setInvestigating(false);
@@ -1651,28 +1651,24 @@ export default function AppV2() {
         a.remove();
       }
     } catch (e) {
-      console.error('Export failed', e);
+      console.error('Export failed');
     }
     setExportingAlerts(false);
   };
 
   const handleGenerateReport = async (caseId) => {
-    console.log('Report button clicked for case:', caseId);
     try {
       const res = await secureFetch(`${API_BASE}/export/case/${caseId}`);
-      console.log('Response status:', res.status);
       if (!res.ok) {
-        const err = await res.text();
-        console.error('API error:', err);
-        showToast('Failed to load report: ' + err, 'error');
+        console.error('API error');
+        showToast('Failed to load report', 'error');
         return;
       }
       const data = await res.json();
-      console.log('Report data received:', data);
       setCaseReport(data);
     } catch (err) {
-      console.error('Report fetch failed:', err);
-      showToast('Error: ' + err.message, 'error');
+      console.error('Report fetch failed');
+      showToast('Error generating report', 'error');
     }
   };
   
