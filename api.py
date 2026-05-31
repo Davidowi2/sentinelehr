@@ -1472,6 +1472,82 @@ def get_thresholds(
             "medium_threshold": 0.2
         }
 
+# ─── ADMIN DETECTION PIPELINE ──────────────────────────────
+
+@app.post('/admin/run-detection/{org_id}')
+def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
+    import subprocess
+    import sys
+
+    results = {}
+
+    try:
+        # Step 1 — Rules engine
+        result1 = subprocess.run(
+            [sys.executable, 'rules_engine.py', str(org_id)],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        if result1.returncode != 0:
+            raise Exception(f'Rules engine failed: {result1.stderr}')
+        results['rules_engine'] = 'success'
+
+        # Step 2 — Anomaly detector
+        result2 = subprocess.run(
+            [sys.executable, 'anomaly_detector.py', str(org_id)],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        if result2.returncode != 0:
+            raise Exception(f'Anomaly detector failed: {result2.stderr}')
+        results['anomaly_detector'] = 'success'
+
+        # Step 3 — Auto case creator
+        result3 = subprocess.run(
+            [sys.executable, 'auto_case_creator.py', str(org_id)],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        if result3.returncode != 0:
+            raise Exception(f'Auto case creator failed: {result3.stderr}')
+        results['auto_case_creator'] = 'success'
+
+        return {
+            'status': 'success',
+            'org_id': org_id,
+            'pipeline': results,
+            'message': f'Detection pipeline completed for organization {org_id}'
+        }
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail='Detection pipeline timed out after 5 minutes')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/admin/detection-status/{org_id}')
+def get_detection_status(org_id: int, token_data = Depends(require_role('admin'))):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT MAX(created_at) as last_run, COUNT(*) as total_alerts
+            FROM alerts WHERE organization_id = %s
+        ''', (org_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return {
+            'org_id': org_id,
+            'last_detection_run': result['last_run'],
+            'total_alerts': result['total_alerts']
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ─── SERVER STARTUP ─────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
