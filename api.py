@@ -267,6 +267,46 @@ def seed_database():
         except Exception as e: 
             conn.rollback() 
             print(f'[DATABASE] Cascade protection skip: {str(e)}') 
+        
+        # One-time migration to fix existing case dates
+        try:
+            print('[DATABASE] Running one-time case date migration...')
+            cursor.execute("""
+                UPDATE cases 
+                SET window_start = (
+                    SELECT alert_date 
+                    FROM alerts 
+                    WHERE alert_id = (
+                        SELECT (alert_ids::json->0)::text::integer 
+                        FROM cases c2 
+                        WHERE c2.case_id = cases.case_id
+                    )
+                ), 
+                window_end = (
+                    SELECT alert_date + INTERVAL '30 days'
+                    FROM alerts 
+                    WHERE alert_id = (
+                        SELECT (alert_ids::json->0)::text::integer 
+                        FROM cases c2 
+                        WHERE c2.case_id = cases.case_id
+                    )
+                ), 
+                created_at = (
+                    SELECT alert_date 
+                    FROM alerts 
+                    WHERE alert_id = (
+                        SELECT (alert_ids::json->0)::text::integer 
+                        FROM cases c2 
+                        WHERE c2.case_id = cases.case_id
+                    )
+                ) 
+                WHERE window_start < '2026-01-01'
+            """)
+            conn.commit()
+            print('[DATABASE] Case date migration complete')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] Case date migration skip or error: {str(e)}')
             
         cursor.close()
         conn.close()
