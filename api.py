@@ -126,7 +126,37 @@ def seed_database():
         except Exception as e: 
             conn.rollback() 
             print(f'[DATABASE] Organizations table skip: {str(e)}') 
-        
+
+        try:
+            cursor.execute('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS api_key VARCHAR(64) UNIQUE')
+            cursor.execute('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS epic_connection_verified BOOLEAN DEFAULT FALSE')
+            cursor.execute('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS last_sync_at TIMESTAMP')
+            conn.commit()
+            print('[DATABASE] Organizations columns verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] Organizations columns skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS sync_state (
+                    id SERIAL PRIMARY KEY,
+                    organization_id INTEGER NOT NULL,
+                    table_name VARCHAR(100) NOT NULL,
+                    last_sync_at TIMESTAMP,
+                    last_record_count INTEGER DEFAULT 0,
+                    status VARCHAR(50) DEFAULT 'never_run',
+                    error_message TEXT,
+                    updated_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(organization_id, table_name)
+                )
+            ''')
+            conn.commit()
+            print('[DATABASE] Sync state table verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] Sync state table skip: {str(e)}')
+
         try: 
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
             cursor.execute('UPDATE users SET organization_id = 1 WHERE organization_id IS NULL') 
@@ -422,6 +452,29 @@ def require_role(*allowed_roles):
       ) 
     return token_data 
   return checker 
+
+def get_org_from_api_key(request: Request):
+    api_key = request.headers.get('X-API-Key')
+    if not api_key:
+        raise HTTPException(status_code=401, detail='API key required')
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT id, name, is_active FROM organizations WHERE api_key = %s',
+            (api_key,)
+        )
+        org = cursor.fetchone()
+        conn.close()
+        if not org:
+            raise HTTPException(status_code=401, detail='Invalid API key')
+        if not org['is_active']:
+            raise HTTPException(status_code=403, detail='Organization account is inactive')
+        return dict(org)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 app.add_middleware(
     CORSMiddleware,
@@ -1544,6 +1597,100 @@ def get_detection_status(org_id: int, token_data = Depends(require_role('admin')
             'last_detection_run': result['last_run'],
             'total_alerts': result['total_alerts']
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── ADMIN ORGANIZATION MANAGEMENT ─────────────────────────
+
+@app.post('/admin/organizations')
+def create_organization(body: dict, token_data = Depends(require_role('admin'))):
+    name = body.get('name', '').strip()
+    org_type = body.get('type', 'community_hospital')
+    contact_name = body.get('contact_name', '').strip()
+    contact_email = body.get('contact_email', '').strip()
+    subscription_tier = body.get('subscription_tier', 'design_partner')
+
+    if not name:
+        raise HTTPException(status_code=400, detail='Organization name required')
+
+    api_key = secrets.token_urlsafe(48)
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO organizations
+            (name, type, contact_name, contact_email, subscription_tier, api_key, is_active)
+            VALUES (%s, %s, %s, %s, %s, %s, TRUE)
+            RETURNING id, name, api_key
+        ''', (name, org_type, contact_name, contact_email, subscription_tier, api_key))
+        org = cursor.fetchone()
+
+        for table in ['audit_events', 'employees', 'patient_panels']:
+            cursor.execute('''
+                INSERT INTO sync_state (organization_id, table_name, status)
+                VALUES (%s, %s, 'never_run')
+                ON CONFLICT (organization_id, table_name) DO NOTHING
+            ''', (org['id'], table))
+
+        conn.commit()
+        conn.close()
+
+        return {
+            'organization_id': org['id'],
+            'name': org['name'],
+            'api_key': org['api_key'],
+            'message': 'Organization created. Store the api_key securely — it will not be shown again.'
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/admin/organizations')
+def list_organizations(token_data = Depends(require_role('admin'))):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, name, type, contact_name, contact_email,
+                    subscription_tier, is_active, created_at,
+                   epic_connection_verified, last_sync_at,
+                   LEFT(api_key, 8) || '...' as api_key_preview
+            FROM organizations
+            ORDER BY created_at DESC
+        ''')
+        orgs = cursor.fetchall()
+        conn.close()
+        return {'organizations': [dict(o) for o in orgs]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post('/admin/organizations/{org_id}/rotate-key')
+def rotate_api_key(org_id: int, token_data = Depends(require_role('admin'))):
+    new_key = secrets.token_urlsafe(48)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE organizations SET api_key = %s WHERE id = %s RETURNING name',
+            (new_key, org_id)
+        )
+        org = cursor.fetchone()
+        if not org:
+            conn.close()
+            raise HTTPException(status_code=404, detail='Organization not found')
+        conn.commit()
+        conn.close()
+        return {
+            'organization_id': org_id,
+            'name': org['name'],
+            'new_api_key': new_key,
+            'message': 'API key rotated. Update the extraction script config immediately.'
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
