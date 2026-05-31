@@ -1121,6 +1121,7 @@ export default function AppV2() {
   const [userRole, setUserRole] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
   const [userOrganization, setUserOrganization] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true); 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -1192,6 +1193,29 @@ export default function AppV2() {
     localStorage.setItem('sentinel_theme', theme);
   }, [theme]);
 
+  useEffect(() => { 
+    const tryRefresh = async () => { 
+      try { 
+        const res = await fetch('https://sentinelehr.onrender.com/auth/refresh', { 
+          method: 'POST', 
+          credentials: 'include', 
+          headers: { 'Content-Type': 'application/json' } 
+        }); 
+        if (res.ok) { 
+          const data = await res.json(); 
+          setToken(data.access_token); 
+          setUserRole(data.role); 
+          setUserEmail(data.email); 
+        } 
+      } catch (e) { 
+        // Silent fail — show login 
+      } finally { 
+        setAuthLoading(false); 
+      } 
+    }; 
+    tryRefresh(); 
+  }, []); 
+
   // Close search dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1243,66 +1267,32 @@ export default function AppV2() {
     }
   };
 
-  const handleLogout = () => {
-    // Clear memory-only auth state
-    setToken(null);
-    setUserRole(null);
-    setUserEmail(null);
-    setUserOrganization(null);
+  const handleLogout = async () => { 
+    try { 
+      await fetch('https://sentinelehr.onrender.com/auth/logout', { 
+        method: 'POST', 
+        credentials: 'include' 
+      }); 
+    } catch (e) { 
+      // Continue logout even if request fails 
+    } 
+    setToken(null); 
+    setUserRole(null); 
+    setUserEmail(null); 
+    setUserOrganization(null); 
+    setShowLogoutConfirm(false); 
   };
 
-  const secureFetch = async (url, options = {}) => {
-    // Merge auth headers into options
-    const secureOptions = {
-      ...options,
-      headers: {
-        ...authHeaders(),
-        ...(options.headers || {})
-      }
-    };
-    try {
-      const res = await fetch(url, secureOptions);
-      
-      if (res.status === 401) {
-        // Clone response to read body without consuming original
-        const clone = res.clone();
-        try {
-          const data = await clone.json();
-          const detail = String(data.detail || "").toLowerCase();
-          
-          if (detail.includes("expired") || detail.includes("invalid or expired token")) {
-            handleLogout();
-            showToast('Session expired. Please log in again.', 'error');
-          } else {
-            showToast(data.detail || 'Unauthorized access', 'error');
-          }
-        } catch (e) {
-          // If body is not JSON or parsing fails
-          showToast('Unauthorized access', 'error');
-        }
-        return res;
-      }
-
-      // Check for specific error message in JSON responses (for other status codes)
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        const clone = res.clone();
-        try {
-          const data = await clone.json();
-          const detail = String(data.detail || "").toLowerCase();
-          if (detail.includes("invalid or expired token") || detail.includes("token expired")) {
-            handleLogout();
-            showToast('Session expired. Please log in again.', 'error');
-          }
-        } catch (e) {
-          // Not JSON or parse error, ignore
-        }
-      }
-
-      return res;
-    } catch (e) {
-      throw e;
-    }
+  const secureFetch = async (url, options = {}) => { 
+    return fetch(url, { 
+      ...options, 
+      credentials: 'include', 
+      headers: { 
+        'Authorization': `Bearer ${token}`, 
+        'Content-Type': 'application/json', 
+        ...options.headers 
+      } 
+    }); 
   };
 
   const handleCloseAlertDrawer = () => {
@@ -1799,6 +1789,34 @@ export default function AppV2() {
       } 
     } 
   }, [digest]);
+
+  if (authLoading) { 
+    return ( 
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh', 
+        background: 'var(--bg-app)', 
+        color: 'var(--text-secondary)', 
+        fontSize: '14px', 
+        fontFamily: "'DM Sans', sans-serif" 
+      }}> 
+        <div style={{textAlign: 'center'}}> 
+          <div style={{ 
+            width: '32px', 
+            height: '32px', 
+            border: '2px solid rgba(173,198,255,0.2)', 
+            borderTop: '2px solid #adc6ff', 
+            borderRadius: '50%', 
+            animation: 'spin 0.8s linear infinite', 
+            margin: '0 auto 16px' 
+          }} /> 
+          <div>Loading SentinelEHR...</div> 
+        </div> 
+      </div> 
+    ); 
+  }
 
   if (!token) {
     return (
