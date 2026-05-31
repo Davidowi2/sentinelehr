@@ -144,11 +144,10 @@ const NAV_ITEMS = [
 
 const RULE_DESCRIPTIONS = {
   'R1': 'Volume Spike',
-  'R2': 'Volume spike',
-  'R3': 'Off-Hours Access',
+  'R2': 'Off-Hours Access',
+  'R3': 'Cross-Department Access',
   'R4': 'VIP Record Access',
-  'R6': 'Bulk export detected',
-  'R7': 'Break-glass abuse',
+  'R7': 'Break Glass Abuse',
   'R8': 'Sensitive Record Access',
   'R_SENSITIVE': 'Sensitive Record Flag'
 };
@@ -307,7 +306,9 @@ const InvestigateResults = React.memo(({ results }) => {
             </div>
             <div>
               <div style={{ fontSize: '10px', fontWeight: '600', color: '#879298', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>Clearance</div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#bdc8ce' }}>Level {results.clearance_level || 'N/A'}</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#bdc8ce' }}>
+                {!results.clearance_level || results.clearance_level === 'N/A' ? 'Standard' : `Level ${results.clearance_level}`}
+              </div>
             </div>
           </div>
 
@@ -460,24 +461,23 @@ const InvestigateResults = React.memo(({ results }) => {
                     <td style={{ padding: '14px 20px' }}> 
                       <div className="flex flex-wrap gap-1">
                         {a.rules_triggered.split(',').map(r => ( 
-                          <div key={r} className="tooltip">
-                            <span 
-                              style={{ 
-                                fontSize: '10px', 
-                                background: '#26364a', 
-                                border: '1px solid rgba(140,144,159,0.2)', 
-                                padding: '3px 8px', 
-                                borderRadius: '6px', 
-                                color: '#bdc8ce',
-                                cursor: 'help',
-                                display: 'inline-block',
-                                marginBottom: '4px'
-                              }}
-                            >
-                              {r}
-                            </span>
-                            <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
-                          </div> 
+                          <span 
+                            key={r} 
+                            title={RULE_DESCRIPTIONS[r.trim()] || r}
+                            style={{ 
+                              fontSize: '10px', 
+                              background: '#26364a', 
+                              border: '1px solid rgba(140,144,159,0.2)', 
+                              padding: '3px 8px', 
+                              borderRadius: '6px', 
+                              color: '#bdc8ce',
+                              cursor: 'help',
+                              display: 'inline-block',
+                              marginBottom: '4px'
+                            }}
+                          >
+                            {r}
+                          </span> 
                         ))} 
                       </div>
                     </td> 
@@ -746,7 +746,7 @@ const SettingsView = ({
 
       <SettingsSection title="Account" icon={<User size={20} />}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <SettingsField label="Username" value={userEmail || 'demo'} disabled />
+          <SettingsField label="Email" value={userEmail || 'demo'} disabled />
           <SettingsField label="Role" value={userRole ? userRole.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User'} disabled />
         </div>
         
@@ -1345,7 +1345,7 @@ export default function AppV2() {
       } 
       // Also fetch alerts for overview stats
       fetchAlerts();
-    } catch(e) { console.error('Failed to fetch overview data') } 
+    } catch(e) { console.error('API request failed') } 
     setDataLoading(false) 
   };
   
@@ -1367,7 +1367,7 @@ export default function AppV2() {
         setAlerts(data.alerts || []) 
         setAlertsTotal(data.total_count || data.total || (data.alerts?.length || 0)) 
       } 
-    } catch(e) { console.error('Failed to fetch alerts') } 
+    } catch(e) { console.error('API request failed') } 
     setAlertsLoading(false) 
   } 
   
@@ -1382,7 +1382,7 @@ export default function AppV2() {
         setAlertStatusUpdate(data.status) 
         setAlertNote(data.reviewer_notes || '') 
       } 
-    } catch(e) { console.error('Failed to fetch alert details') } 
+    } catch(e) { console.error('API request failed') } 
   } 
   
   const saveAlertUpdate = async () => { 
@@ -1401,7 +1401,7 @@ export default function AppV2() {
         await fetchAlertDetail(selectedAlert) 
         fetchAlerts() 
       } 
-    } catch(e) { console.error('Failed to save alert update') } 
+    } catch(e) { console.error('API request failed') } 
     setSavingAlert(false) 
   } 
 
@@ -1420,7 +1420,7 @@ export default function AppV2() {
         setCreateCaseStatus({ loading: false, message: 'Failed to create case — check if case already exists', type: 'error' });
       }
     } catch (e) {
-      console.error('Failed to create case');
+      console.error('API request failed');
       setCreateCaseStatus({ loading: false, message: 'Failed to create case — check connection', type: 'error' });
     }
   };
@@ -1443,7 +1443,7 @@ export default function AppV2() {
         setCases(data.cases || []) 
         setCasesTotal(data.total_count || 0) 
       } 
-    } catch(e) { console.error('Failed to fetch cases') } 
+    } catch(e) { console.error('API request failed') } 
     setCasesLoading(false) 
   } 
   
@@ -1459,7 +1459,7 @@ export default function AppV2() {
         setCaseOutcome(data.outcome || '') 
         setCaseNote('') 
       } 
-    } catch(e) { console.error('Failed to fetch case details') } 
+    } catch(e) { console.error('API request failed') } 
   } 
   
   const saveCaseUpdate = async () => { 
@@ -1492,7 +1492,7 @@ export default function AppV2() {
       } 
       await fetchCaseDetail(selectedCase) 
       fetchCases() 
-    } catch(e) { console.error('Failed to save case update') } 
+    } catch(e) { console.error('API request failed') } 
     setSavingCase(false) 
   } 
 
@@ -1510,7 +1510,7 @@ export default function AppV2() {
         setInvestigateResults({ error: "Employee profile not found. Please verify the ID." }); 
       } 
     } catch (e) {
-      console.error('Investigation failed');
+      console.error('API request failed');
       setInvestigateResults({ error: "Failed to connect to investigation service." });
     } 
     setInvestigating(false); 
@@ -1546,7 +1546,7 @@ export default function AppV2() {
         });
       }
     } catch(e) {
-      console.error('Threshold update failed');
+      console.error('API request failed');
       setThresholdMessage({ type: 'error', text: 'Network error. Please try again.' });
     }
     setSavingThresholds(false);
@@ -1566,7 +1566,7 @@ export default function AppV2() {
         setInvestigateResults({ error: "Employee profile not found. Please verify the ID." });
       }
     } catch(e) {
-      console.error('Investigation failed');
+      console.error('API request failed');
       setInvestigateResults({ error: "Failed to connect to investigation service." });
     }
     setInvestigating(false);
@@ -1651,7 +1651,7 @@ export default function AppV2() {
         a.remove();
       }
     } catch (e) {
-      console.error('Export failed');
+      console.error('API request failed');
     }
     setExportingAlerts(false);
   };
@@ -1660,14 +1660,14 @@ export default function AppV2() {
     try {
       const res = await secureFetch(`${API_BASE}/export/case/${caseId}`);
       if (!res.ok) {
-        console.error('API error');
+        console.error('API request failed');
         showToast('Failed to load report', 'error');
         return;
       }
       const data = await res.json();
       setCaseReport(data);
     } catch (err) {
-      console.error('Report fetch failed');
+      console.error('API request failed');
       showToast('Error generating report', 'error');
     }
   };
@@ -2366,21 +2366,21 @@ export default function AppV2() {
                         </div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {alert.rules_triggered?.split(',').map(r => (
-                            <div key={r} className="tooltip">
-                              <span 
-                                style={{ 
-                                  fontSize: '9px', 
-                                  background: '#0b1c30', 
-                                  border: '1px solid rgba(140,144,159,0.1)', 
-                                  padding: '2px 6px', 
-                                  borderRadius: '4px', 
-                                  color: '#879298'
-                                }}
-                              >
-                                {r}
-                              </span>
-                              <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
-                            </div>
+                            <span 
+                              key={r} 
+                              title={RULE_DESCRIPTIONS[r.trim()] || r}
+                              style={{ 
+                                fontSize: '9px', 
+                                background: '#0b1c30', 
+                                border: '1px solid rgba(140,144,159,0.1)', 
+                                padding: '2px 6px', 
+                                borderRadius: '4px', 
+                                color: '#879298',
+                                cursor: 'help'
+                              }}
+                            >
+                              {r}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -2904,23 +2904,22 @@ export default function AppV2() {
                         <td style={{ padding: '14px 20px' }}> 
                           <div className="flex flex-wrap gap-1">
                             {a.rules_triggered.split(',').map(r => ( 
-                              <div key={r} className="tooltip">
-                                <span 
-                                  style={{ 
-                                    fontSize: '10px', 
-                                    background: '#26364a', 
-                                    border: '1px solid rgba(140,144,159,0.2)', 
-                                    padding: '3px 8px', 
-                                    borderRadius: '6px', 
-                                    color: '#bdc8ce',
-                                    cursor: 'help',
-                                    display: 'inline-block'
-                                  }}
-                                >
-                                  {r}
-                                </span>
-                                <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
-                              </div> 
+                              <span 
+                                key={r} 
+                                title={RULE_DESCRIPTIONS[r.trim()] || r}
+                                style={{ 
+                                  fontSize: '10px', 
+                                  background: '#26364a', 
+                                  border: '1px solid rgba(140,144,159,0.2)', 
+                                  padding: '3px 8px', 
+                                  borderRadius: '6px', 
+                                  color: '#bdc8ce',
+                                  cursor: 'help',
+                                  display: 'inline-block'
+                                }}
+                              >
+                                {r}
+                              </span> 
                             ))} 
                           </div>
                         </td> 
@@ -2930,7 +2929,20 @@ export default function AppV2() {
                           fontWeight: '700', 
                           fontFamily: "'JetBrains Mono', monospace",
                           color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6'
-                        }}>{a.anomaly_score.toFixed(2)}</td> 
+                        }}>
+                          {a.anomaly_score.toFixed(2)}
+                          <span style={{
+                            marginLeft: '8px',
+                            fontSize: '9px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: a.anomaly_score > 0.7 ? '#f43f5e1a' : a.anomaly_score >= 0.4 ? '#f973161a' : '#8792981a',
+                            color: a.anomaly_score > 0.7 ? '#f43f5e' : a.anomaly_score >= 0.4 ? '#f97316' : '#879298',
+                            border: `1px solid ${a.anomaly_score > 0.7 ? '#f43f5e33' : a.anomaly_score >= 0.4 ? '#f9731633' : '#87929833'}`
+                          }}>
+                            {a.anomaly_score > 0.7 ? 'HIGH' : a.anomaly_score >= 0.4 ? 'MED' : 'LOW'}
+                          </span>
+                        </td> 
                         <td style={{ padding: '14px 20px', fontSize: '14px', color: '#bdc8ce' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
                         <td style={{ padding: '14px 20px', fontSize: '14px', color: '#879298', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
                         <td style={{ padding: '14px 20px' }}> 
@@ -2973,22 +2985,21 @@ export default function AppV2() {
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Rules Triggered</div> 
                         <div className="flex flex-wrap gap-1 mb-4">
                           {alertDetail.rules_triggered?.split(',').map(r => (
-                            <div key={r} className="tooltip">
-                              <span 
-                                style={{ 
-                                  fontSize: '11px', 
-                                  background: 'var(--bg-elevated)', 
-                                  border: '1px solid var(--border)', 
-                                  padding: '4px 10px', 
-                                  borderRadius: '6px', 
-                                  color: 'var(--text-secondary)',
-                                  cursor: 'help'
-                                }}
-                              >
-                                {r}
-                              </span>
-                              <span className="tooltiptext">{RULE_DESCRIPTIONS[r.trim()] || r}</span>
-                            </div>
+                            <span 
+                              key={r} 
+                              title={RULE_DESCRIPTIONS[r.trim()] || r}
+                              style={{ 
+                                fontSize: '11px', 
+                                background: 'var(--bg-elevated)', 
+                                border: '1px solid var(--border)', 
+                                padding: '4px 10px', 
+                                borderRadius: '6px', 
+                                color: 'var(--text-secondary)',
+                                cursor: 'help'
+                              }}
+                            >
+                              {r}
+                            </span>
                           ))}
                         </div>
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Explanation</div> 
@@ -3631,45 +3642,6 @@ export default function AppV2() {
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
-        }
-        .tooltip {
-          position: relative;
-          display: inline-block;
-        }
-        .tooltip .tooltiptext {
-          visibility: hidden;
-          width: 160px;
-          background-color: #1e293b;
-          color: #fff;
-          text-align: center;
-          border-radius: 6px;
-          padding: 6px 10px;
-          position: absolute;
-          z-index: 100;
-          bottom: 130%;
-          left: 50%;
-          transform: translateX(-50%);
-          opacity: 0;
-          transition: opacity 0.2s;
-          font-size: 11px;
-          border: 1px solid rgba(140,144,159,0.3);
-          pointer-events: none;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-          white-space: nowrap;
-        }
-        .tooltip:hover .tooltiptext {
-          visibility: visible;
-          opacity: 1;
-        }
-        .tooltip .tooltiptext::after {
-          content: "";
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          margin-left: -5px;
-          border-width: 5px;
-          border-style: solid;
-          border-color: #1e293b transparent transparent transparent;
         }
         .login-input::placeholder {
           color: #475569;
