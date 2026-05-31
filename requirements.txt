@@ -10,3 +10,7 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 slowapi>=0.1.9
 sendgrid
+requests>=2.31.0
+
+# Optional: required only on VPS running clarity_extractor.py
+# pyodbc>=4.0.0

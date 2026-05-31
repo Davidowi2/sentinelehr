@@ -1,0 +1,10 @@
+{
+    "api_key": "YOUR_SENTINELEHR_API_KEY_HERE",
+    "api_url": "https://sentinelehr.onrender.com",
+    "clarity_server": "YOUR_EPIC_SERVER_HOSTNAME",
+    "clarity_database": "Clarity",
+    "clarity_username": "sentinelehr_readonly",
+    "clarity_password": "YOUR_READONLY_PASSWORD",
+    "shift_start": "07:00",
+    "shift_end": "19:00"
+}

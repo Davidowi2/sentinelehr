@@ -14,3 +14,7 @@ dist/
 build/
 
 mock_clarity_v2/output/
+
+# Clarity extractor — local config contains credentials, never commit
+config.json
+sentinelehr_extractor.log
