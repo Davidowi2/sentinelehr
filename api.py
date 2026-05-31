@@ -158,6 +158,26 @@ def seed_database():
             print(f'[DATABASE] Sync state table skip: {str(e)}')
 
         try:
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
+            cursor.execute('UPDATE users SET organization_id = 1 WHERE organization_id IS NULL') 
+            conn.commit() 
+            print('[DATABASE] organization_id verified on users') 
+        except Exception as e: 
+            conn.rollback() 
+            print(f'[DATABASE] organization_id skip on users: {str(e)}') 
+        
+        # Add organization_id to core tables 
+        for table in ['alerts', 'cases', 'employees', 'anomaly_scores', 'audit_events', 'patient_panels']: 
+            try: 
+                cursor.execute(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
+                cursor.execute(f'UPDATE {table} SET organization_id = 1 WHERE organization_id IS NULL') 
+                conn.commit() 
+                print(f'[DATABASE] organization_id verified on {table}') 
+            except Exception as e: 
+                conn.rollback() 
+                print(f'[DATABASE] organization_id skip on {table}: {str(e)}')
+
+        try:
             cursor.execute('''
                 ALTER TABLE audit_events
                 ADD CONSTRAINT audit_events_unique
@@ -193,26 +213,6 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] employees constraint skip: {str(e)}')
 
-        try: 
-            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
-            cursor.execute('UPDATE users SET organization_id = 1 WHERE organization_id IS NULL') 
-            conn.commit() 
-            print('[DATABASE] organization_id verified on users') 
-        except Exception as e: 
-            conn.rollback() 
-            print(f'[DATABASE] organization_id skip on users: {str(e)}') 
-        
-        # Add organization_id to core tables 
-        for table in ['alerts', 'cases', 'employees', 'anomaly_scores', 'audit_events']: 
-            try: 
-                cursor.execute(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
-                cursor.execute(f'UPDATE {table} SET organization_id = 1 WHERE organization_id IS NULL') 
-                conn.commit() 
-                print(f'[DATABASE] organization_id verified on {table}') 
-            except Exception as e: 
-                conn.rollback() 
-                print(f'[DATABASE] organization_id skip on {table}: {str(e)}') 
-        
         # Recreate active_alerts view with organization_id 
         try: 
             cursor.execute('DROP VIEW IF EXISTS active_alerts') 
