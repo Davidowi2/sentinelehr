@@ -1256,18 +1256,33 @@ export default function AppV2() {
       const res = await fetch(url, options);
       
       if (res.status === 401) {
-        handleLogout();
-        showToast('Session expired. Please log in again.', 'error');
+        // Clone response to read body without consuming original
+        const clone = res.clone();
+        try {
+          const data = await clone.json();
+          const detail = String(data.detail || "").toLowerCase();
+          
+          if (detail.includes("expired") || detail.includes("invalid or expired token")) {
+            handleLogout();
+            showToast('Session expired. Please log in again.', 'error');
+          } else {
+            showToast(data.detail || 'Unauthorized access', 'error');
+          }
+        } catch (e) {
+          // If body is not JSON or parsing fails
+          showToast('Unauthorized access', 'error');
+        }
         return res;
       }
 
-      // Check for specific error message in JSON responses
+      // Check for specific error message in JSON responses (for other status codes)
       const contentType = res.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         const clone = res.clone();
         try {
           const data = await clone.json();
-          if (data.detail && (String(data.detail).includes("Invalid or expired token") || String(data.detail).includes("token expired"))) {
+          const detail = String(data.detail || "").toLowerCase();
+          if (detail.includes("invalid or expired token") || detail.includes("token expired")) {
             handleLogout();
             showToast('Session expired. Please log in again.', 'error');
           }
