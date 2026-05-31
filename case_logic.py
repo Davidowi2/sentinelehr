@@ -39,9 +39,6 @@ def create_case(
     patient_ids: list,
     created_by: str = 'system'
 ) -> str:
-    now = datetime.now()
-    year = now.year
-    case_id = generate_case_id(year)
     # Fetch the alert's actual date 
     conn2 = get_connection() 
     cur2 = conn2.cursor() 
@@ -55,6 +52,9 @@ def create_case(
     if isinstance(alert_dt, str): 
       from datetime import datetime as dt 
       alert_dt = dt.fromisoformat(alert_dt) 
+    
+    year = alert_dt.year
+    case_id = generate_case_id(year)
     window_start = alert_dt 
     window_end = alert_dt + timedelta(days=30) 
     
@@ -98,9 +98,9 @@ def create_case(
     cursor = conn.cursor()
     
     cursor.execute("""
-        INSERT INTO cases (case_id, emp_id, alert_ids, priority, department, patient_ids, window_start, window_end, ocr_risk_score, requires_ocr_review)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """, (case_id, emp_id, json.dumps([alert_id]), priority, department, json.dumps(patient_ids), window_start, window_end, ocr_score, requires_ocr))
+        INSERT INTO cases (case_id, emp_id, alert_ids, priority, department, patient_ids, window_start, window_end, ocr_risk_score, requires_ocr_review, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (case_id, emp_id, json.dumps([alert_id]), priority, department, json.dumps(patient_ids), window_start, window_end, ocr_score, requires_ocr, alert_dt))
     
     cursor.execute("""
         INSERT INTO case_audit_log (case_id, action, note)
