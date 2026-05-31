@@ -1879,6 +1879,28 @@ def ingest_data(request: Request, body: dict = Body(...)):
             )
             conn.commit()
 
+        if is_last_batch and table == 'audit_events':
+            import subprocess
+            import sys
+            import threading
+
+            def run_detection_async(org_id):
+                try:
+                    print(f'[INGEST] Auto-triggering detection for org {org_id} after sync')
+                    subprocess.run([sys.executable, 'rules_engine.py', str(org_id)],
+                                   capture_output=True, timeout=300)
+                    subprocess.run([sys.executable, 'anomaly_detector.py', str(org_id)],
+                                   capture_output=True, timeout=300)
+                    subprocess.run([sys.executable, 'auto_case_creator.py', str(org_id)],
+                                   capture_output=True, timeout=300)
+                    print(f'[INGEST] Auto-detection complete for org {org_id}')
+                except Exception as e:
+                    print(f'[INGEST] Auto-detection failed for org {org_id}: {e}')
+
+            thread = threading.Thread(target=run_detection_async, args=(org_id,), daemon=True)
+            thread.start()
+            print(f'[INGEST] Detection pipeline started async for org {org_id}')
+
         conn.close()
 
         return {
