@@ -15,17 +15,20 @@ MOCK_DATA_DIR = "./mock_data/"
 def get_db_connection():
     return get_connection()
 
-def setup_alerts_table(conn):
+def setup_alerts_table(conn, org_id: int):
     cursor = conn.cursor()
-    cursor.execute("TRUNCATE TABLE alerts RESTART IDENTITY CASCADE")
+    cursor.execute("""
+        DELETE FROM alerts 
+        WHERE organization_id = %s
+    """, (org_id,))
     # Add new columns if not exists
     cursor.execute("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS sensitive_out_of_panel INTEGER DEFAULT 0;")
     conn.commit()
 
-def run_rules_engine():
+def run_rules_engine(org_id: int = 1):
     start_time = time.time()
     conn = get_db_connection()
-    setup_alerts_table(conn)
+    setup_alerts_table(conn, org_id)
     
     print("Loading data from Neon PostgreSQL...")
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -37,10 +40,10 @@ def run_rules_engine():
     df_audit = pd.read_sql_query("""
         SELECT audit_id, emp_id, pat_id, action_c, action_datetime, dept_id, in_panel, is_vip_access, is_sensitive_access
         FROM audit_events 
-        WHERE is_known_user = 1
-    """, engine)
-    df_baselines = pd.read_sql_query("SELECT * FROM user_baselines", engine)
-    df_employees = pd.read_sql_query("SELECT emp_id, normal_start, normal_end FROM employees", engine)
+        WHERE is_known_user = 1 AND organization_id = %s
+    """, engine, params=(org_id,))
+    df_baselines = pd.read_sql_query("SELECT * FROM user_baselines WHERE organization_id = %s", engine, params=(org_id,))
+    df_employees = pd.read_sql_query("SELECT emp_id, normal_start, normal_end FROM employees WHERE organization_id = %s", engine, params=(org_id,))
     
     df_audit['action_datetime'] = pd.to_datetime(df_audit['action_datetime'])
     df_audit['date'] = df_audit['action_datetime'].dt.date
@@ -175,13 +178,14 @@ def run_rules_engine():
     triggered_df['explanation'] = triggered_df.apply(get_explanation, axis=1)
     triggered_df['rules_triggered'] = triggered_df.apply(lambda r: ",".join([rl for rl in rules if r[rl]]), axis=1)
     triggered_df['created_at'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    triggered_df['organization_id'] = org_id
     
     # Prepare for insert
     print(f"Storing {len(triggered_df)} alerts...")
     alerts_to_insert = triggered_df[[
         'emp_id', 'date', 'rules_triggered', 'rule_count', 'severity', 'explanation',
         'total_events', 'is_out_of_panel', 'is_off_hours', 'is_export_print',
-        'is_break_glass', 'is_vip_out_of_panel', 'is_cross_dept', 'created_at', 'is_sensitive_out_of_panel'
+        'is_break_glass', 'is_vip_out_of_panel', 'is_cross_dept', 'created_at', 'is_sensitive_out_of_panel', 'organization_id'
     ]].values.tolist()
     
     from psycopg2.extras import execute_values
@@ -190,7 +194,7 @@ def run_rules_engine():
         INSERT INTO alerts (
             emp_id, alert_date, rules_triggered, rule_count, severity, explanation,
             event_count, out_of_panel, off_hours_count, export_print_count,
-            break_glass_count, vip_out_of_panel, cross_dept_count, created_at, sensitive_out_of_panel
+            break_glass_count, vip_out_of_panel, cross_dept_count, created_at, sensitive_out_of_panel, organization_id
         ) VALUES %s
     """, alerts_to_insert)
     conn.commit()
@@ -201,5 +205,16 @@ def run_rules_engine():
     print(f"Total Medium+ alerts generated: {len(triggered_df)}")
     print(f"Processing time: {runtime:.2f} seconds")
 
-if __name__ == "__main__":
-    run_rules_engine()
+if __name__ == "__main__": 
+    import sys 
+    if len(sys.argv) > 1: 
+        try: 
+            org_id = int(sys.argv[1]) 
+        except ValueError: 
+            print("Error: org_id must be an integer. Usage: python rules_engine.py <org_id>") 
+            sys.exit(1) 
+    else: 
+        print("Error: org_id required. Usage: python rules_engine.py <org_id>") 
+        print("Example: python rules_engine.py 1") 
+        sys.exit(1) 
+    run_rules_engine(org_id)

@@ -1,7 +1,8 @@
 from db import get_connection
 import case_logic
 
-def run():
+def run(org_id: int = 1):
+    print(f"Checking for critical alerts to auto-case (Organization: {org_id})...")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -11,9 +12,10 @@ def run():
       WHERE adjusted_severity = 'Critical' 
       AND case_id IS NULL 
       AND status = 'open' 
+      AND organization_id = %s 
       ORDER BY alert_date ASC 
       LIMIT 200 
-    """)
+    """, (org_id,))
     alerts = cursor.fetchall()
     conn.close()
 
@@ -31,5 +33,16 @@ def run():
 
     print(f"Cases created from existing Critical alerts: {created}")
 
-if __name__ == "__main__":
-    run()
+if __name__ == "__main__": 
+    import sys 
+    if len(sys.argv) > 1: 
+        try: 
+            org_id = int(sys.argv[1]) 
+        except ValueError: 
+            print("Error: org_id must be an integer. Usage: python auto_case_creator.py <org_id>") 
+            sys.exit(1) 
+    else: 
+        print("Error: org_id required. Usage: python auto_case_creator.py <org_id>") 
+        print("Example: python auto_case_creator.py 1") 
+        sys.exit(1) 
+    run(org_id)

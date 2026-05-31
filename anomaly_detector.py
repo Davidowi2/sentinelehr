@@ -18,12 +18,15 @@ MOCK_DATA_DIR = "./mock_data/"
 def get_db_connection():
     return get_connection()
 
-def setup_anomaly_tables(conn):
+def setup_anomaly_tables(conn, org_id: int):
     cursor = conn.cursor()
-    cursor.execute("TRUNCATE TABLE anomaly_scores RESTART IDENTITY")
+    cursor.execute("""
+        DELETE FROM anomaly_scores 
+        WHERE organization_id = %s
+    """, (org_id,))
     conn.commit()
 
-def build_feature_matrix(conn):
+def build_feature_matrix(conn, org_id: int):
     print("Building feature matrix from audit events and baselines...")
     DATABASE_URL = os.getenv("DATABASE_URL")
     if DATABASE_URL.startswith("postgres://"):
@@ -32,11 +35,11 @@ def build_feature_matrix(conn):
     
     df_audit = pd.read_sql_query("""
         SELECT audit_id, emp_id, action_datetime, pat_id, in_panel, is_vip_access, dept_id, action_c, is_sensitive_access
-        FROM audit_events WHERE is_known_user = 1
-    """, engine)
-    df_baselines = pd.read_sql_query("SELECT * FROM user_baselines", engine)
-    df_alerts = pd.read_sql_query("SELECT emp_id, alert_date, rule_count FROM alerts", engine)
-    df_employees = pd.read_sql_query("SELECT emp_id, normal_start, normal_end FROM employees", engine)
+        FROM audit_events WHERE is_known_user = 1 AND organization_id = %s
+    """, engine, params=(org_id,))
+    df_baselines = pd.read_sql_query("SELECT * FROM user_baselines WHERE organization_id = %s", engine, params=(org_id,))
+    df_alerts = pd.read_sql_query("SELECT emp_id, alert_date, rule_count FROM alerts WHERE organization_id = %s", engine, params=(org_id,))
+    df_employees = pd.read_sql_query("SELECT emp_id, normal_start, normal_end FROM employees WHERE organization_id = %s", engine, params=(org_id,))
     
     df_audit['action_datetime'] = pd.to_datetime(df_audit['action_datetime'])
     df_audit['date'] = df_audit['action_datetime'].dt.date.astype(str)
@@ -96,12 +99,12 @@ def build_feature_matrix(conn):
     feature_cols = ['emp_id', 'date', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']
     return daily[feature_cols].rename(columns={'date': 'score_date'}).fillna(0)
 
-def run_anomaly_detector():
+def run_anomaly_detector(org_id: int = 1):
     start_time = time.time()
     conn = get_db_connection()
-    setup_anomaly_tables(conn)
+    setup_anomaly_tables(conn, org_id)
     
-    df_features = build_feature_matrix(conn)
+    df_features = build_feature_matrix(conn, org_id)
     if df_features.empty:
         print("No features built. Exiting.")
         conn.close()
@@ -136,6 +139,7 @@ def run_anomaly_detector():
     
     scores_to_store = df_features[['emp_id', 'score_date', 'normalized_score']].copy()
     scores_to_store.columns = ['emp_id', 'score_date', 'anomaly_score']
+    scores_to_store['organization_id'] = org_id
     scores_to_store['created_at'] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     
     scores_to_store.to_sql('anomaly_scores', engine, if_exists='append', index=False)
@@ -156,13 +160,13 @@ def run_anomaly_detector():
         cursor.execute("""
             UPDATE audit_events 
             SET anomaly_type = %s 
-            WHERE emp_id = %s AND action_datetime::date = %s
-        """, (anomaly_type, int(row['emp_id']), row['score_date']))
+            WHERE emp_id = %s AND action_datetime::date = %s AND organization_id = %s
+        """, (anomaly_type, int(row['emp_id']), row['score_date'], org_id))
     conn.commit()
     
     # False Positive Reduction calculation
     # Let's say we only keep alerts with score > 2.0
-    df_alerts = pd.read_sql_query("SELECT alert_id, emp_id, alert_date FROM alerts", engine)
+    df_alerts = pd.read_sql_query("SELECT alert_id, emp_id, alert_date FROM alerts WHERE organization_id = %s", engine, params=(org_id,))
     df_alerts['alert_date'] = df_alerts['alert_date'].astype(str)
     
     # Merge alerts with scores
