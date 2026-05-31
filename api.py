@@ -157,6 +157,42 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] Sync state table skip: {str(e)}')
 
+        try:
+            cursor.execute('''
+                ALTER TABLE audit_events
+                ADD CONSTRAINT audit_events_unique
+                UNIQUE (audit_id, organization_id)
+            ''')
+            conn.commit()
+            print('[DATABASE] audit_events unique constraint verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] audit_events constraint skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                ALTER TABLE patient_panels
+                ADD CONSTRAINT patient_panels_unique
+                UNIQUE (emp_id, pat_id, organization_id)
+            ''')
+            conn.commit()
+            print('[DATABASE] patient_panels unique constraint verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] patient_panels constraint skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                ALTER TABLE employees
+                ADD CONSTRAINT employees_org_unique
+                UNIQUE (emp_id, organization_id)
+            ''')
+            conn.commit()
+            print('[DATABASE] employees unique constraint verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] employees constraint skip: {str(e)}')
+
         try: 
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1') 
             cursor.execute('UPDATE users SET organization_id = 1 WHERE organization_id IS NULL') 
@@ -1692,6 +1728,179 @@ def rotate_api_key(org_id: int, token_data = Depends(require_role('admin'))):
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── INGESTION ENDPOINTS ────────────────────────────────────
+
+@app.get('/ingest/sync-state')
+def get_sync_state(request: Request):
+    org = get_org_from_api_key(request)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT table_name, last_sync_at, last_record_count, status, error_message
+            FROM sync_state
+            WHERE organization_id = %s
+            ORDER BY table_name
+        ''', (org['id'],))
+        states = cursor.fetchall()
+        conn.close()
+        return {
+            'organization_id': org['id'],
+            'organization_name': org['name'],
+            'sync_state': [dict(s) for s in states]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post('/ingest/data')
+def ingest_data(request: Request, body: dict = Body(...)):
+    org = get_org_from_api_key(request)
+    org_id = org['id']
+
+    table = body.get('table')
+    records = body.get('records', [])
+    batch_id = body.get('batch_id')
+    is_last_batch = body.get('is_last_batch', False)
+
+    valid_tables = ['audit_events', 'employees', 'patient_panels']
+    if table not in valid_tables:
+        raise HTTPException(status_code=400, detail=f'Invalid table. Must be one of: {valid_tables}')
+
+    if not records:
+        return {'status': 'skipped', 'message': 'No records to insert', 'count': 0}
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        inserted = 0
+        skipped = 0
+
+        if table == 'audit_events':
+            for record in records:
+                try:
+                    cursor.execute('''
+                        INSERT INTO audit_events (
+                            audit_id, emp_id, pat_id, action_c, action_datetime,
+                            dept_id, in_panel, is_vip_access, is_sensitive_access,
+                            is_known_user, organization_id
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (audit_id, organization_id) DO NOTHING
+                    ''', (
+                        record.get('audit_id'),
+                        record.get('emp_id'),
+                        record.get('pat_id'),
+                        record.get('action_c'),
+                        record.get('action_datetime'),
+                        record.get('dept_id'),
+                        record.get('in_panel', False),
+                        record.get('is_vip_access', False),
+                        record.get('is_sensitive_access', False),
+                        record.get('is_known_user', True),
+                        org_id
+                    ))
+                    inserted += 1
+                except Exception:
+                    skipped += 1
+                    conn.rollback()
+                    continue
+
+        elif table == 'employees':
+            for record in records:
+                try:
+                    cursor.execute('''
+                        INSERT INTO employees (
+                            emp_id, role, dept_id, normal_start, normal_end,
+                            is_float, organization_id
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (emp_id, organization_id)
+                        DO UPDATE SET
+                            role = EXCLUDED.role,
+                            dept_id = EXCLUDED.dept_id,
+                            normal_start = EXCLUDED.normal_start,
+                            normal_end = EXCLUDED.normal_end,
+                            is_float = EXCLUDED.is_float
+                    ''', (
+                        record.get('emp_id'),
+                        record.get('role'),
+                        record.get('dept_id'),
+                        record.get('normal_start'),
+                        record.get('normal_end'),
+                        record.get('is_float', False),
+                        org_id
+                    ))
+                    inserted += 1
+                except Exception:
+                    skipped += 1
+                    conn.rollback()
+                    continue
+
+        elif table == 'patient_panels':
+            for record in records:
+                try:
+                    cursor.execute('''
+                        INSERT INTO patient_panels (emp_id, pat_id, organization_id)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (emp_id, pat_id, organization_id) DO NOTHING
+                    ''', (
+                        record.get('emp_id'),
+                        record.get('pat_id'),
+                        org_id
+                    ))
+                    inserted += 1
+                except Exception:
+                    skipped += 1
+                    conn.rollback()
+                    continue
+
+        conn.commit()
+
+        if is_last_batch:
+            cursor.execute('''
+                UPDATE sync_state
+                SET last_sync_at = NOW(),
+                    last_record_count = (
+                        SELECT COUNT(*) FROM audit_events
+                        WHERE organization_id = %s
+                    ),
+                    status = 'success',
+                    error_message = NULL,
+                    updated_at = NOW()
+                WHERE organization_id = %s AND table_name = %s
+            ''', (org_id, org_id, table))
+
+            cursor.execute(
+                'UPDATE organizations SET last_sync_at = NOW() WHERE id = %s',
+                (org_id,)
+            )
+            conn.commit()
+
+        conn.close()
+
+        return {
+            'status': 'success',
+            'table': table,
+            'organization_id': org_id,
+            'inserted': inserted,
+            'skipped': skipped,
+            'is_last_batch': is_last_batch
+        }
+
+    except Exception as e:
+        try:
+            cursor.execute('''
+                UPDATE sync_state
+                SET status = 'error', error_message = %s, updated_at = NOW()
+                WHERE organization_id = %s AND table_name = %s
+            ''', (str(e), org_id, table))
+            conn.commit()
+            conn.close()
+        except:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
 
 
