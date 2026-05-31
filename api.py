@@ -9,6 +9,7 @@ import os
 import time
 import csv
 import io
+import secrets
 from collections import defaultdict
 from datetime import datetime
 from pydantic import BaseModel
@@ -254,6 +255,25 @@ def seed_database():
         else:
             print(f"[DATABASE] Users table already has {user_count} user(s). Skipping seed.")
         
+        try: 
+            cursor.execute(''' 
+                CREATE TABLE IF NOT EXISTS refresh_tokens ( 
+                    id SERIAL PRIMARY KEY, 
+                    token VARCHAR(255) UNIQUE NOT NULL, 
+                    user_id INTEGER NOT NULL, 
+                    email VARCHAR(255) NOT NULL, 
+                    org_id INTEGER NOT NULL, 
+                    role VARCHAR(100) NOT NULL, 
+                    expires_at TIMESTAMP NOT NULL, 
+                    created_at TIMESTAMP DEFAULT NOW() 
+                ) 
+            ''') 
+            conn.commit() 
+            print('[DATABASE] Refresh tokens table verified') 
+        except Exception as e: 
+            conn.rollback() 
+            print(f'[DATABASE] Refresh tokens skip: {str(e)}') 
+
         try: 
             cursor.execute(''' 
                 CREATE TABLE IF NOT EXISTS deleted_alerts_log ( 
@@ -505,28 +525,86 @@ def login(request: Request, body: dict):
         # Reset failures and update last login
         cursor.execute('UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login = NOW() WHERE email = %s', (email,)) 
         conn.commit()
-        conn.close()
         
         audit_log_login(email, ip_address, "SUCCESS")
         token = create_token(user['email'], user['role'], user['organization_id']) 
-        return { 
-            "access_token": token, 
-            "token_type": "bearer", 
-            "role": user['role'], 
-            "user_id": user['id'],
-            "email": user['email'],
-            "organization": user['organization']
-        } 
+        
+        refresh_token = secrets.token_urlsafe(64) 
+        expires_at = datetime.utcnow() + timedelta(days=30) 
+        cursor.execute( 
+            'INSERT INTO refresh_tokens (token, user_id, email, org_id, role, expires_at) VALUES (%s, %s, %s, %s, %s, %s)', 
+            (refresh_token, user['id'], user['email'], user['organization_id'], user['role'], expires_at) 
+        ) 
+        conn.commit() 
+        conn.close()
+
+        response = JSONResponse(content={ 
+            'access_token': token, 
+            'token_type': 'bearer', 
+            'role': user['role'], 
+            'user_id': user['id'], 
+            'email': user['email'], 
+            'organization': user['organization'] 
+        }) 
+        response.set_cookie( 
+            key='refresh_token', 
+            value=refresh_token, 
+            httponly=True, 
+            secure=True, 
+            samesite='none', 
+            max_age=30 * 24 * 60 * 60 
+        ) 
+        return response 
     except HTTPException:
         raise
     except Exception as e: 
         print(f"Login error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.post("/logout")
-def logout(token_data = Depends(verify_token)):
-    # Currently stateless, so just returning success
-    return {"message": "Logged out successfully"}
+@app.post('/auth/refresh') 
+def refresh_access_token(request: Request): 
+    refresh_token = request.cookies.get('refresh_token') 
+    if not refresh_token: 
+        raise HTTPException(status_code=401, detail='No refresh token') 
+    try: 
+        conn = get_connection() 
+        cursor = conn.cursor() 
+        cursor.execute( 
+            'SELECT * FROM refresh_tokens WHERE token = %s AND expires_at > NOW()', 
+            (refresh_token,) 
+        ) 
+        token_row = cursor.fetchone() 
+        if not token_row: 
+            conn.close() 
+            raise HTTPException(status_code=401, detail='Invalid or expired refresh token') 
+        new_access_token = create_token(token_row['email'], token_row['role'], token_row['org_id']) 
+        conn.close() 
+        return { 
+            'access_token': new_access_token, 
+            'token_type': 'bearer', 
+            'role': token_row['role'], 
+            'email': token_row['email'] 
+        } 
+    except HTTPException: 
+        raise 
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e)) 
+
+@app.post('/auth/logout') 
+def logout(request: Request): 
+    refresh_token = request.cookies.get('refresh_token') 
+    if refresh_token: 
+        try: 
+            conn = get_connection() 
+            cursor = conn.cursor() 
+            cursor.execute('DELETE FROM refresh_tokens WHERE token = %s', (refresh_token,)) 
+            conn.commit() 
+            conn.close() 
+        except: 
+            pass 
+    response = JSONResponse(content={'message': 'Logged out'}) 
+    response.delete_cookie(key='refresh_token', samesite='none', secure=True) 
+    return response 
 
 @app.api_route("/health", methods=['GET', 'HEAD'])
 def health_check():
