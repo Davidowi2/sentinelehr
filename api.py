@@ -624,8 +624,13 @@ def login(request: Request, body: dict):
             audit_log_login(email, ip_address, "FAILED (Inactive account)")
             raise HTTPException(status_code=401, detail="Account is deactivated")
 
-        if not case_logic.verify_password(password, user['password_hash']): 
-            cursor.execute('UPDATE users SET failed_attempts = COALESCE(failed_attempts, 0) + 1, locked_until = CASE WHEN COALESCE(failed_attempts, 0) + 1 >= 5 THEN NOW() + INTERVAL \'10 minutes\' ELSE locked_until END WHERE email = %s', (email,)) 
+        if len(password) > 128:
+            conn.close()
+            record_failed_login(ip_address)
+            raise HTTPException(status_code=400, detail="Invalid credentials")
+
+        if not case_logic.verify_password(password, user['password_hash']):
+            cursor.execute('UPDATE users SET failed_attempts = COALESCE(failed_attempts, 0) + 1, locked_until = CASE WHEN COALESCE(failed_attempts, 0) + 1 >= 5 THEN NOW() + INTERVAL \'10 minutes\' ELSE locked_until END WHERE email = %s', (email,))
             conn.commit() 
             conn.close() 
             record_failed_login(ip_address)
@@ -1059,7 +1064,9 @@ def create_user(
     raise HTTPException(400, "Missing required fields") 
   if role not in ['admin','compliance_officer','it_director']: 
     raise HTTPException(400, "Invalid role") 
-  
+  if len(body.get('password', '')) > 128:
+    raise HTTPException(status_code=400, detail="Password too long")
+
   hashed = case_logic.hash_password(password) 
   try: 
     conn = get_connection() 
@@ -1085,7 +1092,7 @@ def list_users(
   conn = get_connection() 
   cursor = conn.cursor() 
   cursor.execute( 
-    "SELECT user_id, username, email, role, active, created_at FROM users ORDER BY created_at" 
+    "SELECT id, email, role, is_active, created_at FROM users ORDER BY created_at" 
   ) 
   users = [dict(r) for r in cursor.fetchall()] 
   conn.close() 
@@ -1797,6 +1804,10 @@ def ingest_data(request: Request, body: dict = Body(...)):
 
     table = body.get('table')
     records = body.get('records', [])
+    if not isinstance(records, list):
+        raise HTTPException(status_code=400, detail="records must be a list")
+    if len(records) > 50000:
+        raise HTTPException(status_code=400, detail="Batch too large. Maximum 50000 records per request.")
     batch_id = body.get('batch_id')
     is_last_batch = body.get('is_last_batch', False)
 
