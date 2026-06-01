@@ -213,6 +213,27 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] employees constraint skip: {str(e)}')
 
+        try:
+            cursor.execute('ALTER TABLE user_baselines ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1')
+            cursor.execute('UPDATE user_baselines SET organization_id = 1 WHERE organization_id IS NULL')
+            conn.commit()
+            print('[DATABASE] organization_id verified on user_baselines')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] user_baselines skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                ALTER TABLE user_baselines
+                ADD CONSTRAINT user_baselines_emp_org_unique
+                UNIQUE (emp_id, organization_id)
+            ''')
+            conn.commit()
+            print('[DATABASE] user_baselines unique constraint verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] user_baselines constraint skip: {str(e)}')
+
         # Recreate active_alerts view with organization_id 
         try: 
             cursor.execute('DROP VIEW IF EXISTS active_alerts') 
