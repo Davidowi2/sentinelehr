@@ -21,7 +21,7 @@ def setup_baseline_table(conn):
     # Handled by setup_db.py
     pass
 
-def calculate_baselines():
+def calculate_baselines(org_id: int = 1):
     start_time = time.time()
     conn = get_db_connection()
     
@@ -39,10 +39,10 @@ def calculate_baselines():
     engine = create_engine(DATABASE_URL)
     
     # sensitive record accesses should never contribute to "normal" baseline behavior
-    df_audit = pd.read_sql_query("SELECT * FROM audit_events WHERE is_known_user = 1 AND is_sensitive_access = 0", engine)
+    df_audit = pd.read_sql_query("SELECT * FROM audit_events WHERE is_known_user = 1 AND is_sensitive_access = 0 AND organization_id = %s", engine, params=(org_id,))
     # But we need total events for the new rates, so load a simplified version for rate calculation
-    df_all_events = pd.read_sql_query("SELECT emp_id, is_sensitive_access, is_vip_access FROM audit_events WHERE is_known_user = 1", engine)
-    df_emp = pd.read_sql_query("SELECT * FROM employees", engine)
+    df_all_events = pd.read_sql_query("SELECT emp_id, is_sensitive_access, is_vip_access FROM audit_events WHERE is_known_user = 1 AND organization_id = %s", engine, params=(org_id,))
+    df_emp = pd.read_sql_query("SELECT * FROM employees WHERE organization_id = %s", engine, params=(org_id,))
     
     if df_audit.empty:
         print("No audit events found for known users.")
@@ -224,9 +224,10 @@ def calculate_baselines():
     # Store in DB
     print(f"Storing {len(final_baselines)} baselines in user_baselines table...")
     df_final = pd.DataFrame(final_baselines)
-    
+    df_final['organization_id'] = org_id
+
     cursor = conn.cursor()
-    cursor.execute("TRUNCATE TABLE user_baselines") # Clear old baselines
+    cursor.execute("DELETE FROM user_baselines WHERE organization_id = %s", (org_id,))
     conn.commit()
     
     df_final.to_sql('user_baselines', engine, if_exists='append', index=False)
@@ -238,4 +239,15 @@ def calculate_baselines():
     conn.close()
 
 if __name__ == "__main__":
-    calculate_baselines()
+    import sys
+    if len(sys.argv) > 1:
+        try:
+            org_id = int(sys.argv[1])
+        except ValueError:
+            print("Error: org_id must be an integer. Usage: python baseline_calculator.py <org_id>")
+            sys.exit(1)
+    else:
+        print("Error: org_id required. Usage: python baseline_calculator.py <org_id>")
+        print("Example: python baseline_calculator.py 1")
+        sys.exit(1)
+    calculate_baselines(org_id)
