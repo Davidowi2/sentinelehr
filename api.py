@@ -1588,13 +1588,26 @@ def get_thresholds(
 def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
     import subprocess
     import sys
+    import os
 
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     results = {}
 
     try:
-        # Step 1 — Rules engine
+        # Step 1 — Baseline calculator
+        result0 = subprocess.run(
+            [sys.executable, os.path.join(SCRIPT_DIR, 'baseline_calculator.py'), str(org_id)],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        if result0.returncode != 0:
+            raise Exception(f'Baseline calculator failed: {result0.stderr}')
+        results['baseline_calculator'] = 'success'
+
+        # Step 2 — Rules engine
         result1 = subprocess.run(
-            [sys.executable, 'rules_engine.py', str(org_id)],
+            [sys.executable, os.path.join(SCRIPT_DIR, 'rules_engine.py'), str(org_id)],
             capture_output=True,
             text=True,
             timeout=300
@@ -1603,9 +1616,9 @@ def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
             raise Exception(f'Rules engine failed: {result1.stderr}')
         results['rules_engine'] = 'success'
 
-        # Step 2 — Anomaly detector
+        # Step 3 — Anomaly detector
         result2 = subprocess.run(
-            [sys.executable, 'anomaly_detector.py', str(org_id)],
+            [sys.executable, os.path.join(SCRIPT_DIR, 'anomaly_detector.py'), str(org_id)],
             capture_output=True,
             text=True,
             timeout=300
@@ -1614,9 +1627,9 @@ def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
             raise Exception(f'Anomaly detector failed: {result2.stderr}')
         results['anomaly_detector'] = 'success'
 
-        # Step 3 — Auto case creator
+        # Step 4 — Auto case creator
         result3 = subprocess.run(
-            [sys.executable, 'auto_case_creator.py', str(org_id)],
+            [sys.executable, os.path.join(SCRIPT_DIR, 'auto_case_creator.py'), str(org_id)],
             capture_output=True,
             text=True,
             timeout=300
@@ -1904,18 +1917,25 @@ def ingest_data(request: Request, body: dict = Body(...)):
             import subprocess
             import sys
             import threading
+            import os
+
+            SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
             def run_detection_async(org_id):
                 try:
                     print(f'[INGEST] Auto-triggering detection for org {org_id} after sync')
-                    subprocess.run([sys.executable, 'baseline_calculator.py', str(org_id)],
-                                   capture_output=True, timeout=300)
-                    subprocess.run([sys.executable, 'rules_engine.py', str(org_id)],
-                                   capture_output=True, timeout=300)
-                    subprocess.run([sys.executable, 'anomaly_detector.py', str(org_id)],
-                                   capture_output=True, timeout=300)
-                    subprocess.run([sys.executable, 'auto_case_creator.py', str(org_id)],
-                                   capture_output=True, timeout=300)
+                    result0 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'baseline_calculator.py'), str(org_id)],
+                                             capture_output=False, timeout=300)
+                    print(f'[DETECTION] baseline_calculator exit code: {result0.returncode}')
+                    result1 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'rules_engine.py'), str(org_id)],
+                                             capture_output=False, timeout=300)
+                    print(f'[DETECTION] rules_engine exit code: {result1.returncode}')
+                    result2 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'anomaly_detector.py'), str(org_id)],
+                                             capture_output=False, timeout=300)
+                    print(f'[DETECTION] anomaly_detector exit code: {result2.returncode}')
+                    result3 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'auto_case_creator.py'), str(org_id)],
+                                             capture_output=False, timeout=300)
+                    print(f'[DETECTION] auto_case_creator exit code: {result3.returncode}')
                     print(f'[INGEST] Auto-detection complete for org {org_id}')
                 except Exception as e:
                     print(f'[INGEST] Auto-detection failed for org {org_id}: {e}')
