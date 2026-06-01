@@ -677,7 +677,8 @@ def login(request: Request, body: dict):
         print(f"Login error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.post('/auth/refresh') 
+@app.post('/auth/refresh')
+@limiter.limit("20/minute")
 def refresh_access_token(request: Request): 
     refresh_token = request.cookies.get('refresh_token') 
     if not refresh_token: 
@@ -1094,9 +1095,11 @@ def create_user(
   except Exception as e: 
     raise HTTPException(400, "Username or email already exists") 
  
-@app.get("/users") 
-def list_users( 
-  token_data = Depends(require_role('admin')) 
+@app.get("/users")
+@limiter.limit("20/minute")
+def list_users(
+  request: Request,
+  token_data = Depends(require_role('admin'))
 ): 
   conn = get_connection() 
   cursor = conn.cursor() 
@@ -1107,8 +1110,9 @@ def list_users(
   conn.close() 
   return {"users": users} 
 
-@app.post('/users/change-password') 
-def change_password(body: dict, token_data = Depends(verify_token)): 
+@app.post('/users/change-password')
+@limiter.limit("5/minute")
+def change_password(request: Request, body: dict, token_data = Depends(verify_token)): 
     current_password = body.get('current_password') 
     new_password = body.get('new_password') 
     
@@ -1138,8 +1142,9 @@ def change_password(body: dict, token_data = Depends(verify_token)):
         print(f"[ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail="An internal error occurred") 
 
-@app.post('/users/update-email') 
-def update_email(body: dict, token_data = Depends(verify_token)): 
+@app.post('/users/update-email')
+@limiter.limit("5/minute")
+def update_email(request: Request, body: dict, token_data = Depends(verify_token)): 
     new_email = body.get('new_email', '').lower().strip() 
     if not new_email or '@' not in new_email: 
         raise HTTPException(status_code=400, detail='Valid email required') 
@@ -1409,6 +1414,7 @@ def create_case_from_alert(
 # ─── EXPORT ENDPOINTS ───────────────────────────────────────
 
 @app.get("/export/alerts")
+@limiter.limit("10/minute")
 def export_alerts(
     request: Request,
     severity: Optional[str] = None,
@@ -1469,8 +1475,10 @@ def export_alerts(
         raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/export/case/{case_id}")
+@limiter.limit("10/minute")
 def export_case_report(
     case_id: str,
+    request: Request,
     token_data = Depends(require_role('compliance_officer', 'admin'))
 ):
     try:
@@ -1605,7 +1613,8 @@ def get_thresholds(
 # ─── ADMIN DETECTION PIPELINE ──────────────────────────────
 
 @app.post('/admin/run-detection/{org_id}')
-def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
+@limiter.limit("5/minute")
+def trigger_detection(request: Request, org_id: int, token_data = Depends(require_role('admin'))):
     import subprocess
     import sys
     import os
@@ -1696,7 +1705,8 @@ def get_detection_status(org_id: int, token_data = Depends(require_role('admin')
 # ─── ADMIN ORGANIZATION MANAGEMENT ─────────────────────────
 
 @app.post('/admin/organizations')
-def create_organization(body: dict, token_data = Depends(require_role('admin'))):
+@limiter.limit("10/minute")
+def create_organization(request: Request, body: dict, token_data = Depends(require_role('admin'))):
     name = body.get('name', '').strip()
     org_type = body.get('type', 'community_hospital')
     contact_name = body.get('contact_name', '').strip()
@@ -1762,7 +1772,8 @@ def list_organizations(token_data = Depends(require_role('admin'))):
 
 
 @app.post('/admin/organizations/{org_id}/rotate-key')
-def rotate_api_key(org_id: int, token_data = Depends(require_role('admin'))):
+@limiter.limit("5/minute")
+def rotate_api_key(request: Request, org_id: int, token_data = Depends(require_role('admin'))):
     new_key = secrets.token_urlsafe(48)
     try:
         conn = get_connection()
@@ -1817,6 +1828,7 @@ def get_sync_state(request: Request):
 
 
 @app.post('/ingest/data')
+@limiter.limit("20/minute")
 def ingest_data(request: Request, body: dict = Body(...)):
     org = get_org_from_api_key(request)
     org_id = org['id']
