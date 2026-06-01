@@ -531,7 +531,8 @@ def get_org_from_api_key(request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 app.add_middleware(
     CORSMiddleware,
@@ -703,7 +704,8 @@ def refresh_access_token(request: Request):
     except HTTPException: 
         raise 
     except Exception as e: 
-        raise HTTPException(status_code=500, detail=str(e)) 
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred") 
 
 @app.post('/auth/logout') 
 def logout(request: Request): 
@@ -737,7 +739,7 @@ def health_check():
         return {
             "status": "error",
             "db": "disconnected",
-            "error": str(e),
+            "error": "Service unavailable",
             "timestamp": datetime.now().isoformat()
         }
 
@@ -755,7 +757,7 @@ def test_email(token_data = Depends(require_role('admin'))):
         else:
             return {"status": "failed", "error": "send_alert_email returned False"}
     except Exception as e:
-        return {"status": "failed", "error": str(e)}
+        return {"status": "failed", "error": "An internal error occurred"}
 
 @app.get("/summary")
 @limiter.limit("60/minute") 
@@ -805,7 +807,8 @@ def get_summary(request: Request, token_data = Depends(verify_token)):
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/alerts")
 @limiter.limit("60/minute") 
@@ -855,7 +858,8 @@ def get_alerts(
             "offset": offset
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/alerts/{alert_id}")
 def get_alert(alert_id: int, token_data = Depends(verify_token)):
@@ -873,7 +877,8 @@ def get_alert(alert_id: int, token_data = Depends(verify_token)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.patch("/alerts/{alert_id}/status")
 def update_alert_status(alert_id: int, update: StatusUpdate, token_data = Depends(require_role('compliance_officer', 'admin'))):
@@ -912,7 +917,8 @@ def update_alert_status(alert_id: int, update: StatusUpdate, token_data = Depend
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/employees/{emp_id}/profile")
 @limiter.limit("30/minute") 
@@ -967,7 +973,8 @@ def get_employee_profile(request: Request, emp_id: int, token_data = Depends(req
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/digest")
 @limiter.limit("30/minute") 
@@ -980,7 +987,8 @@ def get_digest(request: Request, days: int = 180, token_data = Depends(verify_to
         conn.close()
         return digest
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/investigate")
 @limiter.limit("30/minute")
@@ -1044,7 +1052,8 @@ def investigate_employee(request: Request, emp_id: int, token_data = Depends(req
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 # USER MANAGEMENT (admin only) 
  
@@ -1126,7 +1135,8 @@ def change_password(body: dict, token_data = Depends(verify_token)):
     except HTTPException: 
         raise 
     except Exception as e: 
-        raise HTTPException(status_code=500, detail=str(e)) 
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred") 
 
 @app.post('/users/update-email') 
 def update_email(body: dict, token_data = Depends(verify_token)): 
@@ -1455,7 +1465,8 @@ def export_alerts(
         }
         return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers=headers)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/export/case/{case_id}")
 def export_case_report(
@@ -1507,7 +1518,8 @@ def export_case_report(
             "timeline": timeline
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 # SETTINGS MANAGEMENT
 
@@ -1557,7 +1569,8 @@ def update_thresholds(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/settings/thresholds")
 def get_thresholds(
@@ -1609,7 +1622,7 @@ def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
             timeout=300
         )
         if result0.returncode != 0:
-            raise Exception(f'Baseline calculator failed: {result0.stderr}')
+            raise Exception("Detection step failed. Check server logs for details.")
         results['baseline_calculator'] = 'success'
 
         # Step 2 — Rules engine
@@ -1620,7 +1633,7 @@ def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
             timeout=300
         )
         if result1.returncode != 0:
-            raise Exception(f'Rules engine failed: {result1.stderr}')
+            raise Exception("Detection step failed. Check server logs for details.")
         results['rules_engine'] = 'success'
 
         # Step 3 — Anomaly detector
@@ -1631,7 +1644,7 @@ def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
             timeout=300
         )
         if result2.returncode != 0:
-            raise Exception(f'Anomaly detector failed: {result2.stderr}')
+            raise Exception("Detection step failed. Check server logs for details.")
         results['anomaly_detector'] = 'success'
 
         # Step 4 — Auto case creator
@@ -1642,7 +1655,7 @@ def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
             timeout=300
         )
         if result3.returncode != 0:
-            raise Exception(f'Auto case creator failed: {result3.stderr}')
+            raise Exception("Detection step failed. Check server logs for details.")
         results['auto_case_creator'] = 'success'
 
         return {
@@ -1655,7 +1668,8 @@ def trigger_detection(org_id: int, token_data = Depends(require_role('admin'))):
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail='Detection pipeline timed out after 5 minutes')
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
 @app.get('/admin/detection-status/{org_id}')
@@ -1675,7 +1689,8 @@ def get_detection_status(org_id: int, token_data = Depends(require_role('admin')
             'total_alerts': result['total_alerts']
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
 # ─── ADMIN ORGANIZATION MANAGEMENT ─────────────────────────
@@ -1721,7 +1736,8 @@ def create_organization(body: dict, token_data = Depends(require_role('admin')))
             'message': 'Organization created. Store the api_key securely — it will not be shown again.'
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
 @app.get('/admin/organizations')
@@ -1741,7 +1757,8 @@ def list_organizations(token_data = Depends(require_role('admin'))):
         conn.close()
         return {'organizations': [dict(o) for o in orgs]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
 @app.post('/admin/organizations/{org_id}/rotate-key')
@@ -1769,7 +1786,8 @@ def rotate_api_key(org_id: int, token_data = Depends(require_role('admin'))):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
 # ─── INGESTION ENDPOINTS ────────────────────────────────────
@@ -1794,7 +1812,8 @@ def get_sync_state(request: Request):
             'sync_state': [dict(s) for s in states]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
 @app.post('/ingest/data')
@@ -1977,7 +1996,8 @@ def ingest_data(request: Request, body: dict = Body(...)):
             conn.close()
         except:
             pass
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
 # ─── SERVER STARTUP ─────────────────────────────────────────
