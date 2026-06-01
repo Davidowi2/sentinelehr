@@ -979,7 +979,7 @@ def get_employee_profile(request: Request, emp_id: int, token_data = Depends(req
 
 @app.get("/digest")
 @limiter.limit("30/minute") 
-def get_digest(request: Request, days: int = 180, token_data = Depends(verify_token)):
+def get_digest(request: Request, days: int = Query(180, ge=1, le=365), token_data = Depends(verify_token)):
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -1167,8 +1167,8 @@ def list_cases(
   status: str = None, 
   priority: str = None, 
   assigned_to: int = None, 
-  limit: int = 50, 
-  offset: int = 0, 
+  limit: int = Query(50, ge=1, le=200), 
+  offset: int = Query(0, ge=0),
   token_data = Depends(verify_token) 
 ): 
   org_id = token_data.get('org_id', 1) 
@@ -1254,9 +1254,10 @@ def update_case_status(
   org_id = token_data.get('org_id', 1) 
   new_status = body.get("status") 
   note = body.get("note", "") 
-  
-  if not new_status: 
-    raise HTTPException(400, "Status required") 
+
+  VALID_STATUSES = {'Open', 'Under Review', 'Escalated', 'Closed', 'Dismissed'}
+  if new_status not in VALID_STATUSES:
+    raise HTTPException(status_code=400, detail="Invalid status value") 
   
   # Verify case exists for this organization
   conn = get_connection()
