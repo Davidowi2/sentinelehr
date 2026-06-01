@@ -1908,6 +1908,8 @@ def ingest_data(request: Request, body: dict = Body(...)):
             def run_detection_async(org_id):
                 try:
                     print(f'[INGEST] Auto-triggering detection for org {org_id} after sync')
+                    subprocess.run([sys.executable, 'baseline_calculator.py', str(org_id)],
+                                   capture_output=True, timeout=300)
                     subprocess.run([sys.executable, 'rules_engine.py', str(org_id)],
                                    capture_output=True, timeout=300)
                     subprocess.run([sys.executable, 'anomaly_detector.py', str(org_id)],
