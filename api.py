@@ -1816,6 +1816,66 @@ def rotate_api_key(request: Request, org_id: int, token_data = Depends(require_r
         raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
+# ─── ADMIN USER MANAGEMENT ──────────────────────────────────
+
+@app.post('/admin/users/create')
+def admin_create_user(body: dict, token_data = Depends(require_role('admin'))):
+    email = body.get('email', '').lower().strip()
+    password = body.get('password', '').strip()
+    role = body.get('role', '').strip()
+    org_id = body.get('organization_id')
+
+    VALID_ROLES = {'compliance_officer', 'it_director', 'admin'}
+    if role not in VALID_ROLES:
+        raise HTTPException(status_code=400,
+            detail=f'Invalid role. Must be one of: {list(VALID_ROLES)}')
+    if not email or '@' not in email or '.' not in email.split('@')[-1]:
+        raise HTTPException(status_code=400, detail='Valid email required')
+    if not password or len(password) < 8:
+        raise HTTPException(status_code=400,
+            detail='Password must be at least 8 characters')
+    if len(password) > 128:
+        raise HTTPException(status_code=400, detail='Invalid credentials')
+    if not org_id:
+        raise HTTPException(status_code=400,
+            detail='organization_id required')
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM organizations WHERE id = %s', (org_id,))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404,
+                detail='Organization not found')
+
+        password_hash = case_logic.hash_password(password)
+        cursor.execute('''
+            INSERT INTO users
+            (email, password_hash, role, organization_id, is_active)
+            VALUES (%s, %s, %s, %s, TRUE)
+            RETURNING id, email, role, organization_id
+        ''', (email, password_hash, role, org_id))
+        user = cursor.fetchone()
+        conn.commit()
+        conn.close()
+
+        return {
+            'user_id': user['id'],
+            'email': user['email'],
+            'role': user['role'],
+            'organization_id': user['organization_id'],
+            'message': 'User created successfully'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] admin_create_user: {str(e)}')
+        raise HTTPException(status_code=400,
+            detail='Email already exists or creation failed')
+
+
 # ─── SYSTEM STATUS ──────────────────────────────────────────
 
 @app.get('/system/status')
