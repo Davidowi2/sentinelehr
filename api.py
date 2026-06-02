@@ -1255,7 +1255,7 @@ def update_case_status(
   new_status = body.get("status") 
   note = body.get("note", "") 
 
-  VALID_STATUSES = {'Open', 'Under Review', 'Escalated', 'Closed', 'Dismissed'}
+  VALID_STATUSES = {'Open', 'Under Investigation', 'Pending HR', 'Resolved', 'Closed'}
   if new_status not in VALID_STATUSES:
     raise HTTPException(status_code=400, detail="Invalid status value") 
   
