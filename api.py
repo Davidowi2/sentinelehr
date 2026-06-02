@@ -1816,6 +1816,57 @@ def rotate_api_key(request: Request, org_id: int, token_data = Depends(require_r
         raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
+# ─── SYSTEM STATUS ──────────────────────────────────────────
+
+@app.get('/system/status')
+def get_system_status(token_data = Depends(require_role('it_director', 'admin'))):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        org_id = token_data.get('org_id', 1)
+
+        cursor.execute('''
+            SELECT MAX(created_at) as last_detection_run,
+                   COUNT(*) as total_alerts,
+                   SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END) as critical,
+                   SUM(CASE WHEN adjusted_severity = 'High' THEN 1 ELSE 0 END) as high,
+                   SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium
+            FROM alerts WHERE organization_id = %s
+        ''', (org_id,))
+        alert_stats = cursor.fetchone()
+
+        cursor.execute('''
+            SELECT table_name, last_sync_at, last_record_count, status, error_message
+            FROM sync_state WHERE organization_id = %s
+            ORDER BY table_name
+        ''', (org_id,))
+        sync_state = cursor.fetchall()
+
+        cursor.execute('''
+            SELECT id, email, role, is_active, last_login, created_at
+            FROM users WHERE organization_id = %s
+            ORDER BY created_at
+        ''', (org_id,))
+        users = cursor.fetchall()
+
+        cursor.execute(
+            'SELECT name, subscription_tier, epic_connection_verified, last_sync_at FROM organizations WHERE id = %s',
+            (org_id,)
+        )
+        org = cursor.fetchone()
+        conn.close()
+
+        return {
+            'organization': dict(org) if org else {},
+            'alert_stats': dict(alert_stats) if alert_stats else {},
+            'sync_state': [dict(s) for s in sync_state],
+            'users': [dict(u) for u in users]
+        }
+    except Exception as e:
+        print(f'[ERROR] system_status: {str(e)}')
+        raise HTTPException(status_code=500, detail="An internal error occurred")
+
+
 # ─── INGESTION ENDPOINTS ────────────────────────────────────
 
 @app.get('/ingest/sync-state')
