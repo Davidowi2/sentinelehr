@@ -1173,7 +1173,10 @@ def list_cases(
 ): 
   org_id = token_data.get('org_id', 1) 
   conn = get_connection() 
-  case_logic.flag_overdue_cases(conn) 
+  try:
+    case_logic.flag_overdue_cases(conn)
+  except Exception as e:
+    print(f'[ERROR] flag_overdue_cases failed: {str(e)}')
   conditions = [] 
   params = [] 
   conditions.append('organization_id = %s') 
@@ -1255,7 +1258,7 @@ def update_case_status(
   new_status = body.get("status") 
   note = body.get("note", "") 
 
-  VALID_STATUSES = {'Open', 'Under Investigation', 'Pending HR', 'Resolved', 'Closed'}
+  VALID_STATUSES = {'Open', 'Under Investigation', 'Pending HR', 'Resolved', 'Closed', 'Overdue'}
   if new_status not in VALID_STATUSES:
     raise HTTPException(status_code=400, detail="Invalid status value") 
   

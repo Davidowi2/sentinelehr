@@ -267,7 +267,7 @@ def flag_overdue_cases(conn) -> int:
     # SELECT all cases where status NOT IN ('Resolved', 'Closed') AND created_at < NOW() - INTERVAL '90 days'
     cursor.execute("""
         SELECT case_id FROM cases 
-        WHERE status NOT IN ('Resolved', 'Closed', 'overdue') 
+        WHERE status NOT IN ('Resolved', 'Closed', 'Overdue') 
         AND created_at < NOW() - INTERVAL '90 days'
     """)
     overdue_rows = cursor.fetchall()
@@ -275,10 +275,10 @@ def flag_overdue_cases(conn) -> int:
     count = 0
     for row in overdue_rows:
         case_id = row['case_id']
-        # UPDATE them: status='overdue'
+        # UPDATE them: status='Overdue'
         # Since 'notes' column doesn't exist in 'cases' table, we add the note to case_audit_log
         cursor.execute("""
-            UPDATE cases SET status = 'overdue', updated_at = NOW() 
+            UPDATE cases SET status = 'Overdue', updated_at = NOW() 
             WHERE case_id = %s
         """, (case_id,))
         
@@ -287,9 +287,8 @@ def flag_overdue_cases(conn) -> int:
             VALUES (%s, 'status_changed', 'Auto-flagged: exceeded 90-day resolution window')
         """, (case_id,))
         count += 1
-        
-    if count > 0:
-        conn.commit()
+
+    conn.commit()
     return count
 
 def verify_password(plain: str, hashed: str) -> bool:
