@@ -33,7 +33,8 @@ import {
   AlertOctagon,
   Eye,
   EyeOff,
-  Server
+  Server,
+  Building2
 } from 'lucide-react';
 
 const THEMES = {
@@ -137,6 +138,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://sentinelehr-api.onrend
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
   { id: 'system', label: 'System', icon: <Server size={18} /> },
+  { id: 'admin', label: 'Admin', icon: <Building2 size={18} /> },
   { id: 'alerts', label: 'Alerts', icon: <Bell size={18} /> },
   { id: 'cases', label: 'Cases', icon: <Folder size={18} /> },
   { id: 'investigate', label: 'Investigate', icon: <Search size={18} /> },
@@ -1249,6 +1251,301 @@ const SystemView = ({ authHeaders }) => {
   );
 };
 
+const AdminView = ({ authHeaders }) => {
+  const [orgs, setOrgs] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [newApiKey, setNewApiKey] = React.useState(null);
+  const [newOrgName, setNewOrgName] = React.useState('');
+  const [showCreateOrg, setShowCreateOrg] = React.useState(false);
+  const [orgForm, setOrgForm] = React.useState({
+    name: '', type: 'community_hospital',
+    contact_name: '', contact_email: '',
+    subscription_tier: 'design_partner'
+  });
+  const [userForm, setUserForm] = React.useState({
+    email: '', password: '',
+    role: 'compliance_officer', organization_id: ''
+  });
+  const [orgMsg, setOrgMsg] = React.useState(null);
+  const [userMsg, setUserMsg] = React.useState(null);
+
+  const loadOrgs = () => {
+    fetch(`${API_BASE}/admin/organizations`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => { setOrgs(d.organizations || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  React.useEffect(() => { loadOrgs(); }, []);
+
+  const createOrg = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/organizations`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(orgForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewApiKey(data.api_key);
+        setNewOrgName(data.name);
+        setOrgForm({ name: '', type: 'community_hospital',
+          contact_name: '', contact_email: '',
+          subscription_tier: 'design_partner' });
+        setShowCreateOrg(false);
+        loadOrgs();
+      } else {
+        setOrgMsg({ type: 'error', text: data.detail || 'Failed to create organization' });
+      }
+    } catch {
+      setOrgMsg({ type: 'error', text: 'Connection error' });
+    }
+  };
+
+  const createUser = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/create`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          ...userForm,
+          organization_id: parseInt(userForm.organization_id)
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUserMsg({ type: 'success', text: `User ${data.email} created successfully` });
+        setUserForm({ email: '', password: '',
+          role: 'compliance_officer', organization_id: '' });
+      } else {
+        setUserMsg({ type: 'error', text: data.detail || 'Failed to create user' });
+      }
+    } catch {
+      setUserMsg({ type: 'error', text: 'Connection error' });
+    }
+  };
+
+  const inputStyle = {
+    width: '100%', padding: '10px 12px',
+    background: 'var(--bg-app)', border: '1px solid var(--border)',
+    borderRadius: '8px', color: 'var(--text-primary)',
+    fontSize: '14px', boxSizing: 'border-box'
+  };
+  const labelStyle = {
+    fontSize: '11px', fontWeight: '600',
+    letterSpacing: '0.05em', color: 'var(--text-secondary)',
+    marginBottom: '6px', display: 'block'
+  };
+  const btnPrimary = {
+    padding: '10px 20px', background: 'var(--accent)',
+    border: 'none', borderRadius: '8px', color: '#000',
+    fontWeight: '700', cursor: 'pointer', fontSize: '13px'
+  };
+  const cardStyle = {
+    background: 'var(--bg-surface)', border: '1px solid var(--border)',
+    borderRadius: '12px', padding: '24px', marginBottom: '24px'
+  };
+
+  return (
+    <div style={{ padding: '32px', maxWidth: '900px' }}>
+
+      {/* API Key Modal */}
+      {newApiKey && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: 'var(--bg-surface)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '32px', maxWidth: '520px', width: '90%'
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>
+              Organization Created: {newOrgName}
+            </div>
+            <div style={{ fontSize: '13px', color: '#f97316', marginBottom: '20px', fontWeight: '600' }}>
+              ⚠ Copy this API key now. It will not be shown again.
+            </div>
+            <div style={{
+              background: 'var(--bg-app)', border: '1px solid var(--border)',
+              borderRadius: '8px', padding: '14px',
+              fontFamily: 'monospace', fontSize: '13px',
+              color: 'var(--accent)', wordBreak: 'break-all', marginBottom: '16px'
+            }}>
+              {newApiKey}
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => { navigator.clipboard.writeText(newApiKey); }}
+                style={{ ...btnPrimary, flex: 1 }}>
+                Copy to Clipboard
+              </button>
+              <button onClick={() => setNewApiKey(null)}
+                style={{ ...btnPrimary, flex: 1, background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)' }}>
+                I've Saved This
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Organizations Section */}
+      <div style={cardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>
+            ORGANIZATIONS
+          </h3>
+          <button onClick={() => setShowCreateOrg(!showCreateOrg)} style={btnPrimary}>
+            {showCreateOrg ? 'Cancel' : '+ New Organization'}
+          </button>
+        </div>
+
+        {showCreateOrg && (
+          <div style={{
+            background: 'var(--bg-app)', borderRadius: '10px',
+            padding: '20px', marginBottom: '20px', border: '1px solid var(--border)'
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              {[
+                ['ORGANIZATION NAME', 'name', 'text', 'e.g. CommUnityCare Health Centers'],
+                ['CONTACT NAME', 'contact_name', 'text', 'Primary contact'],
+                ['CONTACT EMAIL', 'contact_email', 'email', 'contact@hospital.org'],
+              ].map(([label, field, type, placeholder]) => (
+                <div key={field}>
+                  <label style={labelStyle}>{label}</label>
+                  <input type={type} placeholder={placeholder}
+                    value={orgForm[field]}
+                    onChange={e => setOrgForm({ ...orgForm, [field]: e.target.value })}
+                    style={inputStyle} />
+                </div>
+              ))}
+              <div>
+                <label style={labelStyle}>TYPE</label>
+                <select value={orgForm.type}
+                  onChange={e => setOrgForm({ ...orgForm, type: e.target.value })}
+                  style={inputStyle}>
+                  <option value="community_hospital">Community Hospital</option>
+                  <option value="fqhc">FQHC</option>
+                  <option value="demo">Demo</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>TIER</label>
+                <select value={orgForm.subscription_tier}
+                  onChange={e => setOrgForm({ ...orgForm, subscription_tier: e.target.value })}
+                  style={inputStyle}>
+                  <option value="design_partner">Design Partner</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </div>
+            </div>
+            {orgMsg && (
+              <div style={{
+                padding: '10px', borderRadius: '6px', marginBottom: '12px',
+                background: orgMsg.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                color: orgMsg.type === 'error' ? '#ef4444' : '#22c55e', fontSize: '13px'
+              }}>{orgMsg.text}</div>
+            )}
+            <button onClick={createOrg} style={btnPrimary}>Create Organization</button>
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</div>
+        ) : orgs.length === 0 ? (
+          <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No organizations yet.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['ID', 'Name', 'Type', 'Tier', 'Active', 'API Key'].map(h => (
+                  <th key={h} style={{
+                    textAlign: 'left', padding: '8px 12px',
+                    fontSize: '11px', color: 'var(--text-secondary)',
+                    fontWeight: '600', letterSpacing: '0.05em'
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {orgs.map(org => (
+                <tr key={org.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>{org.id}</td>
+                  <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '600' }}>{org.name}</td>
+                  <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>{org.type}</td>
+                  <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>{org.subscription_tier}</td>
+                  <td style={{ padding: '10px 12px' }}>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                      background: org.is_active ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                      color: org.is_active ? '#22c55e' : '#ef4444'
+                    }}>{org.is_active ? 'Active' : 'Inactive'}</span>
+                  </td>
+                  <td style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                    {org.api_key_preview}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Create User Section */}
+      <div style={cardStyle}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+          CREATE USER
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <label style={labelStyle}>EMAIL</label>
+            <input type="email" placeholder="user@hospital.org"
+              value={userForm.email}
+              onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+              style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>TEMPORARY PASSWORD</label>
+            <input type="password" placeholder="Min 8 characters"
+              value={userForm.password}
+              onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+              style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>ROLE</label>
+            <select value={userForm.role}
+              onChange={e => setUserForm({ ...userForm, role: e.target.value })}
+              style={inputStyle}>
+              <option value="compliance_officer">Compliance Officer</option>
+              <option value="it_director">IT Director</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>ORGANIZATION</label>
+            <select value={userForm.organization_id}
+              onChange={e => setUserForm({ ...userForm, organization_id: e.target.value })}
+              style={inputStyle}>
+              <option value="">Select organization</option>
+              {orgs.map(o => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {userMsg && (
+          <div style={{
+            padding: '10px', borderRadius: '6px', marginBottom: '12px',
+            background: userMsg.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+            color: userMsg.type === 'error' ? '#ef4444' : '#22c55e', fontSize: '13px'
+          }}>{userMsg.text}</div>
+        )}
+        <button onClick={createUser} style={btnPrimary}>Create User</button>
+      </div>
+
+    </div>
+  );
+};
+
 export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   // Store auth in memory only (not localStorage) for security
@@ -1369,6 +1666,9 @@ export default function AppV2() {
   useEffect(() => {
     if (userRole === 'it_director' && ['investigate', 'alerts', 'cases'].includes(activeView)) {
       setActiveView('system');
+    }
+    if (userRole === 'admin' && activeView === 'system') {
+      setActiveView('overview');
     }
   }, [userRole, activeView]);
 
@@ -2324,6 +2624,11 @@ export default function AppV2() {
               if (item.id === 'system' && userRole !== 'it_director' && userRole !== 'admin') {
                 return null;
               }
+
+              // Hide Admin tab from non-admin
+              if (item.id === 'admin' && userRole !== 'admin') {
+                return null;
+              }
               
               // Skip settings here, we'll render it separately
               if (item.id === 'settings') {
@@ -2336,6 +2641,7 @@ export default function AppV2() {
               const iconMap = {
                 'overview': <LayoutDashboard size={18} />,
                 'system': <Server size={18} />,
+                'admin': <Building2 size={18} />,
                 'alerts': <BellRing size={18} />,
                 'cases': <ClipboardList size={18} />,
                 'investigate': <ScanSearch size={18} />,
@@ -3527,6 +3833,10 @@ export default function AppV2() {
 
           {activeView === 'system' && (userRole === 'it_director' || userRole === 'admin') && (
             <SystemView authHeaders={authHeaders} />
+          )}
+
+          {activeView === 'admin' && userRole === 'admin' && (
+            <AdminView authHeaders={authHeaders} />
           )}
         </div>
       </main>
