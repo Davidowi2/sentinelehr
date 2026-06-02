@@ -1232,7 +1232,7 @@ const SystemView = ({ authHeaders }) => {
             {users.map(u => (
               <tr key={u.email} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{u.email}</td>
-                <td style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{(u.role || '').replace(/_/g, ' ')}</td>
+                <td style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{(u.role || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</td>
                 <td style={{ padding: '10px 12px' }}>
                   <span style={{
                     padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
@@ -1666,9 +1666,6 @@ export default function AppV2() {
   useEffect(() => {
     if (userRole === 'it_director' && ['investigate', 'alerts', 'cases'].includes(activeView)) {
       setActiveView('system');
-    }
-    if (userRole === 'admin' && activeView === 'system') {
-      setActiveView('overview');
     }
   }, [userRole, activeView]);
 
