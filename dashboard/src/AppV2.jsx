@@ -1664,7 +1664,7 @@ export default function AppV2() {
 
   // Redirect it_director away from investigate tab
   useEffect(() => {
-    if (userRole === 'it_director' && ['investigate', 'alerts', 'cases'].includes(activeView)) {
+    if (userRole === 'it_director' && ['overview', 'investigate', 'alerts', 'cases'].includes(activeView)) {
       setActiveView('system');
     }
   }, [userRole, activeView]);
