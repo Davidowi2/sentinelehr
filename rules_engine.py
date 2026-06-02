@@ -145,7 +145,7 @@ def run_rules_engine(org_id: int = 1):
         def get_severity(row):
             # R4, R8 and R_SENSITIVE are HARD RULES - fire standalone
             if row['R_SENSITIVE']:
-                return "CRITICAL"
+                return "Critical"
 
             if row['R8']:
                 # R8 alone -> High, R8 + any other -> Critical
