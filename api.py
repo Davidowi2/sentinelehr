@@ -1657,14 +1657,25 @@ def trigger_detection(request: Request, org_id: int, token_data = Depends(requir
             raise Exception("Detection step failed. Check server logs for details.")
         results['anomaly_detector'] = 'success'
 
-        # Step 4 — Auto case creator
+        # Step 4 — Alert manager
         result3 = subprocess.run(
-            [sys.executable, os.path.join(SCRIPT_DIR, 'auto_case_creator.py'), str(org_id)],
+            [sys.executable, os.path.join(SCRIPT_DIR, 'alert_manager.py'), str(org_id)],
             capture_output=True,
             text=True,
             timeout=300
         )
         if result3.returncode != 0:
+            raise Exception("Detection step failed. Check server logs for details.")
+        results['alert_manager'] = 'success'
+
+        # Step 5 — Auto case creator
+        result4 = subprocess.run(
+            [sys.executable, os.path.join(SCRIPT_DIR, 'auto_case_creator.py'), str(org_id)],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        if result4.returncode != 0:
             raise Exception("Detection step failed. Check server logs for details.")
         results['auto_case_creator'] = 'success'
 
@@ -1976,9 +1987,12 @@ def ingest_data(request: Request, body: dict = Body(...)):
                     result2 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'anomaly_detector.py'), str(org_id)],
                                              capture_output=False, timeout=300)
                     print(f'[DETECTION] anomaly_detector exit code: {result2.returncode}')
-                    result3 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'auto_case_creator.py'), str(org_id)],
+                    result3 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'alert_manager.py'), str(org_id)],
                                              capture_output=False, timeout=300)
-                    print(f'[DETECTION] auto_case_creator exit code: {result3.returncode}')
+                    print(f'[DETECTION] alert_manager exit code: {result3.returncode}')
+                    result4 = subprocess.run([sys.executable, os.path.join(SCRIPT_DIR, 'auto_case_creator.py'), str(org_id)],
+                                             capture_output=False, timeout=300)
+                    print(f'[DETECTION] auto_case_creator exit code: {result4.returncode}')
                     print(f'[INGEST] Auto-detection complete for org {org_id}')
                 except Exception as e:
                     print(f'[INGEST] Auto-detection failed for org {org_id}: {e}')
