@@ -32,7 +32,8 @@ import {
   ShieldCheck,
   AlertOctagon,
   Eye,
-  EyeOff
+  EyeOff,
+  Server
 } from 'lucide-react';
 
 const THEMES = {
@@ -135,6 +136,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://sentinelehr-api.onrend
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
+  { id: 'system', label: 'System', icon: <Server size={18} /> },
   { id: 'alerts', label: 'Alerts', icon: <Bell size={18} /> },
   { id: 'cases', label: 'Cases', icon: <Folder size={18} /> },
   { id: 'investigate', label: 'Investigate', icon: <Search size={18} /> },
@@ -1114,6 +1116,139 @@ const CaseReportModal = ({ report, onClose }) => {
   );
 };
 
+const SystemView = ({ authHeaders }) => {
+  const [data, setData] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetch(`${API_BASE}/system/status`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div style={{ padding: '40px', color: 'var(--text-secondary)' }}>Loading system status...</div>
+  );
+  if (!data) return (
+    <div style={{ padding: '40px', color: 'var(--text-secondary)' }}>Failed to load system status.</div>
+  );
+
+  const syncRows = data.sync_state || [];
+  const users = data.users || [];
+  const stats = data.alert_stats || {};
+  const org = data.organization || {};
+
+  return (
+    <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Org Info */}
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '16px' }}>ORGANIZATION</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+          {[
+            ['Name', org.name || '—'],
+            ['Tier', org.subscription_tier || '—'],
+            ['Epic Verified', org.epic_connection_verified ? 'Yes' : 'Not yet'],
+            ['Last Sync', org.last_sync_at ? new Date(org.last_sync_at).toLocaleString() : 'Never'],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>{label}</div>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Alert Volume */}
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '16px' }}>DETECTION SUMMARY</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+          {[
+            ['Total Alerts', stats.total_alerts || 0, 'var(--text-primary)'],
+            ['Critical', stats.critical || 0, '#ef4444'],
+            ['High', stats.high || 0, '#f97316'],
+            ['Medium', stats.medium || 0, '#3b82f6'],
+          ].map(([label, value, color]) => (
+            <div key={label} style={{ background: 'var(--bg-app)', borderRadius: '8px', padding: '16px', border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{label}</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color }}>{value}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Last detection run: {stats.last_detection_run ? new Date(stats.last_detection_run).toLocaleString() : 'Never'}
+        </div>
+      </div>
+
+      {/* Sync State */}
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '16px' }}>DATA SYNC STATUS</h3>
+        {syncRows.length === 0 ? (
+          <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No sync data yet. Run the Clarity extractor to begin.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Table', 'Last Sync', 'Records', 'Status'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', letterSpacing: '0.05em' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {syncRows.map(row => (
+                <tr key={row.table_name} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '10px 12px', fontSize: '13px', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{row.table_name}</td>
+                  <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>{row.last_sync_at ? new Date(row.last_sync_at).toLocaleString() : 'Never'}</td>
+                  <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{row.last_record_count || 0}</td>
+                  <td style={{ padding: '10px 12px' }}>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                      background: row.status === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(156,163,175,0.1)',
+                      color: row.status === 'success' ? '#22c55e' : 'var(--text-secondary)'
+                    }}>{row.status || 'never_run'}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Users */}
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '16px' }}>ORGANIZATION USERS</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              {['Email', 'Role', 'Status', 'Last Login'].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', letterSpacing: '0.05em' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.email} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{u.email}</td>
+                <td style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{(u.role || '').replace(/_/g, ' ')}</td>
+                <td style={{ padding: '10px 12px' }}>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                    background: u.is_active ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    color: u.is_active ? '#22c55e' : '#ef4444'
+                  }}>{u.is_active ? 'Active' : 'Inactive'}</span>
+                </td>
+                <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>{u.last_login ? new Date(u.last_login).toLocaleString() : 'Never'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  );
+};
+
 export default function AppV2() {
   const [theme, setTheme] = useState(localStorage.getItem('sentinel_theme') || 'dark');
   // Store auth in memory only (not localStorage) for security
@@ -1232,8 +1367,8 @@ export default function AppV2() {
 
   // Redirect it_director away from investigate tab
   useEffect(() => {
-    if (userRole === 'it_director' && activeView === 'investigate') {
-      setActiveView('overview');
+    if (userRole === 'it_director' && ['investigate', 'alerts', 'cases'].includes(activeView)) {
+      setActiveView('system');
     }
   }, [userRole, activeView]);
 
@@ -2181,7 +2316,12 @@ export default function AppV2() {
               }
               
               // Hide Investigate tab for it_director role
-              if (item.id === 'investigate' && userRole === 'it_director') {
+              if (['investigate', 'alerts', 'cases'].includes(item.id) && userRole === 'it_director') {
+                return null;
+              }
+
+              // Hide System tab from non-it_director non-admin
+              if (item.id === 'system' && userRole !== 'it_director' && userRole !== 'admin') {
                 return null;
               }
               
@@ -2195,6 +2335,7 @@ export default function AppV2() {
               // Map nav items to Lucide icons
               const iconMap = {
                 'overview': <LayoutDashboard size={18} />,
+                'system': <Server size={18} />,
                 'alerts': <BellRing size={18} />,
                 'cases': <ClipboardList size={18} />,
                 'investigate': <ScanSearch size={18} />,
@@ -3382,6 +3523,10 @@ export default function AppV2() {
               token={token}
               authHeaders={authHeaders}
             />
+          )}
+
+          {activeView === 'system' && (userRole === 'it_director' || userRole === 'admin') && (
+            <SystemView authHeaders={authHeaders} />
           )}
         </div>
       </main>
