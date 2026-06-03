@@ -414,7 +414,114 @@ def seed_database():
         except Exception as e:
             conn.rollback()
             print(f'[DATABASE] Case date migration skip or error: {str(e)}')
-            
+
+        # ── New schema tables ────────────────────────────────────────
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS case_notes (
+                    id SERIAL PRIMARY KEY,
+                    case_id VARCHAR REFERENCES cases(case_id),
+                    author_email VARCHAR,
+                    author_role VARCHAR,
+                    note_type VARCHAR CHECK (note_type IN ('investigation', 'flag', 'resolution', 'system')),
+                    content TEXT,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    organization_id INTEGER DEFAULT 1
+                )
+            ''')
+            conn.commit()
+            print('[DATABASE] case_notes table verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] case_notes skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS alert_dismissals (
+                    id SERIAL PRIMARY KEY,
+                    alert_id INTEGER,
+                    dismissed_by VARCHAR,
+                    reason_code VARCHAR,
+                    reason_detail TEXT,
+                    dismissed_at TIMESTAMP DEFAULT NOW(),
+                    organization_id INTEGER DEFAULT 1
+                )
+            ''')
+            conn.commit()
+            print('[DATABASE] alert_dismissals table verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] alert_dismissals skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS case_notifications (
+                    id SERIAL PRIMARY KEY,
+                    case_id VARCHAR,
+                    recipient_email VARCHAR,
+                    recipient_role VARCHAR,
+                    message TEXT,
+                    is_read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    organization_id INTEGER DEFAULT 1
+                )
+            ''')
+            conn.commit()
+            print('[DATABASE] case_notifications table verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] case_notifications skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ocr_assessments (
+                    id SERIAL PRIMARY KEY,
+                    case_id VARCHAR,
+                    patient_count INTEGER,
+                    breach_confirmed BOOLEAN DEFAULT FALSE,
+                    risk_score NUMERIC,
+                    clock_started_at TIMESTAMP,
+                    deadline_at TIMESTAMP,
+                    ocr_notified_at TIMESTAMP,
+                    notified_by VARCHAR,
+                    organization_id INTEGER DEFAULT 1
+                )
+            ''')
+            conn.commit()
+            print('[DATABASE] ocr_assessments table verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] ocr_assessments skip: {str(e)}')
+
+        try:
+            cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS it_director_flagged BOOLEAN DEFAULT FALSE')
+            cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS ocr_clock_started TIMESTAMP')
+            conn.commit()
+            print('[DATABASE] cases new columns verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] cases new columns skip: {str(e)}')
+
+        try:
+            cursor.execute('''
+                INSERT INTO case_notes (case_id, author_email, author_role, note_type, content, created_at, organization_id)
+                SELECT case_id,
+                       'migrated@sentinelehr.com',
+                       'compliance_officer',
+                       'investigation',
+                       notes,
+                       created_at,
+                       COALESCE(organization_id, 1)
+                FROM cases
+                WHERE notes IS NOT NULL AND notes <> ''
+                ON CONFLICT DO NOTHING
+            ''')
+            conn.commit()
+            print('[DATABASE] case_notes migration from cases.notes complete')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] case_notes migration skip: {str(e)}')
+
         cursor.close()
         conn.close()
         
