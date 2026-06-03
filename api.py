@@ -502,26 +502,6 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] cases new columns skip: {str(e)}')
 
-        try:
-            cursor.execute('''
-                INSERT INTO case_notes (case_id, author_email, author_role, note_type, content, created_at, organization_id)
-                SELECT case_id,
-                       'migrated@sentinelehr.com',
-                       'compliance_officer',
-                       'investigation',
-                       reviewer_notes,
-                       created_at,
-                       COALESCE(organization_id, 1)
-                FROM cases
-                WHERE reviewer_notes IS NOT NULL AND reviewer_notes <> ''
-                ON CONFLICT DO NOTHING
-            ''')
-            conn.commit()
-            print('[DATABASE] case_notes migration from cases.notes complete')
-        except Exception as e:
-            conn.rollback()
-            print(f'[DATABASE] case_notes migration skip: {str(e)}')
-
         cursor.close()
         conn.close()
         
