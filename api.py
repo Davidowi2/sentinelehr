@@ -1963,6 +1963,290 @@ def admin_create_user(body: dict, token_data = Depends(require_role('admin'))):
             detail='Email already exists or creation failed')
 
 
+# ─── CLINICAL WORKFLOW ENDPOINTS ────────────────────────────
+
+@app.post('/alerts/{alert_id}/dismiss')
+def dismiss_alert(alert_id: int, body: dict, token_data = Depends(require_role('compliance_officer', 'admin'))):
+    reason_code = body.get('reason_code', '').strip()
+    reason_detail = body.get('reason_detail', '')
+    org_id = token_data.get('org_id', 1)
+    dismissed_by = token_data.get('username')
+
+    if not reason_code:
+        raise HTTPException(status_code=400, detail='reason_code required')
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT alert_id FROM alerts WHERE alert_id = %s AND organization_id = %s', (alert_id, org_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail='Alert not found')
+
+        cursor.execute('''
+            INSERT INTO alert_dismissals (alert_id, dismissed_by, reason_code, reason_detail, dismissed_at, organization_id)
+            VALUES (%s, %s, %s, %s, NOW(), %s)
+        ''', (alert_id, dismissed_by, reason_code, reason_detail, org_id))
+
+        cursor.execute('''
+            UPDATE alerts SET status = 'dismissed'
+            WHERE alert_id = %s AND organization_id = %s
+        ''', (alert_id, org_id))
+
+        conn.commit()
+        conn.close()
+        return {'status': 'success', 'message': f'Alert {alert_id} dismissed', 'reason_code': reason_code}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] dismiss_alert: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.post('/cases/{case_id}/notes')
+def add_case_note_threaded(case_id: str, body: dict, token_data = Depends(verify_token)):
+    content = body.get('content', '').strip()
+    note_type = body.get('note_type', 'investigation')
+    org_id = token_data.get('org_id', 1)
+    author_email = token_data.get('username')
+    author_role = token_data.get('role')
+
+    if not content:
+        raise HTTPException(status_code=400, detail='content required')
+
+    VALID_NOTE_TYPES = {'investigation', 'flag', 'resolution', 'system'}
+    if note_type not in VALID_NOTE_TYPES:
+        raise HTTPException(status_code=400, detail=f'Invalid note_type. Must be one of: {list(VALID_NOTE_TYPES)}')
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s', (case_id, org_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail='Case not found')
+
+        cursor.execute('''
+            INSERT INTO case_notes (case_id, author_email, author_role, note_type, content, created_at, organization_id)
+            VALUES (%s, %s, %s, %s, %s, NOW(), %s)
+            RETURNING id, case_id, author_email, author_role, note_type, content, created_at
+        ''', (case_id, author_email, author_role, note_type, content, org_id))
+        note = dict(cursor.fetchone())
+
+        if author_role == 'it_director':
+            cursor.execute('''
+                INSERT INTO case_notifications (case_id, recipient_role, message, is_read, created_at, organization_id)
+                VALUES (%s, 'compliance_officer', %s, FALSE, NOW(), %s)
+            ''', (case_id, f'IT Director added a note to case {case_id}', org_id))
+
+        conn.commit()
+        conn.close()
+        return note
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] add_case_note_threaded: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.get('/cases/{case_id}/notes')
+def get_case_notes_threaded(case_id: str, token_data = Depends(verify_token)):
+    org_id = token_data.get('org_id', 1)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, case_id, author_email, author_role, note_type, content, created_at
+            FROM case_notes
+            WHERE case_id = %s AND organization_id = %s
+            ORDER BY created_at ASC
+        ''', (case_id, org_id))
+        notes = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return {'case_id': case_id, 'notes': notes}
+    except Exception as e:
+        print(f'[ERROR] get_case_notes_threaded: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.post('/cases/{case_id}/flag')
+def flag_case(case_id: str, token_data = Depends(require_role('it_director', 'admin'))):
+    org_id = token_data.get('org_id', 1)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s', (case_id, org_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail='Case not found')
+
+        cursor.execute('''
+            UPDATE cases SET it_director_flagged = TRUE, status = 'Under Investigation'
+            WHERE case_id = %s AND organization_id = %s
+        ''', (case_id, org_id))
+
+        cursor.execute('''
+            INSERT INTO case_notifications (case_id, recipient_role, message, is_read, created_at, organization_id)
+            VALUES (%s, 'compliance_officer', %s, FALSE, NOW(), %s)
+        ''', (case_id, f'Case {case_id} flagged for re-review by IT Director', org_id))
+
+        conn.commit()
+        conn.close()
+        return {'status': 'success', 'message': f'Case {case_id} flagged for re-review'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] flag_case: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.get('/notifications')
+def get_notifications(token_data = Depends(verify_token)):
+    org_id = token_data.get('org_id', 1)
+    role = token_data.get('role')
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, case_id, recipient_role, message, is_read, created_at
+            FROM case_notifications
+            WHERE recipient_role = %s AND organization_id = %s
+            ORDER BY created_at DESC
+            LIMIT 20
+        ''', (role, org_id))
+        notifications = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return {'notifications': notifications}
+    except Exception as e:
+        print(f'[ERROR] get_notifications: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.post('/notifications/read')
+def mark_notifications_read(token_data = Depends(verify_token)):
+    org_id = token_data.get('org_id', 1)
+    role = token_data.get('role')
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE case_notifications SET is_read = TRUE
+            WHERE recipient_role = %s AND organization_id = %s AND is_read = FALSE
+        ''', (role, org_id))
+        count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return {'status': 'success', 'updated': count}
+    except Exception as e:
+        print(f'[ERROR] mark_notifications_read: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.get('/cases/{case_id}/ocr-status')
+def get_ocr_status(case_id: str, token_data = Depends(require_role('compliance_officer', 'admin'))):
+    org_id = token_data.get('org_id', 1)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT ocr_risk_score, requires_ocr_review, ocr_clock_started
+            FROM cases WHERE case_id = %s AND organization_id = %s
+        ''', (case_id, org_id))
+        case = cursor.fetchone()
+        if not case:
+            conn.close()
+            raise HTTPException(status_code=404, detail='Case not found')
+
+        cursor.execute('''
+            SELECT breach_confirmed, deadline_at, ocr_notified_at, risk_score, clock_started_at
+            FROM ocr_assessments WHERE case_id = %s AND organization_id = %s
+            ORDER BY id DESC LIMIT 1
+        ''', (case_id, org_id))
+        assessment = cursor.fetchone()
+        conn.close()
+
+        hours_remaining = None
+        if case['ocr_clock_started'] and (not assessment or not assessment['ocr_notified_at']):
+            from datetime import timezone as tz
+            elapsed = (datetime.now(tz.utc) - case['ocr_clock_started'].replace(tzinfo=tz.utc)).total_seconds() / 3600
+            hours_remaining = max(0, round(72 - elapsed, 1))
+
+        return {
+            'case_id': case_id,
+            'ocr_risk_score': float(case['ocr_risk_score']) if case['ocr_risk_score'] else None,
+            'requires_ocr_review': case['requires_ocr_review'],
+            'ocr_clock_started': case['ocr_clock_started'],
+            'breach_confirmed': assessment['breach_confirmed'] if assessment else None,
+            'deadline_at': assessment['deadline_at'] if assessment else None,
+            'ocr_notified_at': assessment['ocr_notified_at'] if assessment else None,
+            'hours_remaining': hours_remaining
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] get_ocr_status: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.post('/cases/{case_id}/ocr-assess')
+def ocr_assess(case_id: str, body: dict, token_data = Depends(require_role('compliance_officer', 'admin'))):
+    breach_confirmed = body.get('breach_confirmed', False)
+    org_id = token_data.get('org_id', 1)
+    author_email = token_data.get('username')
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s', (case_id, org_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail='Case not found')
+
+        if breach_confirmed:
+            cursor.execute('''
+                UPDATE cases SET ocr_clock_started = NOW()
+                WHERE case_id = %s AND organization_id = %s
+            ''', (case_id, org_id))
+
+            cursor.execute('''
+                INSERT INTO ocr_assessments
+                (case_id, breach_confirmed, clock_started_at, deadline_at, organization_id)
+                VALUES (%s, TRUE, NOW(), NOW() + INTERVAL '72 hours', %s)
+                RETURNING id, breach_confirmed, clock_started_at, deadline_at
+            ''', (case_id, org_id))
+            assessment = dict(cursor.fetchone())
+
+            # Notify all users in org
+            cursor.execute('SELECT email, role FROM users WHERE organization_id = %s AND is_active = TRUE', (org_id,))
+            users = cursor.fetchall()
+            for u in users:
+                cursor.execute('''
+                    INSERT INTO case_notifications (case_id, recipient_role, message, is_read, created_at, organization_id)
+                    VALUES (%s, %s, %s, FALSE, NOW(), %s)
+                ''', (case_id, u['role'], f'URGENT: 72-hour OCR notification window started for case {case_id}', org_id))
+        else:
+            cursor.execute('''
+                INSERT INTO ocr_assessments (case_id, breach_confirmed, organization_id)
+                VALUES (%s, FALSE, %s)
+                RETURNING id, breach_confirmed
+            ''', (case_id, org_id))
+            assessment = dict(cursor.fetchone())
+
+        conn.commit()
+        conn.close()
+        return {'status': 'success', 'case_id': case_id, 'assessment': assessment}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] ocr_assess: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
 # ─── SYSTEM STATUS ──────────────────────────────────────────
 
 @app.get('/system/status')

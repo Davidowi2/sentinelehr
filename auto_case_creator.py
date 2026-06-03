@@ -12,10 +12,13 @@ def run(org_id: int = 1):
       WHERE adjusted_severity = 'Critical' 
       AND case_id IS NULL 
       AND status = 'open' 
-      AND organization_id = %s 
+      AND organization_id = %s
+      AND alert_id NOT IN (
+          SELECT alert_id FROM alert_dismissals WHERE organization_id = %s
+      )
       ORDER BY alert_date ASC 
       LIMIT 200 
-    """, (org_id,))
+    """, (org_id, org_id))
     alerts = cursor.fetchall()
     conn.close()
 
