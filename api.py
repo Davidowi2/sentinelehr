@@ -509,11 +509,11 @@ def seed_database():
                        'migrated@sentinelehr.com',
                        'compliance_officer',
                        'investigation',
-                       notes,
+                       reviewer_notes,
                        created_at,
                        COALESCE(organization_id, 1)
                 FROM cases
-                WHERE notes IS NOT NULL AND notes <> ''
+                WHERE reviewer_notes IS NOT NULL AND reviewer_notes <> ''
                 ON CONFLICT DO NOTHING
             ''')
             conn.commit()
