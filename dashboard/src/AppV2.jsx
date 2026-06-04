@@ -3822,7 +3822,7 @@ export default function AppV2() {
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id); fetchCaseNotes(c.case_id); fetchOcrStatus(c.case_id); setCaseNotes([]); setOcrStatus(null);}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {c.case_id}
-                            {c.requires_ocr_review && (
+                            {!!(c.requires_ocr_review) && (
                               <span style={{
                                 padding: '1px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: '700',
                                 letterSpacing: '0.05em', textTransform: 'uppercase',
@@ -3917,7 +3917,7 @@ export default function AppV2() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                       {/* IT Director Flagged Banner */}
-                      {caseDetail.it_director_flagged && (
+                      {!!(caseDetail.it_director_flagged) && (
                         <div style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', fontWeight: '600', color: '#f97316', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           ⚑ Flagged for re-review by IT Director
                         </div>
@@ -4026,7 +4026,7 @@ export default function AppV2() {
                           </button>
 
                           {/* OCR Assessment — full panel */}
-                          {caseDetail.requires_ocr_review && ocrStatus && (() => {
+                          {!!(caseDetail.requires_ocr_review) && !!ocrStatus && (() => {
                             const hrs = ocrStatus.hours_remaining;
                             const breachConfirmed = ocrStatus.breach_confirmed;
                             const clockStarted = ocrStatus.ocr_clock_started;
