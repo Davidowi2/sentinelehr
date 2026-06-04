@@ -3819,7 +3819,21 @@ export default function AppV2() {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id); fetchCaseNotes(c.case_id); fetchOcrStatus(c.case_id); setCaseNotes([]); setOcrStatus(null);}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id); fetchCaseNotes(c.case_id); fetchOcrStatus(c.case_id); setCaseNotes([]); setOcrStatus(null);}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {c.case_id}
+                            {c.requires_ocr_review && (
+                              <span style={{
+                                padding: '1px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: '700',
+                                letterSpacing: '0.05em', textTransform: 'uppercase',
+                                background: c.ocr_clock_started && !c.ocr_notified_at ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.1)',
+                                color: '#fbbf24',
+                                border: '1px solid rgba(251,191,36,0.4)',
+                                animation: c.ocr_clock_started && !c.ocr_notified_at ? 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' : 'none'
+                              }}>OCR</span>
+                            )}
+                          </span>
+                        </td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
                           <span style={{
@@ -4011,40 +4025,108 @@ export default function AppV2() {
                             {savingCase ? 'Saving...' : 'Save Changes'}
                           </button>
 
-                          {/* OCR Assessment */}
-                          {(caseOutcome === 'Policy Violation' || caseOutcome === 'Breach Confirmed') && (
-                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f97316', marginBottom: '8px' }}>OCR BREACH ASSESSMENT</div>
-                              {ocrStatus?.ocr_clock_started ? (
-                                <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#fca5a5' }}>
-                                  🕐 72-hour clock running — {ocrStatus.hours_remaining != null ? `${ocrStatus.hours_remaining}h remaining` : 'calculating...'}
-                                  {ocrStatus.deadline_at && <div style={{ fontSize: '11px', marginTop: '4px', color: '#9ca3af' }}>Deadline: {new Date(ocrStatus.deadline_at).toLocaleString()}</div>}
-                                </div>
-                              ) : (
-                                <button
-                                  disabled={startingOcr}
-                                  onClick={async () => {
-                                    setStartingOcr(true);
-                                    try {
-                                      const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, {
-                                        method: 'POST', headers: authHeaders(),
-                                        body: JSON.stringify({ breach_confirmed: true })
-                                      });
-                                      if (res.ok) {
-                                        showToast('72-hour OCR notification window started', 'success');
-                                        fetchOcrStatus(selectedCase);
-                                        fetchNotifCount();
-                                      } else { showToast('Failed to start OCR assessment', 'error'); }
-                                    } catch { showToast('Connection error', 'error'); }
-                                    setStartingOcr(false);
-                                  }}
-                                  style={{ width: '100%', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
-                                >
-                                  {startingOcr ? 'Starting...' : 'Start OCR Assessment (72hr Clock)'}
-                                </button>
-                              )}
-                            </div>
-                          )}
+                          {/* OCR Assessment — full panel */}
+                          {caseDetail.requires_ocr_review && ocrStatus && (() => {
+                            const hrs = ocrStatus.hours_remaining;
+                            const breachConfirmed = ocrStatus.breach_confirmed;
+                            const clockStarted = ocrStatus.ocr_clock_started;
+                            const notifiedAt = ocrStatus.ocr_notified_at;
+
+                            const urgentBg = hrs != null && hrs <= 6
+                              ? 'rgba(239,68,68,0.12)' : hrs != null && hrs <= 24
+                              ? 'rgba(251,191,36,0.10)' : 'rgba(239,68,68,0.08)';
+                            const urgentBorder = hrs != null && hrs <= 6
+                              ? 'rgba(239,68,68,0.5)' : hrs != null && hrs <= 24
+                              ? 'rgba(251,191,36,0.4)' : 'rgba(239,68,68,0.3)';
+
+                            const hrsWhole = hrs != null ? Math.floor(hrs) : null;
+                            const minsRem = hrs != null ? Math.round((hrs - Math.floor(hrs)) * 60) : null;
+                            const countdownStr = hrsWhole != null ? `${hrsWhole}h ${minsRem}m remaining` : 'calculating...';
+
+                            return (
+                              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                                <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f97316', marginBottom: '10px' }}>OCR BREACH ASSESSMENT</div>
+
+                                {/* State: notified */}
+                                {notifiedAt ? (
+                                  <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', padding: '14px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#22c55e', marginBottom: '6px' }}>✓ OCR Notified</div>
+                                    <div style={{ fontSize: '12px', color: '#86efac' }}>Notified at: {new Date(notifiedAt).toLocaleString()}</div>
+                                    {ocrStatus.notified_by && <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>By: {ocrStatus.notified_by}</div>}
+                                  </div>
+
+                                ) : breachConfirmed === false && clockStarted === null ? (
+                                  /* State: no breach documented */
+                                  <div style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.3)', borderRadius: '8px', padding: '14px', fontSize: '13px', color: '#9ca3af' }}>
+                                    No Breach Confirmed — documented.
+                                  </div>
+
+                                ) : breachConfirmed && clockStarted ? (
+                                  /* State: clock running */
+                                  <div style={{ background: urgentBg, border: `1px solid ${urgentBorder}`, borderRadius: '8px', padding: '14px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: '700', color: hrs != null && hrs <= 6 ? '#fca5a5' : '#fbbf24', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      BREACH CONFIRMED — OCR Notification Required
+                                    </div>
+                                    <div style={{ fontSize: '28px', fontWeight: '700', fontFamily: 'monospace', color: hrs != null && hrs <= 6 ? '#f87171' : '#fbbf24', marginBottom: '6px' }}>{countdownStr}</div>
+                                    {ocrStatus.deadline_at && <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '12px' }}>Deadline: {new Date(ocrStatus.deadline_at).toLocaleString()}</div>}
+                                    <button
+                                      disabled={startingOcr}
+                                      onClick={async () => {
+                                        setStartingOcr(true);
+                                        try {
+                                          const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-notified`, { method: 'PATCH', headers: authHeaders() });
+                                          if (res.ok) { showToast('OCR notification recorded', 'success'); fetchOcrStatus(selectedCase); fetchCaseNotes(selectedCase); }
+                                          else { showToast('Failed to record notification', 'error'); }
+                                        } catch { showToast('Connection error', 'error'); }
+                                        setStartingOcr(false);
+                                      }}
+                                      style={{ width: '100%', padding: '10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#86efac', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
+                                    >
+                                      {startingOcr ? 'Saving...' : 'Mark as OCR Notified'}
+                                    </button>
+                                  </div>
+
+                                ) : (
+                                  /* State: not yet assessed */
+                                  <div style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.3)', borderRadius: '8px', padding: '14px' }}>
+                                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px' }}>OCR Review Required — Assess whether this case constitutes a reportable breach.</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      <button
+                                        disabled={startingOcr}
+                                        onClick={async () => {
+                                          setStartingOcr(true);
+                                          try {
+                                            const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ breach_confirmed: true }) });
+                                            if (res.ok) { showToast('72-hour OCR notification window started', 'success'); fetchOcrStatus(selectedCase); fetchNotifCount(); }
+                                            else { showToast('Failed to start OCR assessment', 'error'); }
+                                          } catch { showToast('Connection error', 'error'); }
+                                          setStartingOcr(false);
+                                        }}
+                                        style={{ width: '100%', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
+                                      >
+                                        {startingOcr ? 'Starting...' : 'Start OCR Assessment (72hr Clock)'}
+                                      </button>
+                                      <button
+                                        disabled={startingOcr}
+                                        onClick={async () => {
+                                          setStartingOcr(true);
+                                          try {
+                                            const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ breach_confirmed: false }) });
+                                            if (res.ok) { showToast('No-breach documented', 'success'); fetchOcrStatus(selectedCase); }
+                                            else { showToast('Failed to record assessment', 'error'); }
+                                          } catch { showToast('Connection error', 'error'); }
+                                          setStartingOcr(false);
+                                        }}
+                                        style={{ width: '100%', padding: '10px', background: 'rgba(107,114,128,0.1)', border: '1px solid rgba(107,114,128,0.3)', color: '#9ca3af', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
+                                      >
+                                        No Breach — Document and Close
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </>
                       )}
 
@@ -4381,6 +4463,10 @@ export default function AppV2() {
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
         }
         .login-input::placeholder {
           color: #475569;

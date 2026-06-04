@@ -2247,6 +2247,40 @@ def ocr_assess(case_id: str, body: dict, token_data = Depends(require_role('comp
         raise HTTPException(status_code=500, detail='An internal error occurred')
 
 
+@app.patch('/cases/{case_id}/ocr-notified')
+def mark_ocr_notified(case_id: str, token_data = Depends(require_role('compliance_officer', 'admin'))):
+    org_id = token_data.get('org_id', 1)
+    notified_by = token_data.get('username')
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s', (case_id, org_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail='Case not found')
+
+        cursor.execute('''
+            UPDATE ocr_assessments SET ocr_notified_at = NOW(), notified_by = %s
+            WHERE case_id = %s AND organization_id = %s AND ocr_notified_at IS NULL
+        ''', (notified_by, case_id, org_id))
+
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute('''
+            INSERT INTO case_notes (case_id, author_email, author_role, note_type, content, created_at, organization_id)
+            VALUES (%s, %s, 'system', 'system', %s, NOW(), %s)
+        ''', (case_id, notified_by, f'OCR notified by {notified_by} at {now_str}', org_id))
+
+        conn.commit()
+        conn.close()
+        return {'status': 'success', 'message': 'OCR notification recorded', 'notified_by': notified_by, 'notified_at': now_str}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] mark_ocr_notified: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
 # ─── SYSTEM STATUS ──────────────────────────────────────────
 
 @app.get('/system/status')
