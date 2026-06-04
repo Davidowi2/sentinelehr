@@ -1608,10 +1608,21 @@ export default function AppV2() {
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
   const [unsavedWarningType, setUnsavedWarningType] = useState(null)
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+  const [notifCount, setNotifCount] = useState(0)
+  const [dismissForm, setDismissForm] = useState({ open: false, reasonCode: '', reasonDetail: '' })
+  const [dismissing, setDismissing] = useState(false)
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
+  };
+
+  const fetchNotifCount = () => {
+    if (!token) return;
+    fetch(`${API_BASE}/notifications`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => setNotifCount((d.notifications || []).filter(n => !n.is_read).length))
+      .catch(() => {});
   };
   
   const LIMIT = 50 
@@ -2097,6 +2108,8 @@ export default function AppV2() {
   useEffect(() => { 
     if (token && activeView === 'overview') fetchOverviewData() 
   }, [token, activeView]);
+
+  useEffect(() => { fetchNotifCount(); }, [token]);
 
   useEffect(() => { 
     if (token && activeView === 'alerts') fetchAlerts() 
@@ -2936,6 +2949,29 @@ export default function AppV2() {
           
           {/* Right: Actions and User */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Notification Bell */}
+            <button
+              onClick={async () => {
+                await fetch(`${API_BASE}/notifications/read`, { method: 'POST', headers: authHeaders() });
+                setNotifCount(0);
+                setActiveView('cases');
+              }}
+              style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#879298', display: 'flex', alignItems: 'center' }}
+              title="Notifications"
+            >
+              <Bell size={20} />
+              {notifCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: '0', right: '0',
+                  background: '#ef4444', color: '#fff',
+                  fontSize: '9px', fontWeight: '700',
+                  borderRadius: '50%', width: '16px', height: '16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  lineHeight: 1
+                }}>{notifCount > 9 ? '9+' : notifCount}</span>
+              )}
+            </button>
+
             {/* Vertical Divider */}
             <div style={{ width: '1px', height: '32px', background: 'rgba(140,144,159,0.2)' }} />
             
@@ -3279,6 +3315,7 @@ export default function AppV2() {
                       <option value="open">Open</option>
                       <option value="investigating">Investigating</option>
                       <option value="resolved">Resolved</option>
+                      <option value="dismissed">Dismissed</option>
                     </select>
                   </div>
                 </div>
@@ -3345,11 +3382,14 @@ export default function AppV2() {
                      }).map(a => ( 
                       <tr 
                         key={a.alert_id} 
-                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s', verticalAlign: 'middle' }}
+                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s', verticalAlign: 'middle', opacity: a.status === 'dismissed' ? 0.45 : 1 }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
                         <td style={{ padding: '14px 20px' }}>
+                          {a.status === 'dismissed' ? (
+                            <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'rgba(107,114,128,0.15)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' }}>DISMISSED</span>
+                          ) : (
                           <span style={{
                             padding: '4px 12px',
                             borderRadius: '20px',
@@ -3361,6 +3401,7 @@ export default function AppV2() {
                             color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6',
                             border: `1px solid ${a.adjusted_severity === 'Critical' ? '#f43f5e33' : a.adjusted_severity === 'High' ? '#f9731633' : '#3b82f633'}`
                           }}>{a.adjusted_severity}</span>
+                          )}
                         </td> 
                         <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
                         <td style={{ padding: '14px 20px' }}> 
@@ -3533,6 +3574,86 @@ export default function AppV2() {
                             color: createCaseStatus.type === 'success' ? '#22c55e' : '#f43f5e'
                           }}>
                             {createCaseStatus.message}
+                          </div>
+                        )}
+
+                        {/* Dismiss Alert — compliance_officer and admin only */}
+                        {(userRole === 'compliance_officer' || userRole === 'admin') && (
+                          <div style={{ marginTop: '8px' }}>
+                            {!dismissForm.open ? (
+                              <button
+                                onClick={() => setDismissForm({ open: true, reasonCode: '', reasonDetail: '' })}
+                                style={{
+                                  width: '100%', display: 'flex', alignItems: 'center',
+                                  justifyContent: 'center', gap: '8px', padding: '10px',
+                                  background: '#0f172a', border: '1px solid #6b7280',
+                                  color: '#9ca3af', borderRadius: '8px', fontSize: '14px',
+                                  fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(107,114,128,0.1)'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#0f172a'}
+                              >
+                                Dismiss Alert
+                              </button>
+                            ) : (
+                              <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px' }}>
+                                <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase' }}>Dismiss Reason</div>
+                                <select
+                                  value={dismissForm.reasonCode}
+                                  onChange={e => setDismissForm(f => ({ ...f, reasonCode: e.target.value }))}
+                                  style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '13px', marginBottom: '10px', boxSizing: 'border-box' }}
+                                >
+                                  <option value="">Select reason...</option>
+                                  <option value="Legitimate Access">Legitimate Access</option>
+                                  <option value="Authorized Training">Authorized Training</option>
+                                  <option value="Authorized Bulk Review">Authorized Bulk Review</option>
+                                  <option value="Technical Error">Technical Error</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                                <input
+                                  type="text"
+                                  placeholder="Additional detail (optional)"
+                                  value={dismissForm.reasonDetail}
+                                  onChange={e => setDismissForm(f => ({ ...f, reasonDetail: e.target.value }))}
+                                  style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '13px', marginBottom: '12px', boxSizing: 'border-box' }}
+                                />
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                    disabled={!dismissForm.reasonCode || dismissing}
+                                    onClick={async () => {
+                                      if (!dismissForm.reasonCode) return;
+                                      setDismissing(true);
+                                      try {
+                                        const res = await fetch(`${API_BASE}/alerts/${alertDetail.alert_id}/dismiss`, {
+                                          method: 'POST', headers: authHeaders(),
+                                          body: JSON.stringify({ reason_code: dismissForm.reasonCode, reason_detail: dismissForm.reasonDetail })
+                                        });
+                                        if (res.ok) {
+                                          showToast('Alert dismissed successfully', 'success');
+                                          setDismissForm({ open: false, reasonCode: '', reasonDetail: '' });
+                                          handleCloseAlertDrawer();
+                                          fetchAlerts();
+                                          fetchNotifCount();
+                                        } else {
+                                          const d = await res.json();
+                                          showToast(d.detail || 'Dismissal failed', 'error');
+                                        }
+                                      } catch { showToast('Connection error', 'error'); }
+                                      setDismissing(false);
+                                    }}
+                                    style={{ flex: 1, padding: '8px', background: dismissForm.reasonCode ? '#6b7280' : '#374151', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: dismissForm.reasonCode ? 'pointer' : 'default', opacity: dismissing ? 0.7 : 1 }}
+                                  >
+                                    {dismissing ? 'Dismissing...' : 'Confirm Dismissal'}
+                                  </button>
+                                  <button
+                                    onClick={() => setDismissForm({ open: false, reasonCode: '', reasonDetail: '' })}
+                                    style={{ padding: '8px 14px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div> 
