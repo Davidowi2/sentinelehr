@@ -1591,7 +1591,13 @@ export default function AppV2() {
   const [caseNote, setCaseNote] = useState('') 
   const [caseStatusUpdate, setCaseStatusUpdate] = useState('') 
   const [caseOutcome, setCaseOutcome] = useState('') 
-  const [savingCase, setSavingCase] = useState(false) 
+  const [savingCase, setSavingCase] = useState(false)
+  const [caseNotes, setCaseNotes] = useState([])
+  const [caseNotesLoading, setCaseNotesLoading] = useState(false)
+  const [addingNote, setAddingNote] = useState(false)
+  const [ocrStatus, setOcrStatus] = useState(null)
+  const [startingOcr, setStartingOcr] = useState(false)
+  const [flaggingCase, setFlaggingCase] = useState(false) 
   
   const [investigateId, setInvestigateId] = useState('') 
   const [thresholds, setThresholds] = useState({ critical: 0.7, high: 0.4, medium: 0.2 })
@@ -1893,7 +1899,23 @@ export default function AppV2() {
         setCaseNote('') 
       } 
     } catch(e) { console.error('API request failed') } 
-  } 
+  }
+
+  const fetchCaseNotes = async (id) => {
+    setCaseNotesLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/cases/${id}/notes`, { headers: authHeaders() });
+      if (res.ok) { const d = await res.json(); setCaseNotes(d.notes || []); }
+    } catch(e) {}
+    setCaseNotesLoading(false);
+  };
+
+  const fetchOcrStatus = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/cases/${id}/ocr-status`, { headers: authHeaders() });
+      if (res.ok) { const d = await res.json(); setOcrStatus(d); }
+    } catch(e) {}
+  };
   
   const saveCaseUpdate = async () => { 
     if (!selectedCase) return 
@@ -3797,7 +3819,7 @@ export default function AppV2() {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       > 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
+                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id); fetchCaseNotes(c.case_id); fetchOcrStatus(c.case_id); setCaseNotes([]); setOcrStatus(null);}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.case_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
                         <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
                           <span style={{
@@ -3878,31 +3900,157 @@ export default function AppV2() {
               {selectedCase && ( 
                 <Drawer title="Case Investigation" id={selectedCase} onClose={handleCloseCaseDrawer} loading={!caseDetail} subtitle={caseDetail && <SeverityBadge severity={caseDetail.priority} />}> 
                   {caseDetail && ( 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}> 
-                      <div> 
-                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div> 
-                        <StatusButtons options={['Open', 'Under Investigation', 'Pending HR', 'Resolved']} current={caseStatusUpdate} onChange={setCaseStatusUpdate} /> 
-                      </div> 
-                      <div> 
-                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Outcome</div> 
-                        <Select value={caseOutcome} onChange={e => setCaseOutcome(e.target.value)} style={{ width: '100%' }}> 
-                          <option value="">— Not set —</option> 
-                          <option>Legitimate Access</option> 
-                          <option>Policy Violation</option> 
-                          <option>Training Required</option> 
-                          <option>Termination Recommended</option> 
-                        </Select> 
-                      </div> 
-                      <div> 
-                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Add Note</div> 
-                        <textarea value={caseNote} onChange={e => setCaseNote(e.target.value)} style={{ width: '100%', minHeight: '80px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }} placeholder="Add investigation notes..." /> 
-                      </div> 
-                      <button onClick={saveCaseUpdate} disabled={savingCase} style={{ width: '100%', padding: '14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', opacity: savingCase ? 0.7 : 1 }}> 
-                        {savingCase ? 'Saving...' : 'Save Changes'} 
-                      </button> 
-        
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                      {/* IT Director Flagged Banner */}
+                      {caseDetail.it_director_flagged && (
+                        <div style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', fontWeight: '600', color: '#f97316', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          ⚑ Flagged for re-review by IT Director
+                        </div>
+                      )}
+
+                      {/* Threaded Notes */}
+                      <div>
+                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Investigation Notes</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', maxHeight: '320px', overflowY: 'auto' }}>
+                          {caseNotesLoading ? (
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Loading notes...</div>
+                          ) : caseNotes.length === 0 ? (
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>No notes yet.</div>
+                          ) : caseNotes.map(note => {
+                            const roleBadgeColor = note.author_role === 'it_director' ? { bg: 'rgba(249,115,22,0.12)', color: '#f97316', border: 'rgba(249,115,22,0.3)' }
+                              : note.author_role === 'system' ? { bg: 'rgba(107,114,128,0.12)', color: '#9ca3af', border: 'rgba(107,114,128,0.3)' }
+                              : { bg: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: 'rgba(59,130,246,0.3)' };
+                            return (
+                              <div key={note.id} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', background: roleBadgeColor.bg, color: roleBadgeColor.color, border: `1px solid ${roleBadgeColor.border}` }}>
+                                      {(note.author_role || '').replace(/_/g, ' ')}
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{note.author_email}</span>
+                                  </div>
+                                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{new Date(note.created_at).toLocaleString()}</span>
+                                </div>
+                                <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.5' }}>{note.content}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <textarea
+                          value={caseNote}
+                          onChange={e => setCaseNote(e.target.value)}
+                          style={{ width: '100%', minHeight: '72px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                          placeholder="Add a note..."
+                        />
+                        <button
+                          disabled={!caseNote.trim() || addingNote}
+                          onClick={async () => {
+                            if (!caseNote.trim()) return;
+                            setAddingNote(true);
+                            try {
+                              const res = await fetch(`${API_BASE}/cases/${selectedCase}/notes`, {
+                                method: 'POST', headers: authHeaders(),
+                                body: JSON.stringify({ content: caseNote, note_type: 'investigation' })
+                              });
+                              if (res.ok) {
+                                const newNote = await res.json();
+                                setCaseNotes(prev => [...prev, newNote]);
+                                setCaseNote('');
+                                fetchNotifCount();
+                              } else { showToast('Failed to add note', 'error'); }
+                            } catch { showToast('Connection error', 'error'); }
+                            setAddingNote(false);
+                          }}
+                          style={{ marginTop: '8px', width: '100%', padding: '10px', background: caseNote.trim() ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: caseNote.trim() ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: caseNote.trim() ? 'pointer' : 'default', opacity: addingNote ? 0.7 : 1 }}
+                        >
+                          {addingNote ? 'Adding...' : 'Add Note'}
+                        </button>
+                      </div>
+
+                      {/* Role-based controls */}
+                      {userRole === 'it_director' ? (
+                        /* IT Director: Flag only */
+                        <button
+                          disabled={flaggingCase || caseDetail.it_director_flagged}
+                          onClick={async () => {
+                            setFlaggingCase(true);
+                            try {
+                              const res = await fetch(`${API_BASE}/cases/${selectedCase}/flag`, { method: 'POST', headers: authHeaders() });
+                              if (res.ok) {
+                                showToast('Case flagged — compliance officer notified', 'success');
+                                setCaseDetail(prev => ({ ...prev, it_director_flagged: true, status: 'Under Investigation' }));
+                                fetchCases();
+                                fetchNotifCount();
+                              } else { showToast('Failed to flag case', 'error'); }
+                            } catch { showToast('Connection error', 'error'); }
+                            setFlaggingCase(false);
+                          }}
+                          style={{ width: '100%', padding: '12px', background: caseDetail.it_director_flagged ? 'rgba(249,115,22,0.1)' : '#0f172a', border: `1px solid ${caseDetail.it_director_flagged ? '#f97316' : '#f97316'}`, color: '#f97316', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: caseDetail.it_director_flagged ? 'default' : 'pointer', opacity: flaggingCase ? 0.7 : 1 }}
+                        >
+                          {caseDetail.it_director_flagged ? '⚑ Already Flagged' : flaggingCase ? 'Flagging...' : '⚑ Flag for Re-Review'}
+                        </button>
+                      ) : (
+                        /* Compliance officer / admin: status + outcome + save + OCR */
+                        <>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div>
+                            <StatusButtons options={['Open', 'Under Investigation', 'Pending HR', 'Resolved']} current={caseStatusUpdate} onChange={setCaseStatusUpdate} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Outcome</div>
+                            <Select value={caseOutcome} onChange={e => setCaseOutcome(e.target.value)} style={{ width: '100%' }}>
+                              <option value="">— Not set —</option>
+                              <option>Legitimate Access</option>
+                              <option>Policy Violation</option>
+                              <option>Training Required</option>
+                              <option>Termination Recommended</option>
+                            </Select>
+                          </div>
+                          <button onClick={saveCaseUpdate} disabled={savingCase} style={{ width: '100%', padding: '14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', opacity: savingCase ? 0.7 : 1 }}>
+                            {savingCase ? 'Saving...' : 'Save Changes'}
+                          </button>
+
+                          {/* OCR Assessment */}
+                          {(caseOutcome === 'Policy Violation' || caseOutcome === 'Breach Confirmed') && (
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f97316', marginBottom: '8px' }}>OCR BREACH ASSESSMENT</div>
+                              {ocrStatus?.ocr_clock_started ? (
+                                <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#fca5a5' }}>
+                                  🕐 72-hour clock running — {ocrStatus.hours_remaining != null ? `${ocrStatus.hours_remaining}h remaining` : 'calculating...'}
+                                  {ocrStatus.deadline_at && <div style={{ fontSize: '11px', marginTop: '4px', color: '#9ca3af' }}>Deadline: {new Date(ocrStatus.deadline_at).toLocaleString()}</div>}
+                                </div>
+                              ) : (
+                                <button
+                                  disabled={startingOcr}
+                                  onClick={async () => {
+                                    setStartingOcr(true);
+                                    try {
+                                      const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, {
+                                        method: 'POST', headers: authHeaders(),
+                                        body: JSON.stringify({ breach_confirmed: true })
+                                      });
+                                      if (res.ok) {
+                                        showToast('72-hour OCR notification window started', 'success');
+                                        fetchOcrStatus(selectedCase);
+                                        fetchNotifCount();
+                                      } else { showToast('Failed to start OCR assessment', 'error'); }
+                                    } catch { showToast('Connection error', 'error'); }
+                                    setStartingOcr(false);
+                                  }}
+                                  style={{ width: '100%', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
+                                >
+                                  {startingOcr ? 'Starting...' : 'Start OCR Assessment (72hr Clock)'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {/* Audit Trail */}
                       {caseDetail.audit_log && caseDetail.audit_log.length > 0 && ( 
-                        <div style={{ marginTop: '12px' }}> 
+                        <div style={{ marginTop: '4px' }}> 
                           <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Audit Trail</div> 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}> 
                             {caseDetail.audit_log.map((log, i) => ( 
@@ -3917,7 +4065,7 @@ export default function AppV2() {
                             ))} 
                           </div> 
                         </div> 
-                      )} 
+                      )}
                     </div> 
                   )} 
                 </Drawer> 
