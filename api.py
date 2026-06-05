@@ -1564,8 +1564,8 @@ def update_case_status(
             update_params
         )
         cursor.execute(
-            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, organization_id)
-               VALUES (%s, %s, 'status_change', 'status', %s, %s, %s, %s)""",
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, timestamp, organization_id)
+               VALUES (%s, %s, 'status_change', 'status', %s, %s, %s, NOW(), %s)""",
             (case_id, user_id, old_status, new_status, reason, org_id)
         )
         conn.commit()
@@ -1669,8 +1669,8 @@ def set_outcome(
             (outcome, case_id, org_id)
         )
         cursor.execute(
-            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, organization_id)
-               VALUES (%s, %s, 'outcome_change', 'outcome', %s, %s, %s, %s)""",
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, timestamp, organization_id)
+               VALUES (%s, %s, 'outcome_change', 'outcome', %s, %s, %s, NOW(), %s)""",
             (case_id, user_id, old_outcome, outcome, reason, org_id)
         )
         conn.commit()
@@ -1709,10 +1709,12 @@ def snooze_case(
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
-        if not cursor.fetchone():
+        cursor.execute("SELECT status FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        row = cursor.fetchone()
+        if not row:
             conn.close()
             raise HTTPException(404, "Case not found")
+        old_status = row['status']
         cursor.execute(
             """UPDATE cases SET status = 'Pending Internal Review', waiting_on = %s,
                due_back_date = %s, reminder_date = %s, updated_at = NOW()
@@ -1720,9 +1722,15 @@ def snooze_case(
             (waiting_on, due_back_date, reminder_date, case_id, org_id)
         )
         cursor.execute(
-            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, new_value, note, organization_id)
-               VALUES (%s, %s, 'snoozed', 'status', 'Pending Internal Review', %s, %s)""",
-            (case_id, user_id, reason, org_id)
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, timestamp, organization_id)
+               VALUES (%s, %s, 'snoozed', 'status', %s, 'Pending Internal Review', %s, NOW(), %s)""",
+            (case_id, user_id, old_status, reason, org_id)
+        )
+        # Generate and persist case title
+        title = generate_case_title(case_id, org_id)
+        cursor.execute(
+            "UPDATE cases SET case_title = %s WHERE case_id = %s AND organization_id = %s AND case_title IS NULL",
+            (title, case_id, org_id)
         )
         conn.commit()
         cursor.execute("SELECT * FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
@@ -1751,10 +1759,12 @@ def unsnooze_case(
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
-        if not cursor.fetchone():
+        cursor.execute("SELECT status FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        row = cursor.fetchone()
+        if not row:
             conn.close()
             raise HTTPException(404, "Case not found")
+        old_status = row['status']
         cursor.execute(
             "SELECT COUNT(*) as cnt FROM case_notes WHERE case_id = %s AND organization_id = %s AND note_type = 'investigation'",
             (case_id, org_id)
@@ -1768,9 +1778,15 @@ def unsnooze_case(
             (new_status, case_id, org_id)
         )
         cursor.execute(
-            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, new_value, note, organization_id)
-               VALUES (%s, %s, 'unsnoozed', 'status', %s, %s, %s)""",
-            (case_id, user_id, new_status, reason, org_id)
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, timestamp, organization_id)
+               VALUES (%s, %s, 'unsnoozed', 'status', %s, %s, %s, NOW(), %s)""",
+            (case_id, user_id, old_status, new_status, reason, org_id)
+        )
+        # Generate and persist case title
+        title = generate_case_title(case_id, org_id)
+        cursor.execute(
+            "UPDATE cases SET case_title = %s WHERE case_id = %s AND organization_id = %s AND case_title IS NULL",
+            (title, case_id, org_id)
         )
         conn.commit()
         cursor.execute("SELECT * FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
