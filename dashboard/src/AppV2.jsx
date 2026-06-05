@@ -34,7 +34,11 @@ import {
   Eye,
   EyeOff,
   Server,
-  Building2
+  Building2,
+  BarChart2,
+  CheckCircle2,
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 
 const THEMES = {
@@ -137,6 +141,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://sentinelehr-api.onrend
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: <LayoutGrid size={18} /> },
+  { id: 'analytics', label: 'Analytics', icon: <BarChart2 size={18} /> },
   { id: 'system', label: 'System', icon: <Server size={18} /> },
   { id: 'admin', label: 'Admin', icon: <Building2 size={18} /> },
   { id: 'alerts', label: 'Alerts', icon: <Bell size={18} /> },
@@ -1118,6 +1123,228 @@ const CaseReportModal = ({ report, onClose }) => {
   );
 };
 
+const MorningBriefingView = ({ authHeaders, onOpenCase, setActiveView, summary, digest, dataLoading, chartRef, alerts }) => {
+  const [openCases, setOpenCases] = React.useState([]);
+  const [pendingCases, setPendingCases] = React.useState([]);
+  const [closedCases, setClosedCases] = React.useState([]);
+  const [notifications, setNotifications] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const h = authHeaders();
+    Promise.all([
+      fetch(`${API_BASE}/cases?status=Open&limit=20`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending Internal Review')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending IT')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending HR')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending Manager Response')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=Closed&limit=5`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=Resolved&limit=5`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/notifications`, { headers: h }).then(r => r.json()).catch(() => ({ notifications: [] })),
+    ]).then(([open, pir, pit, phr, pmr, closed, resolved, notifs]) => {
+      // Sort open: flagged → OCR urgent → Critical → oldest
+      const ranked = (open.cases || []).sort((a, b) => {
+        if (!!a.it_director_flagged !== !!b.it_director_flagged) return b.it_director_flagged ? 1 : -1;
+        const aOcr = a.requires_ocr_review && a.ocr_clock_started && !a.ocr_notified_at;
+        const bOcr = b.requires_ocr_review && b.ocr_clock_started && !b.ocr_notified_at;
+        if (aOcr !== bOcr) return bOcr ? 1 : -1;
+        const pOrder = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+        if ((pOrder[a.priority] ?? 9) !== (pOrder[b.priority] ?? 9)) return (pOrder[a.priority] ?? 9) - (pOrder[b.priority] ?? 9);
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      setOpenCases(ranked.slice(0, 5));
+      const allPending = [...(pir.cases||[]), ...(pit.cases||[]), ...(phr.cases||[]), ...(pmr.cases||[])];
+      setPendingCases(allPending);
+      const allClosed = [...(closed.cases||[]), ...(resolved.cases||[])].sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0,5);
+      setClosedCases(allClosed);
+      setNotifications((notifs.notifications || []).slice(0, 10));
+      setLoading(false);
+    });
+  }, []);
+
+  const priorityColors = { Critical: '#f43f5e', High: '#f97316', Medium: '#3b82f6', Low: '#64748b' };
+
+  const dueDiff = (dateStr) => {
+    if (!dateStr) return null;
+    const diff = Math.round((new Date(dateStr) - new Date()) / 86400000);
+    return diff;
+  };
+
+  const sectionTitle = (text) => (
+    <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '16px' }}>{text}</div>
+  );
+
+  const card = { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '24px' };
+
+  const actionLabels = { status_change: 'updated status on', outcome_change: 'set outcome on', snoozed: 'snoozed', unsnoozed: 'unsnoozed', flag_for_review: 'flagged' };
+
+  if (loading) return <div style={{ padding: '40px', color: 'var(--text-secondary)' }}>Loading briefing...</div>;
+
+  return (
+    <div style={{ padding: '32px', maxWidth: '1100px' }}>
+
+      {/* SECTION 1 — Needs Attention */}
+      <div style={card}>
+        {sectionTitle('Needs Attention')}
+        {openCases.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#22c55e', fontSize: '14px', fontWeight: '600' }}>
+            <CheckCircle2 size={18} /> Nothing urgent. Your queue is clear.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {openCases.map(c => (
+              <div key={c.case_id} style={{ minWidth: '240px', maxWidth: '260px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px', flexShrink: 0 }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', lineHeight: '1.4' }}>
+                  {c.case_title || `Case ${c.case_id}`}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', fontFamily: 'monospace' }}>EMP-{c.emp_id}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', background: `${priorityColors[c.priority] || '#64748b'}1a`, color: priorityColors[c.priority] || '#64748b', border: `1px solid ${priorityColors[c.priority] || '#64748b'}33` }}>{c.priority}</span>
+                  <span style={{ fontSize: '11px', color: !!(c.it_director_flagged) ? '#f97316' : 'var(--text-secondary)' }}>
+                    {!!(c.it_director_flagged) ? '⚑ Flagged' : `Open • ${c.days_open || 0}d`}
+                  </span>
+                </div>
+                <button
+                  onClick={() => onOpenCase(c.case_id)}
+                  style={{ width: '100%', padding: '7px', background: 'var(--accent)', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', color: '#000', cursor: 'pointer' }}
+                >Review →</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2 — Waiting on Others */}
+      <div style={card}>
+        {sectionTitle('Waiting on Others')}
+        {pendingCases.length === 0 ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>No cases waiting on others.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {pendingCases.map(c => {
+              const diff = dueDiff(c.due_back_date);
+              const dueColor = diff === null ? 'var(--text-secondary)' : diff < 0 ? '#ef4444' : diff === 0 ? '#fbbf24' : '#22c55e';
+              const dueLabel = diff === null ? 'not set' : diff < 0 ? `Overdue by ${Math.abs(diff)}d` : diff === 0 ? 'Due today' : `Due in ${diff}d`;
+              return (
+                <div key={c.case_id} onClick={() => onOpenCase(c.case_id)} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-app)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_title || `Case ${c.case_id}`}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>EMP-{c.emp_id} • Waiting on {c.waiting_on || '—'} • Due {c.due_back_date ? new Date(c.due_back_date).toLocaleDateString() : 'not set'}</div>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: dueColor, whiteSpace: 'nowrap' }}>{dueLabel}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 3 — Recently Closed */}
+      <div style={card}>
+        {sectionTitle('Recently Closed')}
+        {closedCases.length === 0 ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>No recently closed cases.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {closedCases.map(c => (
+              <div key={c.case_id} onClick={() => onOpenCase(c.case_id)} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-app)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_title || `Case ${c.case_id}`}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>EMP-{c.emp_id}{c.outcome ? ` • ${c.outcome}` : ''}</div>
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Closed • {new Date(c.updated_at).toLocaleDateString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 4 — Since Last Login */}
+      <div style={card}>
+        {sectionTitle('Since Last Login')}
+        {notifications.length === 0 ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Nothing has changed since you last logged in.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {notifications.map(n => (
+              <div key={n.id} onClick={() => n.case_id && onOpenCase(n.case_id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: n.case_id ? 'pointer' : 'default', transition: 'background 0.15s' }}
+                onMouseEnter={e => n.case_id && (e.currentTarget.style.background = 'var(--bg-app)')}
+                onMouseLeave={e => n.case_id && (e.currentTarget.style.background = 'transparent')}>
+                {!n.is_read && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
+                <div style={{ flex: 1, fontSize: '13px', color: n.is_read ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{n.message}</div>
+                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{new Date(n.created_at).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* View Analytics link */}
+      <div style={{ textAlign: 'right', marginTop: '8px' }}>
+        <button onClick={() => setActiveView('analytics')} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '13px', fontWeight: '600', cursor: 'pointer', letterSpacing: '0.02em' }}>View Analytics →</button>
+      </div>
+
+    </div>
+  );
+};
+
+const AnalyticsView = ({ summary, digest, dataLoading, chartRef, alerts }) => {
+  const priorityColors = { Critical: '#f43f5e', High: '#f97316', Medium: '#3b82f6', Low: '#64748b' };
+  return (
+    <div style={{ width: '100%' }}>
+      {/* Stat cards */}
+      <div className="w-full" style={{ display: 'flex', gap: '24px', marginBottom: '40px' }}>
+        {[
+          { label: 'CRITICAL THREATS', value: summary?.critical ?? alerts.filter(a => a.adjusted_severity === 'Critical').length, sub: 'Require immediate action', color: '#f43f5e', icon: <AlertTriangle size={20} /> },
+          { label: 'HIGH RISK', value: summary?.high ?? alerts.filter(a => a.adjusted_severity === 'High').length, sub: 'ML-elevated alerts', color: '#f97316', icon: <AlertOctagon size={20} /> },
+          { label: 'MEDIUM RISK', value: summary?.medium ?? alerts.filter(a => a.adjusted_severity === 'Medium').length, sub: 'Under observation', color: '#3b82f6', icon: <Info size={20} /> },
+          { label: 'ML PEAK SCORE', value: summary?.top_anomaly_score ? summary.top_anomaly_score.toFixed(2) : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), sub: '90-day highest anomaly', color: '#adc6ff', icon: <Activity size={20} /> }
+        ].map((card) => (
+          <div key={card.label} style={{ flex: 1, minWidth: 0, background: '#131b2e', border: '1px solid rgba(140,144,159,0.2)', borderBottom: '2px solid transparent', borderRadius: '12px', padding: '32px', position: 'relative', cursor: 'pointer', transition: 'border-bottom-color 0.2s ease' }}
+            onMouseEnter={e => e.currentTarget.style.borderBottomColor = card.color}
+            onMouseLeave={e => e.currentTarget.style.borderBottomColor = 'transparent'}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#64748b' }}>{card.label}</div>
+              <div style={{ color: card.color }}>{card.icon}</div>
+            </div>
+            <div style={{ fontSize: '56px', fontWeight: '700', color: card.color, lineHeight: 1, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '-0.02em', marginBottom: '12px' }}>{card.value}</div>
+            <div style={{ fontSize: '12px', color: '#475569', fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>{card.sub}</div>
+          </div>
+        ))}
+      </div>
+      {/* Chart card */}
+      <div className="w-full" style={{ background: '#131b2e', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '12px', overflow: 'hidden', marginBottom: '40px' }}>
+        <div style={{ padding: '24px 28px 0', background: '#102034', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298', marginBottom: '6px' }}>ALERT TREND ANALYSIS</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: '#d3e4fe', letterSpacing: '-0.02em' }}>30-Day Alert Trend</div>
+          </div>
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+            {[{ c: '#f43f5e', l: 'Critical' }, { c: '#f97316', l: 'High' }, { c: '#3b82f6', l: 'Medium' }].map(item => (
+              <span key={item.l} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}>
+                <span style={{ display: 'inline-block', width: '24px', height: '3px', background: item.c, borderRadius: '2px' }} />{item.l}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: '20px 28px', height: '320px', position: 'relative', background: '#102034' }}>
+          {dataLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#879298', fontSize: '13px' }}>Loading chart data...</div>
+          ) : digest.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#879298', fontSize: '13px' }}>No activity detected in the last 30 days.</div>
+          ) : (
+            <canvas ref={chartRef} style={{ width: '100%', height: '100%', cursor: 'pointer' }} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SystemView = ({ authHeaders }) => {
   const [data, setData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -1617,6 +1844,8 @@ export default function AppV2() {
   const [notifCount, setNotifCount] = useState(0)
   const [dismissForm, setDismissForm] = useState({ open: false, reasonCode: '', reasonDetail: '' })
   const [dismissing, setDismissing] = useState(false)
+  const [briefingCases, setBriefingCases] = useState([])
+  const [briefingLoading, setBriefingLoading] = useState(false)
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -1629,6 +1858,20 @@ export default function AppV2() {
       .then(r => r.json())
       .then(d => setNotifCount((d.notifications || []).filter(n => !n.is_read).length))
       .catch(() => {});
+  };
+
+  const fetchBriefingCases = async () => {
+    if (!token) return;
+    setBriefingLoading(true);
+    try {
+      const statuses = ['Open', 'Under Investigation', 'Pending Internal Review', 'Pending HR', 'Pending IT', 'Pending Manager Response', 'Resolved', 'Closed'];
+      const fetches = await Promise.all(
+        statuses.map(s => fetch(`${API_BASE}/cases?status=${encodeURIComponent(s)}&limit=100`, { headers: authHeaders() }).then(r => r.json()).catch(() => ({ cases: [] })))
+      );
+      const all = fetches.flatMap(d => d.cases || []);
+      setBriefingCases(all);
+    } catch(e) {}
+    setBriefingLoading(false);
   };
   
   const LIMIT = 50 
@@ -1681,7 +1924,7 @@ export default function AppV2() {
 
   // Redirect it_director away from investigate tab
   useEffect(() => {
-    if (userRole === 'it_director' && ['overview', 'investigate', 'alerts', 'cases'].includes(activeView)) {
+    if (userRole === 'it_director' && ['overview', 'investigate', 'alerts', 'cases', 'analytics'].includes(activeView)) {
       setActiveView('system');
     }
   }, [userRole, activeView]);
@@ -2128,7 +2371,8 @@ export default function AppV2() {
   };
   
   useEffect(() => { 
-    if (token && activeView === 'overview') fetchOverviewData() 
+    if (token && activeView === 'overview') { fetchOverviewData(); fetchBriefingCases(); }
+    if (token && activeView === 'analytics') fetchOverviewData();
   }, [token, activeView]);
 
   useEffect(() => { fetchNotifCount(); }, [token]);
@@ -2648,7 +2892,7 @@ export default function AppV2() {
               }
               
               // Hide Investigate tab for it_director role
-              if (['investigate', 'alerts', 'cases'].includes(item.id) && userRole === 'it_director') {
+              if (['investigate', 'alerts', 'cases', 'analytics'].includes(item.id) && userRole === 'it_director') {
                 return null;
               }
 
@@ -2672,6 +2916,7 @@ export default function AppV2() {
               // Map nav items to Lucide icons
               const iconMap = {
                 'overview': <LayoutDashboard size={18} />,
+                'analytics': <BarChart2 size={18} />,
                 'system': <Server size={18} />,
                 'admin': <Building2 size={18} />,
                 'alerts': <BellRing size={18} />,
@@ -3028,197 +3273,27 @@ export default function AppV2() {
 
         {/* Content Area */}
         <div className="w-full px-6 py-6" style={{ flex: 1, overflowY: 'auto', paddingBottom: '72px' }}>
-          {activeView === 'overview' && ( 
-            <div style={{ width: '100%' }}> 
-          
-              {/* Stat cards */} 
-              <div className="w-full" style={{ 
-                display: 'flex',
-                gap: '24px', 
-                marginBottom: '40px' 
-              }}> 
-                {[ 
-                  { 
-                    label: 'CRITICAL THREATS', 
-                    value: summary?.critical ?? alerts.filter(a => a.adjusted_severity === 'Critical').length, 
-                    sub: 'Require immediate action', 
-                    color: '#f43f5e',
-                    icon: <AlertTriangle size={20} />
-                  }, 
-                  { 
-                    label: 'HIGH RISK', 
-                    value: summary?.high ?? alerts.filter(a => a.adjusted_severity === 'High').length, 
-                    sub: 'ML-elevated alerts', 
-                    color: '#f97316',
-                    icon: <AlertOctagon size={20} />
-                  }, 
-                  { 
-                    label: 'MEDIUM RISK', 
-                    value: summary?.medium ?? alerts.filter(a => a.adjusted_severity === 'Medium').length, 
-                    sub: 'Under observation', 
-                    color: '#3b82f6',
-                    icon: <Info size={20} />
-                  }, 
-                  { 
-                    label: 'ML PEAK SCORE', 
-                    value: summary?.top_anomaly_score 
-                      ? summary.top_anomaly_score.toFixed(2) 
-                      : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), 
-                    sub: '90-day highest anomaly', 
-                    color: '#adc6ff',
-                    icon: <Activity size={20} />
-                  } 
-                ].map((card, idx) => (
-                  <div 
-                    key={card.label} 
-                    style={{ 
-                      flex: 1,
-                      minWidth: 0,
-                      background: '#131b2e',
-                      border: '1px solid rgba(140,144,159,0.2)',
-                      borderBottom: '2px solid transparent',
-                      borderRadius: '12px', 
-                      padding: '32px', 
-                      position: 'relative', 
-                      cursor: 'pointer',
-                      transition: 'border-bottom-color 0.2s ease'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderBottomColor = card.color;
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderBottomColor = 'transparent';
-                    }}
-                  > 
-                    <div style={{ 
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '16px'
-                    }}>
-                      <div style={{ 
-                        fontSize: '12px', 
-                        fontWeight: '600', 
-                        letterSpacing: '0.05em', 
-                        textTransform: 'uppercase', 
-                        color: '#64748b'
-                      }}>{card.label}</div>
-                      <div style={{ color: card.color }}>
-                        {card.icon}
-                      </div>
-                    </div>
-                    <div style={{ 
-                      fontSize: '56px', 
-                      fontWeight: '700', 
-                      color: card.color, 
-                      lineHeight: 1, 
-                      fontFamily: "'JetBrains Mono', monospace", 
-                      letterSpacing: '-0.02em', 
-                      marginBottom: '12px' 
-                    }}>{card.value}</div> 
-                    <div style={{ 
-                      fontSize: '12px', 
-                      color: '#475569',
-                      fontFamily: "'Inter', sans-serif",
-                      lineHeight: 1.6
-                    }}>{card.sub}</div>
-                  </div>
-                ))} 
-              </div> 
-          
-              {/* Chart card */}
-              <div className="w-full" style={{ 
-                background: '#131b2e',
-                border: '1px solid rgba(140,144,159,0.2)',
-                borderRadius: '12px', 
-                overflow: 'hidden',
-                marginBottom: '40px'
-              }}> 
-                <div style={{ 
-                  padding: '24px 28px 0',
-                  background: '#102034',
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'flex-start' 
-                }}> 
-                  <div> 
-                    <div style={{ 
-                      fontSize: '10px', 
-                      fontWeight: '600', 
-                      letterSpacing: '0.1em', 
-                      textTransform: 'uppercase', 
-                      color: '#879298', 
-                      marginBottom: '6px' 
-                    }}>ALERT TREND ANALYSIS</div> 
-                    <div style={{ 
-                      fontSize: '20px', 
-                      fontWeight: '700', 
-                      color: '#d3e4fe', 
-                      letterSpacing: '-0.02em' 
-                    }}>30-Day Alert Trend</div> 
-                  </div> 
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '24px', 
-                    alignItems: 'center' 
-                  }}> 
-                    {[ 
-                      { c: '#f43f5e', l: 'Critical' }, 
-                      { c: '#f97316', l: 'High' }, 
-                      { c: '#3b82f6', l: 'Medium' }, 
-                    ].map(item => ( 
-                      <span key={item.l} style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px', 
-                        fontSize: '12px', 
-                        fontWeight: '600',
-                        color: '#bdc8ce' 
-                      }}> 
-                        <span style={{ 
-                          display: 'inline-block', 
-                          width: '24px', 
-                          height: '3px', 
-                          background: item.c, 
-                          borderRadius: '2px' 
-                        }}/> 
-                        {item.l} 
-                      </span> 
-                    ))} 
-                  </div> 
-                </div> 
-          
-                <div style={{ 
-                  padding: '20px 28px', 
-                  height: '320px', 
-                  position: 'relative',
-                  background: '#102034'
-                }}> 
-                  {dataLoading ? (
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      height: '100%', 
-                      color: '#879298', 
-                      fontSize: '13px' 
-                    }}>Loading chart data...</div> 
-                  ) : digest.length === 0 ? ( 
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      height: '100%', 
-                      color: '#879298', 
-                      fontSize: '13px' 
-                    }}>No activity detected in the last 30 days.</div> 
-                  ) : ( 
-                    <canvas ref={chartRef} style={{ width: '100%', height: '100%', cursor: 'pointer' }}/> 
-                  )} 
-                </div> 
-              </div>
+          {activeView === 'overview' && (
+            <MorningBriefingView
+              authHeaders={authHeaders}
+              onOpenCase={(caseId) => { setSelectedCase(caseId); fetchCaseDetail(caseId); fetchCaseNotes(caseId); fetchOcrStatus(caseId); setCaseNotes([]); setOcrStatus(null); setActiveView('cases'); }}
+              setActiveView={setActiveView}
+              summary={summary}
+              digest={digest}
+              dataLoading={dataLoading}
+              chartRef={chartRef}
+              alerts={alerts}
+            />
+          )}
 
-            </div> 
+          {activeView === 'analytics' && (
+            <AnalyticsView
+              summary={summary}
+              digest={digest}
+              dataLoading={dataLoading}
+              chartRef={chartRef}
+              alerts={alerts}
+            />
           )} 
           
           {activeView === 'alerts' && ( 
