@@ -2546,6 +2546,46 @@ def ingest_data(request: Request, body: dict = Body(...)):
         raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
+# ─── TEMPORARY SCHEMA AUDIT (READ-ONLY) ─────────────────────
+# Remove after audit is complete
+
+@app.get('/admin/schema-audit')
+def schema_audit(token_data = Depends(require_role('admin'))):
+    conn = get_connection()
+    cursor = conn.cursor()
+    results = {}
+
+    def q(label, sql, params=None):
+        try:
+            cursor.execute(sql, params)
+            results[label] = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            conn.rollback()
+            results[label] = f'ERROR: {str(e)}'
+
+    q('1_all_tables', "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
+    q('2_cases_columns', "SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = 'cases' ORDER BY ordinal_position")
+    q('3_cases_check_constraints', "SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'cases'::regclass AND contype = 'c'")
+    q('4_alert_dismissals', "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'alert_dismissals' ORDER BY ordinal_position")
+    q('5_case_notes', "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'case_notes' ORDER BY ordinal_position")
+    q('6_case_audit_log', "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'case_audit_log' ORDER BY ordinal_position")
+    q('7_alerts_columns', "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'alerts' ORDER BY ordinal_position")
+    q('8_case_status_values', "SELECT status, COUNT(*) as count FROM cases WHERE organization_id = 1 GROUP BY status ORDER BY status")
+    q('9_case_total', "SELECT COUNT(*) as total_cases FROM cases WHERE organization_id = 1")
+    q('10_snooze_columns', "SELECT column_name, table_name FROM information_schema.columns WHERE column_name ILIKE ANY (ARRAY['%wait%','%snooze%','%defer%','%due%','%reminder%','%block%'])")
+    q('11_organizations', "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'organizations' ORDER BY ordinal_position")
+    q('12_cases_foreign_keys', """
+        SELECT tc.constraint_name, kcu.column_name, ccu.table_name AS foreign_table, ccu.column_name AS foreign_column
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu ON kcu.constraint_name = tc.constraint_name AND kcu.table_schema = tc.table_schema
+        JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = 'cases'
+    """)
+
+    conn.close()
+    return results
+
+
 # ─── SERVER STARTUP ─────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
