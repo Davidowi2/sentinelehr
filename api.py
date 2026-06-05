@@ -493,6 +493,108 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] ocr_assessments skip: {str(e)}')
 
+        # Block 1 — cases_status_check
+        try:
+            cursor.execute('ALTER TABLE cases DROP CONSTRAINT IF EXISTS cases_status_check')
+            cursor.execute("""
+                ALTER TABLE cases ADD CONSTRAINT cases_status_check
+                CHECK (status = ANY (ARRAY[
+                    'Open', 'Under Investigation', 'Pending Internal Review',
+                    'Pending HR', 'Pending IT', 'Pending Manager Response',
+                    'Resolved', 'Closed', 'Overdue'
+                ]))
+            """)
+            conn.commit()
+            print('[DATABASE] cases_status_check constraint updated')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] cases_status_check skip: {str(e)}')
+
+        # Block 2 — cases_priority_check
+        try:
+            cursor.execute('ALTER TABLE cases DROP CONSTRAINT IF EXISTS cases_priority_check')
+            cursor.execute("""
+                ALTER TABLE cases ADD CONSTRAINT cases_priority_check
+                CHECK (priority = ANY (ARRAY['Low', 'Medium', 'High', 'Critical']))
+            """)
+            conn.commit()
+            print('[DATABASE] cases_priority_check constraint updated')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] cases_priority_check skip: {str(e)}')
+
+        # Block 3 — new workflow columns on cases
+        try:
+            cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS waiting_on VARCHAR(50)')
+            cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS due_back_date DATE')
+            cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS reminder_date DATE')
+            cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS case_title VARCHAR(255)')
+            cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS priority_score NUMERIC')
+            conn.commit()
+            print('[DATABASE] cases new workflow columns verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] cases workflow columns skip: {str(e)}')
+
+        # Block 4 — organization_id on case_audit_log
+        try:
+            cursor.execute('ALTER TABLE case_audit_log ADD COLUMN IF NOT EXISTS organization_id INTEGER DEFAULT 1')
+            cursor.execute('UPDATE case_audit_log SET organization_id = 1 WHERE organization_id IS NULL')
+            conn.commit()
+            print('[DATABASE] case_audit_log organization_id verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] case_audit_log org_id skip: {str(e)}')
+
+        # Block 5 — case_audit_log FK to cases
+        try:
+            cursor.execute("""
+                ALTER TABLE case_audit_log
+                ADD CONSTRAINT case_audit_log_case_id_fkey
+                FOREIGN KEY (case_id) REFERENCES cases(case_id) ON DELETE CASCADE
+            """)
+            conn.commit()
+            print('[DATABASE] case_audit_log FK verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] case_audit_log FK skip: {str(e)}')
+
+        # Block 6 — case_notes FK to cases
+        try:
+            cursor.execute("""
+                ALTER TABLE case_notes
+                ADD CONSTRAINT case_notes_case_id_fkey
+                FOREIGN KEY (case_id) REFERENCES cases(case_id) ON DELETE CASCADE
+            """)
+            conn.commit()
+            print('[DATABASE] case_notes FK verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] case_notes FK skip: {str(e)}')
+
+        # Block 7 — cases FK to employees on emp_id
+        try:
+            cursor.execute("""
+                ALTER TABLE cases
+                ADD CONSTRAINT cases_emp_id_fkey
+                FOREIGN KEY (emp_id) REFERENCES employees(emp_id) ON DELETE RESTRICT
+            """)
+            conn.commit()
+            print('[DATABASE] cases emp_id FK verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] cases emp_id FK skip: {str(e)}')
+
+        # Block 8 — indexes for FK joins
+        try:
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_case_audit_log_case_id ON case_audit_log(case_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_case_notes_case_id ON case_notes(case_id)')
+            conn.commit()
+            print('[DATABASE] case FK indexes verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] case FK indexes skip: {str(e)}')
+
         try:
             cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS it_director_flagged BOOLEAN DEFAULT FALSE')
             cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS ocr_clock_started TIMESTAMP')
