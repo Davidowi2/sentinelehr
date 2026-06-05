@@ -38,9 +38,7 @@ import {
   BarChart2,
   CheckCircle2,
   Clock,
-  ChevronRight
 } from 'lucide-react';
-
 const THEMES = {
   dark: `
     --surface-dim: #0b1326;
