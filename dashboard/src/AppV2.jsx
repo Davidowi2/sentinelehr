@@ -1121,6 +1121,206 @@ const CaseReportModal = ({ report, onClose }) => {
   );
 };
 
+const CasesWorkflowView = ({ authHeaders, userRole, onOpenCase, handleGenerateReport }) => {
+  const [openCases, setOpenCases] = React.useState([]);
+  const [pendingCases, setPendingCases] = React.useState([]);
+  const [closedCases, setClosedCases] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [search, setSearch] = React.useState('');
+  const [priorityFilter, setPriorityFilter] = React.useState('');
+  const [empSearch, setEmpSearch] = React.useState('');
+  const [pendingOpen, setPendingOpen] = React.useState(false);
+  const [closedOpen, setClosedOpen] = React.useState(false);
+
+  const fetchAll = React.useCallback(() => {
+    setLoading(true);
+    const h = authHeaders();
+    Promise.all([
+      fetch(`${API_BASE}/cases?status=Open&limit=200`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Under Investigation')}&limit=200`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending Internal Review')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending HR')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending IT')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=${encodeURIComponent('Pending Manager Response')}&limit=50`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=Closed&limit=5`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+      fetch(`${API_BASE}/cases?status=Resolved&limit=5`, { headers: h }).then(r => r.json()).catch(() => ({ cases: [] })),
+    ]).then(([open, underInv, pir, phr, pit, pmr, closed, resolved]) => {
+      const active = [...(open.cases || []), ...(underInv.cases || [])].sort((a, b) => {
+        const ps = x => x.priority_score != null ? x.priority_score : -Infinity;
+        if (ps(b) !== ps(a)) return ps(b) - ps(a);
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      setOpenCases(active);
+      const allPending = [...(pir.cases||[]), ...(phr.cases||[]), ...(pit.cases||[]), ...(pmr.cases||[])].sort((a, b) => {
+        if (!a.due_back_date && !b.due_back_date) return 0;
+        if (!a.due_back_date) return 1;
+        if (!b.due_back_date) return -1;
+        return new Date(a.due_back_date) - new Date(b.due_back_date);
+      });
+      setPendingCases(allPending);
+      const allClosed = [...(closed.cases||[]), ...(resolved.cases||[])].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 5);
+      setClosedCases(allClosed);
+      setLoading(false);
+    });
+  }, []);
+
+  React.useEffect(() => { fetchAll(); }, []);
+
+  const priorityColors = { Critical: '#f43f5e', High: '#f97316', Medium: '#3b82f6', Low: '#64748b' };
+
+  const filteredOpen = openCases.filter(c => {
+    if (priorityFilter && c.priority !== priorityFilter) return false;
+    if (empSearch && !String(c.emp_id).includes(empSearch)) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      return c.case_id.toLowerCase().includes(s) || (c.case_title || '').toLowerCase().includes(s) || String(c.emp_id).includes(s);
+    }
+    return true;
+  });
+
+  const dueDiff = (d) => d ? Math.round((new Date(d) - new Date()) / 86400000) : null;
+  const dueLabel = (d) => { const x = dueDiff(d); if (x === null) return { text: 'No due date', color: 'var(--text-secondary)' }; if (x < 0) return { text: `Overdue by ${Math.abs(x)}d`, color: '#ef4444' }; if (x === 0) return { text: 'Due today', color: '#fbbf24' }; return { text: `Due in ${x}d`, color: '#22c55e' }; };
+
+  const sH = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' };
+  const sTitle = (txt, count) => (
+    <div style={sH}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{txt}</span>
+        <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', background: 'var(--bg-app)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>{count}</span>
+      </div>
+      <button onClick={fetchAll} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px' }}>↺ Refresh</button>
+    </div>
+  );
+  const card = { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px 24px', marginBottom: '20px' };
+  const rowHover = { padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px', transition: 'background 0.15s' };
+
+  if (loading) return <div style={{ padding: '40px', color: 'var(--text-secondary)' }}>Loading cases...</div>;
+
+  return (
+    <div style={{ padding: '32px', maxWidth: '1100px' }}>
+
+      {/* SECTION 1 — Needs Decision */}
+      <div style={card}>
+        {/* Header + filters */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>Needs Decision</span>
+            <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', background: 'var(--bg-app)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>{filteredOpen.length}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input placeholder="Search case, title, EMP…" value={search} onChange={e => setSearch(e.target.value)}
+              style={{ padding: '6px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none', width: '200px' }} />
+            <input placeholder="EMP ID" value={empSearch} onChange={e => setEmpSearch(e.target.value)}
+              style={{ padding: '6px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none', width: '100px' }} />
+            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
+              style={{ padding: '6px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}>
+              <option value="">All priorities</option>
+              {['Critical', 'High', 'Medium', 'Low'].map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <button onClick={fetchAll} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px' }}>↺</button>
+          </div>
+        </div>
+
+        {filteredOpen.length === 0 ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>No cases need your decision right now.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {filteredOpen.map(c => (
+              <div key={c.case_id} onClick={() => onOpenCase(c.case_id)}
+                style={{ ...rowHover }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-app)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {c.case_title || `Case ${c.case_id}`}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'monospace' }}>EMP-{c.emp_id}</span>
+                    <span style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', background: `${priorityColors[c.priority] || '#64748b'}1a`, color: priorityColors[c.priority] || '#64748b', border: `1px solid ${priorityColors[c.priority] || '#64748b'}33` }}>{c.priority}</span>
+                    {!!(c.it_director_flagged) && <span style={{ color: '#f97316', fontSize: '10px', fontWeight: '700' }}>⚑ Flagged</span>}
+                    {!!(c.requires_ocr_review) && <span style={{ padding: '1px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '700', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)', animation: c.ocr_clock_started && !c.ocr_notified_at ? 'pulse 2s ease infinite' : 'none' }}>OCR</span>}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    {!!(c.it_director_flagged) ? 'Flagged for review' : `${c.status} • ${c.days_open || 0}d`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2 — Waiting on Others */}
+      <div style={card}>
+        <div style={{ ...sH, cursor: 'pointer' }} onClick={() => setPendingOpen(o => !o)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>Waiting on Others</span>
+            <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', background: 'var(--bg-app)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>{pendingCases.length}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button onClick={e => { e.stopPropagation(); fetchAll(); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px' }}>↺ Refresh</button>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{pendingOpen ? '▲' : '▼'}</span>
+          </div>
+        </div>
+        {pendingOpen && (pendingCases.length === 0 ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>No cases waiting on others.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {pendingCases.map(c => {
+              const dl = dueLabel(c.due_back_date);
+              return (
+                <div key={c.case_id} onClick={() => onOpenCase(c.case_id)} style={{ ...rowHover }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-app)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_title || `Case ${c.case_id}`}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>EMP-{c.emp_id} • Waiting on {c.waiting_on || '—'} • Due {c.due_back_date ? new Date(c.due_back_date).toLocaleDateString() : 'not set'}</div>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: dl.color, whiteSpace: 'nowrap' }}>{dl.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* SECTION 3 — Recently Closed */}
+      <div style={card}>
+        <div style={{ ...sH, cursor: 'pointer' }} onClick={() => setClosedOpen(o => !o)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>Recently Closed</span>
+            <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', background: 'var(--bg-app)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>{closedCases.length}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button onClick={e => { e.stopPropagation(); fetchAll(); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px' }}>↺ Refresh</button>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{closedOpen ? '▲' : '▼'}</span>
+          </div>
+        </div>
+        {closedOpen && (closedCases.length === 0 ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>No recently closed cases.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {closedCases.map(c => (
+              <div key={c.case_id} onClick={() => onOpenCase(c.case_id)} style={{ ...rowHover }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-app)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_title || `Case ${c.case_id}`}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>EMP-{c.emp_id}{c.outcome ? ` • ${c.outcome}` : ''}</div>
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Closed • {new Date(c.updated_at).toLocaleDateString()}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
+};
+
 const MorningBriefingView = ({ authHeaders, onOpenCase, setActiveView, summary, digest, dataLoading, chartRef, alerts }) => {
   const [openCases, setOpenCases] = React.useState([]);
   const [pendingCases, setPendingCases] = React.useState([]);
@@ -3770,219 +3970,21 @@ export default function AppV2() {
             </div> 
           )} 
         
-          {activeView === 'cases' && ( 
-            <div> 
-              <div style={{
-                background: '#0b1c30',
-                border: '1px solid rgba(140,144,159,0.2)',
-                borderRadius: '12px',
-                padding: '20px 24px',
-                marginBottom: '24px',
-                display: 'flex',
-                alignItems: 'flex-end',
-                gap: '20px'
-              }}>
-                <div style={{ flex: 1, display: 'flex', gap: '20px' }}>
-                  <div>
-                    <div style={{
-                      fontSize: '10px',
-                      fontWeight: '600',
-                      letterSpacing: '0.1em',
-                      textTransform: 'uppercase',
-                      color: '#879298',
-                      marginBottom: '8px'
-                    }}>STATUS</div>
-                    <select 
-                      value={caseStatusFilter} 
-                      onChange={e => {setCaseStatusFilter(e.target.value); setCasesOffset(0)}}
-                      style={{
-                        background: '#000f21',
-                        border: '1px solid rgba(140,144,159,0.2)',
-                        borderRadius: '8px',
-                        padding: '10px 14px',
-                        fontSize: '13px',
-                        color: '#d3e4fe',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        outline: 'none',
-                        minWidth: '200px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="">All</option> 
-                      <option value="Open">Open</option> 
-                      <option value="Under Investigation">Under Investigation</option> 
-                      <option value="Pending HR">Pending HR</option> 
-                      <option value="Resolved">Resolved</option> 
-                    </select>
-                  </div>
-                  <div>
-                    <div style={{
-                      fontSize: '10px',
-                      fontWeight: '600',
-                      letterSpacing: '0.1em',
-                      textTransform: 'uppercase',
-                      color: '#879298',
-                      marginBottom: '8px'
-                    }}>PRIORITY</div>
-                    <select 
-                      value={casePriorityFilter} 
-                      onChange={e => {setCasePriorityFilter(e.target.value); setCasesOffset(0)}}
-                      style={{
-                        background: '#000f21',
-                        border: '1px solid rgba(140,144,159,0.2)',
-                        borderRadius: '8px',
-                        padding: '10px 14px',
-                        fontSize: '13px',
-                        color: '#d3e4fe',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        outline: 'none',
-                        minWidth: '160px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="">All</option> 
-                      <option value="Critical">Critical</option> 
-                      <option value="High">High</option> 
-                      <option value="Medium">Medium</option> 
-                    </select>
-                  </div>
-                </div>
-                <div style={{
-                  marginLeft: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '24px'
-                }}>
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#879298',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontWeight: '600'
-                  }}>{cases.length} of {casesTotal}</div>
-                </div>
-              </div> 
-        
-              <div style={{
-                background: '#0b1c30',
-                border: '1px solid rgba(140,144,159,0.2)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                marginBottom: '24px'
-              }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}> 
-                  <thead> 
-                    <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298', minWidth: '140px' }}>Case ID</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Employee</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Priority</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Status</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Days Open</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Alerts</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Window</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Assigned</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>Report</th>
-                    </tr> 
-                  </thead> 
-                  <tbody> 
-                    {casesLoading ? <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#879298' }}>Loading cases...</td></tr> : 
-                     cases.map(c => ( 
-                      <tr 
-                        key={c.case_id} 
-                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      > 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id); fetchCaseNotes(c.case_id); fetchOcrStatus(c.case_id); setCaseNotes([]); setOcrStatus(null);}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {c.case_id}
-                            {!!(c.requires_ocr_review) && (
-                              <span style={{
-                                padding: '1px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: '700',
-                                letterSpacing: '0.05em', textTransform: 'uppercase',
-                                background: c.ocr_clock_started && !c.ocr_notified_at ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.1)',
-                                color: '#fbbf24',
-                                border: '1px solid rgba(251,191,36,0.4)',
-                                animation: c.ocr_clock_started && !c.ocr_notified_at ? 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' : 'none'
-                              }}>OCR</span>
-                            )}
-                          </span>
-                        </td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>EMP-{c.emp_id}</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}>
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            background: c.priority === 'Critical' ? '#f43f5e1a' : c.priority === 'High' ? '#f973161a' : '#3b82f61a',
-                            color: c.priority === 'Critical' ? '#f43f5e' : c.priority === 'High' ? '#f97316' : '#3b82f6',
-                            border: `1px solid ${c.priority === 'Critical' ? '#f43f5e33' : c.priority === 'High' ? '#f9731633' : '#3b82f633'}`
-                          }}>{c.priority}</span>
-                        </td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', cursor: 'pointer' }}> 
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}> 
-                            <span style={{ 
-                              width: '8px', 
-                              height: '8px', 
-                              borderRadius: '50%', 
-                              background: c.status === 'Open' ? '#14b8a6' : 
-                                         (c.status === 'Under Investigation' || c.status === 'Pending HR' || c.status === 'In Review') ? '#f97316' : 
-                                         c.status === 'Escalated' ? '#f43f5e' : 
-                                         c.status === 'Resolved' ? '#64748b' : '#f97316'
-                            }} /> 
-                            {c.status} 
-                          </span> 
-                        </td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', color: '#bdc8ce', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{c.days_open || 0}d</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '13px', color: '#bdc8ce', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{Array.isArray(c.alert_ids) ? c.alert_ids.length : 0}</td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '11px', color: '#879298', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}> 
-                          {new Date(c.window_start).toLocaleDateString()}<br/> 
-                          to {new Date(c.window_end).toLocaleDateString()} 
-                        </td> 
-                        <td onClick={() => {setSelectedCase(c.case_id); fetchCaseDetail(c.case_id)}} style={{ padding: '14px 20px', fontSize: '12px', color: '#879298', cursor: 'pointer' }}>{c.assigned_to_name || '—'}</td> 
-                        <td style={{ padding: '14px 20px' }}>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleGenerateReport(c.case_id); }}
-                            style={{ 
-                              background: 'transparent', 
-                              border: '1px solid rgba(140,144,159,0.2)', 
-                              color: '#bdc8ce', 
-                              borderRadius: '6px', 
-                              padding: '6px 12px', 
-                              cursor: 'pointer', 
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '6px',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = '#4a9eff';
-                              e.currentTarget.style.color = '#4a9eff';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = '#3e484d';
-                              e.currentTarget.style.color = '#bdc8ce';
-                            }}
-                          >
-                            <FileText size={14} />
-                            Report
-                          </button>
-                        </td>
-                      </tr> 
-                    ))} 
-                  </tbody> 
-                </table> 
-                {casesTotal > LIMIT && ( 
-                  <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(62,72,77,0.3)', display: 'flex', gap: '12px', justifyContent: 'center' }}> 
-                    <button onClick={() => setCasesOffset(Math.max(0, casesOffset - LIMIT))} disabled={casesOffset === 0} style={{ padding: '8px 16px', background: '#102034', border: '1px solid rgba(140,144,159,0.2)', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset === 0 ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Previous</button> 
-                    <button onClick={() => setCasesOffset(casesOffset + LIMIT)} disabled={casesOffset + LIMIT >= casesTotal} style={{ padding: '8px 16px', background: '#102034', border: '1px solid rgba(140,144,159,0.2)', color: '#d3e4fe', borderRadius: '6px', cursor: 'pointer', opacity: casesOffset + LIMIT >= casesTotal ? 0.5 : 1, fontWeight: '600', fontSize: '12px' }}>Next</button> 
-                  </div> 
-                )} 
-              </div> 
+          {activeView === 'cases' && (
+            <div>
+              <CasesWorkflowView
+                authHeaders={authHeaders}
+                userRole={userRole}
+                onOpenCase={(caseId) => {
+                  setSelectedCase(caseId);
+                  fetchCaseDetail(caseId);
+                  fetchCaseNotes(caseId);
+                  fetchOcrStatus(caseId);
+                  setCaseNotes([]);
+                  setOcrStatus(null);
+                }}
+                handleGenerateReport={handleGenerateReport}
+              /> 
         
               {selectedCase && ( 
                 <Drawer title="Case Investigation" id={selectedCase} onClose={handleCloseCaseDrawer} loading={!caseDetail} subtitle={caseDetail && <SeverityBadge severity={caseDetail.priority} />}> 

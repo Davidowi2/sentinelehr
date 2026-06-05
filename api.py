@@ -595,6 +595,61 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] case FK indexes skip: {str(e)}')
 
+        # One-time backfill: generate case_title for cases where it is NULL
+        try:
+            cursor.execute("SELECT case_id, emp_id, alert_ids, organization_id FROM cases WHERE case_title IS NULL OR case_title = ''")
+            backfill_rows = cursor.fetchall()
+            backfilled = 0
+            for row in backfill_rows:
+                try:
+                    case_id = row['case_id']
+                    emp_id = row['emp_id']
+                    org_id_row = row.get('organization_id', 1)
+                    # Get employee role
+                    cursor.execute("SELECT role FROM employees WHERE emp_id = %s AND organization_id = %s", (emp_id, org_id_row))
+                    emp = cursor.fetchone()
+                    role = emp['role'] if emp else 'Unknown'
+                    role_abbr_map = {
+                        'RN': 'RN', 'LPN': 'LPN', 'MD': 'MD', 'DO': 'DO', 'PA': 'PA', 'NP': 'NP', 'MA': 'MA',
+                        'Nurse': 'RN', 'Doctor': 'MD', 'Physician': 'MD', 'Pharmacist': 'Pharm',
+                        'Technician': 'Tech', 'Administrative': 'Admin', 'Billing': 'Billing', 'Unknown': 'Staff'
+                    }
+                    role_abbr = role_abbr_map.get(role, role[:8] if role else 'Staff')
+                    emp_label = f"EMP-{emp_id} ({role_abbr})"
+                    import json as _json
+                    alert_ids = row['alert_ids']
+                    if isinstance(alert_ids, str):
+                        alert_ids = _json.loads(alert_ids)
+                    title = f"Access pattern review — {emp_label}"
+                    if alert_ids:
+                        placeholders = ', '.join(['%s'] * len(alert_ids))
+                        cursor.execute(f"SELECT rules_triggered FROM alerts WHERE alert_id IN ({placeholders}) AND organization_id = %s", list(alert_ids) + [org_id_row])
+                        alert_rows = cursor.fetchall()
+                        all_rules = set()
+                        for ar in alert_rows:
+                            if ar['rules_triggered']:
+                                for r in ar['rules_triggered'].split(','):
+                                    all_rules.add(r.strip())
+                        if len(all_rules) >= 3:
+                            title = f"Multi-factor access anomaly investigation — {emp_label}"
+                        elif 'R_SENSITIVE' in all_rules or 'R8' in all_rules:
+                            title = f"Possible inappropriate access to sensitive records — {emp_label}"
+                        elif 'R4' in all_rules:
+                            title = f"VIP patient access investigation — {emp_label}"
+                        elif 'R3' in all_rules:
+                            title = f"Unusual off-hours access pattern — {emp_label}"
+                        elif 'R1' in all_rules or 'R2' in all_rules:
+                            title = f"High-volume patient record access — {emp_label}"
+                    cursor.execute("UPDATE cases SET case_title = %s WHERE case_id = %s", (title, case_id))
+                    backfilled += 1
+                except Exception:
+                    continue
+            conn.commit()
+            print(f'[DATABASE] Case title backfill complete ({backfilled} cases updated)')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] Case title backfill skip: {str(e)}')
+
         try:
             cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS it_director_flagged BOOLEAN DEFAULT FALSE')
             cursor.execute('ALTER TABLE cases ADD COLUMN IF NOT EXISTS ocr_clock_started TIMESTAMP')
