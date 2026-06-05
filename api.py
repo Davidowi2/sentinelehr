@@ -1347,7 +1347,61 @@ def update_email(request: Request, body: dict, token_data = Depends(verify_token
     except Exception as e: 
         raise HTTPException(status_code=400, detail='Email already in use or update failed') 
  
-# CASE MANAGEMENT 
+# CASE MANAGEMENT
+
+def generate_case_title(case_id: str, org_id: int) -> str:
+    """Deterministic case title from primary alert rules. Never implies conclusion."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT emp_id, alert_ids FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        case = cursor.fetchone()
+        if not case:
+            conn.close()
+            return f"Access pattern review — EMP-{case_id}"
+        emp_id = case['emp_id']
+        cursor.execute("SELECT role FROM employees WHERE emp_id = %s AND organization_id = %s", (emp_id, org_id))
+        emp = cursor.fetchone()
+        role = emp['role'] if emp else 'Unknown'
+        role_abbr_map = {
+            'RN': 'RN', 'LPN': 'LPN', 'MD': 'MD', 'DO': 'DO', 'PA': 'PA', 'NP': 'NP', 'MA': 'MA',
+            'Nurse': 'RN', 'Doctor': 'MD', 'Physician': 'MD', 'Pharmacist': 'Pharm',
+            'Technician': 'Tech', 'Administrative': 'Admin', 'Billing': 'Billing', 'Unknown': 'Staff'
+        }
+        role_abbr = role_abbr_map.get(role, role[:8] if role else 'Staff')
+        emp_label = f"EMP-{emp_id} ({role_abbr})"
+        import json as _json
+        alert_ids = case['alert_ids']
+        if isinstance(alert_ids, str):
+            alert_ids = _json.loads(alert_ids)
+        if not alert_ids:
+            conn.close()
+            return f"Access pattern review — {emp_label}"
+        placeholders = ', '.join(['%s'] * len(alert_ids))
+        cursor.execute(
+            f"SELECT rules_triggered FROM alerts WHERE alert_id IN ({placeholders}) AND organization_id = %s",
+            list(alert_ids) + [org_id]
+        )
+        alerts = cursor.fetchall()
+        conn.close()
+        all_rules = set()
+        for a in alerts:
+            if a['rules_triggered']:
+                for r in a['rules_triggered'].split(','):
+                    all_rules.add(r.strip())
+        if len(all_rules) >= 3:
+            return f"Multi-factor access anomaly investigation — {emp_label}"
+        if 'R_SENSITIVE' in all_rules or 'R8' in all_rules:
+            return f"Possible inappropriate access to sensitive records — {emp_label}"
+        if 'R4' in all_rules:
+            return f"VIP patient access investigation — {emp_label}"
+        if 'R3' in all_rules:
+            return f"Unusual off-hours access pattern — {emp_label}"
+        if 'R1' in all_rules or 'R2' in all_rules:
+            return f"High-volume patient record access — {emp_label}"
+        return f"Access pattern review — {emp_label}"
+    except Exception:
+        return f"Access pattern review — EMP-{case_id}" 
  
 @app.get("/cases") 
 @limiter.limit("60/minute") 
@@ -1437,36 +1491,92 @@ def get_case(
   result['audit_log'] = audit_log 
   return result 
  
-@app.patch("/cases/{case_id}/status") 
-def update_case_status( 
-  case_id: str, 
-  body: dict, 
-  token_data = Depends(require_role('admin','compliance_officer')) 
-): 
-  org_id = token_data.get('org_id', 1) 
-  new_status = body.get("status") 
-  note = body.get("note", "") 
+@app.patch("/cases/{case_id}/status")
+def update_case_status(
+  case_id: str,
+  body: dict,
+  token_data = Depends(require_role('admin','compliance_officer'))
+):
+    org_id = token_data.get('org_id', 1)
+    new_status = body.get("status")
+    reason = body.get("reason", "").strip()
+    waiting_on = body.get("waiting_on", "").strip()
+    due_back_date = body.get("due_back_date")
+    reminder_date = body.get("reminder_date")
+    case_title_input = body.get("case_title", "").strip()
 
-  VALID_STATUSES = {'Open', 'Under Investigation', 'Pending HR', 'Resolved', 'Closed', 'Overdue'}
-  if new_status not in VALID_STATUSES:
-    raise HTTPException(status_code=400, detail="Invalid status value") 
-  
-  # Verify case exists for this organization
-  conn = get_connection()
-  cursor = conn.cursor()
-  cursor.execute("SELECT 1 FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
-  if not cursor.fetchone():
-    conn.close()
-    raise HTTPException(404, "Case not found")
-  conn.close()
-  
-  user = get_current_user_from_token(token_data)
-  success = case_logic.update_case_status( 
-    case_id, new_status, user['user_id'], note 
-  ) 
-  if not success: 
-    raise HTTPException(400, f"Invalid status transition to {new_status}") 
-  return {"case_id": case_id, "status": new_status, "updated": True} 
+    VALID_STATUSES = {
+        'Open', 'Under Investigation', 'Pending Internal Review',
+        'Pending HR', 'Pending IT', 'Pending Manager Response',
+        'Resolved', 'Closed', 'Overdue'
+    }
+    if new_status not in VALID_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status value")
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason is required for status changes")
+    if new_status.startswith("Pending") and not waiting_on:
+        waiting_on = "Other"
+
+    user = get_current_user_from_token(token_data)
+    user_id = user['user_id']
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT status, case_title FROM cases WHERE case_id = %s AND organization_id = %s",
+            (case_id, org_id)
+        )
+        current = cursor.fetchone()
+        if not current:
+            conn.close()
+            raise HTTPException(404, "Case not found")
+
+        old_status = current['status']
+
+        update_fields = ["status = %s", "updated_at = NOW()"]
+        update_params = [new_status]
+
+        if new_status.startswith("Pending"):
+            update_fields.append("waiting_on = %s")
+            update_params.append(waiting_on)
+            if due_back_date:
+                update_fields += ["due_back_date = %s"]
+                update_params.append(due_back_date)
+            if reminder_date:
+                update_fields += ["reminder_date = %s"]
+                update_params.append(reminder_date)
+        else:
+            update_fields += ["waiting_on = NULL", "due_back_date = NULL", "reminder_date = NULL"]
+
+        if new_status in ('Resolved', 'Closed'):
+            update_fields.append("resolved_at = NOW()")
+
+        final_title = case_title_input or current['case_title']
+        if not final_title:
+            final_title = generate_case_title(case_id, org_id)
+        update_fields.append("case_title = %s")
+        update_params.append(final_title)
+
+        update_params += [case_id, org_id]
+        cursor.execute(
+            f"UPDATE cases SET {', '.join(update_fields)} WHERE case_id = %s AND organization_id = %s",
+            update_params
+        )
+        cursor.execute(
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, organization_id)
+               VALUES (%s, %s, 'status_change', 'status', %s, %s, %s, %s)""",
+            (case_id, user_id, old_status, new_status, reason, org_id)
+        )
+        conn.commit()
+        conn.close()
+        return {"case_id": case_id, "status": new_status, "updated": True, "case_title": final_title}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] update_case_status: {str(e)}')
+        raise HTTPException(status_code=500, detail="An internal error occurred")
  
 @app.post("/cases/{case_id}/notes") 
 def add_note( 
@@ -1527,30 +1637,151 @@ def assign_case(
   conn.close() 
   return {"case_id": case_id, "assigned_to": assign_to_id} 
  
-@app.patch("/cases/{case_id}/outcome") 
-def set_outcome( 
-  case_id: str, 
-  body: dict, 
-  token_data = Depends(require_role('admin','compliance_officer')) 
-): 
-  org_id = token_data.get('org_id', 1) 
-  outcome = body.get("outcome") 
-  valid = ['Legitimate Access','Policy Violation','Training Required','Termination Recommended','No Action'] 
-  if outcome not in valid: 
-    raise HTTPException(400, f"Invalid outcome") 
-  
-  # Verify case exists for this organization
-  conn = get_connection()
-  cursor = conn.cursor()
-  cursor.execute("SELECT 1 FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
-  if not cursor.fetchone():
-    conn.close()
-    raise HTTPException(404, "Case not found")
-  conn.close()
-  
-  user = get_current_user_from_token(token_data)
-  case_logic.set_case_outcome(case_id, outcome, user['user_id']) 
-  return {"case_id": case_id, "outcome": outcome} 
+@app.patch("/cases/{case_id}/outcome")
+def set_outcome(
+  case_id: str,
+  body: dict,
+  token_data = Depends(require_role('admin','compliance_officer'))
+):
+    org_id = token_data.get('org_id', 1)
+    outcome = body.get("outcome")
+    reason = body.get("reason", "").strip()
+    valid = ['Legitimate Access', 'Policy Violation', 'Training Required', 'Termination Recommended', 'No Action']
+    if outcome not in valid:
+        raise HTTPException(400, "Invalid outcome")
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason is required for outcome changes")
+
+    user = get_current_user_from_token(token_data)
+    user_id = user['user_id']
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT outcome FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        current = cursor.fetchone()
+        if not current:
+            conn.close()
+            raise HTTPException(404, "Case not found")
+        old_outcome = current['outcome']
+        cursor.execute(
+            "UPDATE cases SET outcome = %s, updated_at = NOW() WHERE case_id = %s AND organization_id = %s",
+            (outcome, case_id, org_id)
+        )
+        cursor.execute(
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, old_value, new_value, note, organization_id)
+               VALUES (%s, %s, 'outcome_change', 'outcome', %s, %s, %s, %s)""",
+            (case_id, user_id, old_outcome, outcome, reason, org_id)
+        )
+        conn.commit()
+        conn.close()
+        return {"case_id": case_id, "outcome": outcome}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] set_outcome: {str(e)}')
+        raise HTTPException(status_code=500, detail="An internal error occurred")
+
+
+@app.post("/cases/{case_id}/snooze")
+def snooze_case(
+  case_id: str,
+  body: dict,
+  token_data = Depends(require_role('admin', 'compliance_officer'))
+):
+    org_id = token_data.get('org_id', 1)
+    waiting_on = body.get("waiting_on", "").strip()
+    due_back_date = body.get("due_back_date")
+    reminder_date = body.get("reminder_date")
+    reason = body.get("reason", "").strip()
+
+    VALID_WAITING_ON = {'HR', 'IT', 'Manager', 'Legal', 'Other'}
+    if not waiting_on or waiting_on not in VALID_WAITING_ON:
+        raise HTTPException(status_code=400, detail=f"waiting_on required. Must be one of: {list(VALID_WAITING_ON)}")
+    if not due_back_date:
+        raise HTTPException(status_code=400, detail="due_back_date required")
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason required")
+
+    user = get_current_user_from_token(token_data)
+    user_id = user['user_id']
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(404, "Case not found")
+        cursor.execute(
+            """UPDATE cases SET status = 'Pending Internal Review', waiting_on = %s,
+               due_back_date = %s, reminder_date = %s, updated_at = NOW()
+               WHERE case_id = %s AND organization_id = %s""",
+            (waiting_on, due_back_date, reminder_date, case_id, org_id)
+        )
+        cursor.execute(
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, new_value, note, organization_id)
+               VALUES (%s, %s, 'snoozed', 'status', 'Pending Internal Review', %s, %s)""",
+            (case_id, user_id, reason, org_id)
+        )
+        conn.commit()
+        cursor.execute("SELECT * FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        updated = dict(cursor.fetchone())
+        conn.close()
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] snooze_case: {str(e)}')
+        raise HTTPException(status_code=500, detail="An internal error occurred")
+
+
+@app.post("/cases/{case_id}/unsnooze")
+def unsnooze_case(
+  case_id: str,
+  body: dict,
+  token_data = Depends(require_role('admin', 'compliance_officer'))
+):
+    org_id = token_data.get('org_id', 1)
+    reason = body.get("reason", "Unsnooze").strip()
+
+    user = get_current_user_from_token(token_data)
+    user_id = user['user_id']
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT case_id FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(404, "Case not found")
+        cursor.execute(
+            "SELECT COUNT(*) as cnt FROM case_notes WHERE case_id = %s AND organization_id = %s AND note_type = 'investigation'",
+            (case_id, org_id)
+        )
+        note_count = cursor.fetchone()['cnt']
+        new_status = 'Under Investigation' if note_count > 0 else 'Open'
+        cursor.execute(
+            """UPDATE cases SET status = %s, waiting_on = NULL, due_back_date = NULL,
+               reminder_date = NULL, updated_at = NOW()
+               WHERE case_id = %s AND organization_id = %s""",
+            (new_status, case_id, org_id)
+        )
+        cursor.execute(
+            """INSERT INTO case_audit_log (case_id, user_id, action, field_name, new_value, note, organization_id)
+               VALUES (%s, %s, 'unsnoozed', 'status', %s, %s, %s)""",
+            (case_id, user_id, new_status, reason, org_id)
+        )
+        conn.commit()
+        cursor.execute("SELECT * FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
+        updated = dict(cursor.fetchone())
+        conn.close()
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] unsnooze_case: {str(e)}')
+        raise HTTPException(status_code=500, detail="An internal error occurred")
  
 @app.get("/cases/{case_id}/export") 
 def export_case( 
