@@ -1640,7 +1640,8 @@ def add_note(
   token_data = Depends(require_role('admin','compliance_officer')) 
 ): 
   org_id = token_data.get('org_id', 1) 
-  note_text = body.get("note", "").strip() 
+  # Accept both "note" (legacy saveCaseUpdate path) and "content" (Add Note button path)
+  note_text = (body.get("content") or body.get("note") or "").strip()
   if not note_text: 
     raise HTTPException(400, "Note cannot be empty") 
   

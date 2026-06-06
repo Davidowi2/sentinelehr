@@ -1463,9 +1463,18 @@ const CasesWorkflowView = ({ authHeaders, userRole, onOpenCase, handleGenerateRe
                     {!!(c.requires_ocr_review) && <span style={{ padding: '1px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '700', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)', animation: c.ocr_clock_started && !c.ocr_notified_at ? 'pulse 2s ease infinite' : 'none' }}>OCR</span>}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    {!!(c.it_director_flagged) ? 'Flagged for review' : `${c.status} • ${c.days_open || 0}d`}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleGenerateReport(c.case_id); }}
+                    title="Print / Export Report"
+                    style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                  ><FileText size={12} /> Report</button>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      {!!(c.it_director_flagged) ? 'Flagged for review' : `${c.status} • ${c.days_open || 0}d`}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1500,7 +1509,16 @@ const CasesWorkflowView = ({ authHeaders, userRole, onOpenCase, handleGenerateRe
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_title || `Case ${c.case_id}`}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>EMP-{c.emp_id} • Waiting on {c.waiting_on || '—'} • Due {c.due_back_date ? new Date(c.due_back_date).toLocaleDateString() : 'not set'}</div>
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: '700', color: dl.color, whiteSpace: 'nowrap' }}>{dl.text}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); handleGenerateReport(c.case_id); }}
+                      title="Print / Export Report"
+                      style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                    ><FileText size={12} /> Report</button>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: dl.color, whiteSpace: 'nowrap' }}>{dl.text}</span>
+                  </div>
                 </div>
               );
             })}
@@ -1532,7 +1550,16 @@ const CasesWorkflowView = ({ authHeaders, userRole, onOpenCase, handleGenerateRe
                   <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.case_title || `Case ${c.case_id}`}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>EMP-{c.emp_id}{c.outcome ? ` • ${c.outcome}` : ''}</div>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Closed • {new Date(c.updated_at).toLocaleDateString()}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleGenerateReport(c.case_id); }}
+                    title="Print / Export Report"
+                    style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                  ><FileText size={12} /> Report</button>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Closed • {new Date(c.updated_at).toLocaleDateString()}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -4165,8 +4192,8 @@ export default function AppV2() {
                             <tr>
                               <td colSpan="7" style={{ padding: '0 20px 20px' }}>
                                 <div style={{ 
-                                  background: 'rgba(15,23,42,0.6)', 
-                                  border: '1px solid rgba(140,144,159,0.2)', 
+                                  background: 'var(--bg-surface)', 
+                                  border: '1px solid var(--border)', 
                                   borderRadius: '8px', 
                                   padding: '16px',
                                   marginTop: '-1px',
@@ -4174,11 +4201,11 @@ export default function AppV2() {
                                 }}>
                                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1 }}>
-                                      <div style={{ fontSize: '10px', fontWeight: '700', color: '#879298', textTransform: 'uppercase', marginBottom: '8px' }}>Reason for dismissal</div>
+                                      <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Reason for dismissal</div>
                                       <select 
                                         value={dismissForm.reasonCode}
                                         onChange={e => setDismissForm(prev => ({ ...prev, reasonCode: e.target.value }))}
-                                        style={{ width: '100%', background: '#000f21', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '6px', padding: '8px', color: '#d3e4fe', fontSize: '13px', outline: 'none' }}
+                                        style={{ width: '100%', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
                                       >
                                         <option value="">Select a reason...</option>
                                         <option value="False Positive">False Positive</option>
@@ -4189,13 +4216,13 @@ export default function AppV2() {
                                       </select>
                                     </div>
                                     <div style={{ flex: 2 }}>
-                                      <div style={{ fontSize: '10px', fontWeight: '700', color: '#879298', textTransform: 'uppercase', marginBottom: '8px' }}>Additional Detail (Optional)</div>
+                                      <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Additional Detail (Optional)</div>
                                       <input 
                                         type="text"
                                         placeholder="Add notes..."
                                         value={dismissForm.reasonDetail}
                                         onChange={e => setDismissForm(prev => ({ ...prev, reasonDetail: e.target.value }))}
-                                        style={{ width: '100%', background: '#000f21', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '6px', padding: '8px', color: '#d3e4fe', fontSize: '13px', outline: 'none' }}
+                                        style={{ width: '100%', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
                                       />
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '24px' }}>
@@ -5007,6 +5034,132 @@ export default function AppV2() {
                 Yes
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Case Report / Print Modal */}
+      {caseReport && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          zIndex: 1100,
+          overflowY: 'auto',
+          padding: '32px 16px'
+        }}>
+          <div id="case-report-printable" style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '40px',
+            maxWidth: '760px',
+            width: '100%',
+            position: 'relative'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', borderBottom: '1px solid var(--border)', paddingBottom: '24px' }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>SentinelEHR Case Report</div>
+                <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace", marginBottom: '4px' }}>
+                  {caseReport.case_metadata?.case_id || '—'}
+                </div>
+                <div style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600' }}>{caseReport.case_metadata?.case_title || 'Case Report'}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Generated {new Date(caseReport.report_generated_at).toLocaleString()}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => window.print()}
+                  style={{ padding: '8px 16px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                ><Printer size={14} /> Print</button>
+                <button
+                  onClick={() => setCaseReport(null)}
+                  style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                ><X size={16} /></button>
+              </div>
+            </div>
+
+            {/* Case Metadata + Employee */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
+              <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px' }}>
+                <div style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '12px' }}>Case Details</div>
+                {[
+                  ['Status', caseReport.case_metadata?.status],
+                  ['Priority', caseReport.case_metadata?.priority],
+                  ['Outcome', caseReport.case_metadata?.outcome || 'Pending'],
+                  ['Opened', caseReport.case_metadata?.created_at ? new Date(caseReport.case_metadata.created_at).toLocaleDateString() : '—'],
+                  ['Days Open', caseReport.case_metadata?.days_open != null ? `${Math.floor(caseReport.case_metadata.days_open)}d` : '—'],
+                ].map(([label, val]) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{val || '—'}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px' }}>
+                <div style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '12px' }}>Employee Info</div>
+                {caseReport.employee_info ? [
+                  ['EMP ID', `EMP-${caseReport.employee_info.emp_id}`],
+                  ['Role', caseReport.employee_info.role],
+                  ['Department', `Dept ${caseReport.employee_info.dept_id}`],
+                ].map(([label, val]) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{val || '—'}</span>
+                  </div>
+                )) : <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No employee data</div>}
+              </div>
+            </div>
+
+            {/* Linked Alerts */}
+            {caseReport.linked_alerts?.length > 0 && (
+              <div style={{ marginBottom: '28px' }}>
+                <div style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '12px' }}>Linked Alerts ({caseReport.linked_alerts.length})</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {caseReport.linked_alerts.map((a, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '13px' }}>
+                      <SeverityBadge severity={a.adjusted_severity} />
+                      <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>{a.alert_date?.split('T')[0]}</span>
+                      <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{a.rules_triggered}</span>
+                      <span style={{ color: 'var(--accent)', fontWeight: '700', fontFamily: 'monospace' }}>{(a.anomaly_score ?? 0).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Decision History / Timeline */}
+            {caseReport.timeline?.length > 0 && (
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '12px' }}>Decision History ({caseReport.timeline.length} entries)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                  {[...caseReport.timeline].reverse().map((log, i) => {
+                    const actionMap = { status_change: 'Status changed', outcome_change: 'Outcome set', snoozed: 'Snoozed', unsnoozed: 'Unsnoozed', created: 'Created', note_added: 'Note added', assigned: 'Assigned', exported: 'Report exported' };
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: '12px', paddingBottom: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', marginTop: '3px', flexShrink: 0 }} />
+                          {i < caseReport.timeline.length - 1 && <div style={{ width: '2px', flex: 1, background: 'var(--border)', marginTop: '4px' }} />}
+                        </div>
+                        <div style={{ flex: 1, paddingBottom: '4px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                            {log.actor_name || log.user_email || 'System'} — {actionMap[log.action] || log.action}{log.new_value ? ` → ${log.new_value}` : ''}
+                          </div>
+                          {log.note && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>"{log.note}"</div>}
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{log.timestamp ? new Date(log.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
