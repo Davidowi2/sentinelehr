@@ -4431,7 +4431,6 @@ export default function AppV2() {
 
                     </div>
 
-                    </div>
                   )} 
                 </Drawer> 
               )} 
