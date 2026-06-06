@@ -1121,6 +1121,158 @@ const CaseReportModal = ({ report, onClose }) => {
   );
 };
 
+const CaseSummary = ({ caseObj, authHeaders, ocrStatus }) => {
+  const [alerts, setAlerts] = React.useState([]);
+  const [auditLog, setAuditLog] = React.useState([]);
+  const [showAllAlerts, setShowAllAlerts] = React.useState(false);
+  const [showFullAudit, setShowFullAudit] = React.useState(false);
+
+  const RULE_LABELS = {
+    R1: 'High-volume access', R2: 'Volume spike', R3: 'Off-hours access',
+    R4: 'VIP record access', R6: 'Export/print activity', R7: 'Break-glass event',
+    R8: 'Sensitive record access', R_SENSITIVE: 'Sensitive record flag',
+  };
+
+  React.useEffect(() => {
+    if (!caseObj || !authHeaders) return;
+    const h = authHeaders();
+    // Fetch linked alerts
+    const ids = caseObj.alert_ids;
+    const alertIds = Array.isArray(ids) ? ids : (typeof ids === 'string' ? JSON.parse(ids) : []);
+    if (alertIds.length > 0) {
+      Promise.all(alertIds.slice(0, 5).map(id =>
+        fetch(`${API_BASE}/alerts/${id}`, { headers: h }).then(r => r.ok ? r.json() : null).catch(() => null)
+      )).then(results => setAlerts(results.filter(Boolean)));
+    }
+    // Fetch audit log via case detail
+    fetch(`${API_BASE}/cases/${caseObj.case_id}`, { headers: h })
+      .then(r => r.json())
+      .then(d => setAuditLog((d.audit_log || []).slice().reverse()))
+      .catch(() => {});
+  }, [caseObj?.case_id]);
+
+  if (!caseObj) return null;
+
+  const priorityColors = { Critical: '#f43f5e', High: '#f97316', Medium: '#3b82f6', Low: '#64748b' };
+  const topAlert = alerts[0];
+  const extraAlerts = alerts.slice(1);
+
+  const anomalyLabel = (score) => {
+    if (score == null) return '';
+    if (score > 0.7) return 'HIGH';
+    if (score >= 0.4) return 'MED';
+    return 'LOW';
+  };
+
+  const displayAudit = showFullAudit ? auditLog : auditLog.slice(0, 5);
+
+  const actionLabel = (action) => {
+    const map = { status_change: 'updated status', outcome_change: 'set outcome', snoozed: 'snoozed', unsnoozed: 'unsnoozed', created: 'created', note_added: 'added note', flag_for_review: 'flagged' };
+    return map[action] || action;
+  };
+
+  const isPending = caseObj.status?.startsWith('Pending');
+
+  return (
+    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px', marginBottom: '4px' }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '6px', lineHeight: '1.4' }}>
+          {caseObj.case_title || `Case ${caseObj.case_id}`}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>EMP-{caseObj.emp_id}</span>
+          <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', background: `${priorityColors[caseObj.priority] || '#64748b'}1a`, color: priorityColors[caseObj.priority] || '#64748b', border: `1px solid ${priorityColors[caseObj.priority] || '#64748b'}33` }}>{caseObj.priority}</span>
+          <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', background: 'rgba(100,116,139,0.1)', color: 'var(--text-secondary)', border: '1px solid rgba(100,116,139,0.2)' }}>{caseObj.status}</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+            {isPending ? `${caseObj.status} • ${caseObj.days_open || 0}d waiting` : `Open • ${caseObj.days_open || 0}d`}
+          </span>
+        </div>
+      </div>
+
+      {/* Evidence */}
+      {topAlert && (
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>Why this case was opened</div>
+          <div style={{ background: 'var(--bg-app)', borderRadius: '8px', padding: '12px', border: '1px solid var(--border)' }}>
+            {/* Rules */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              {(topAlert.rules_triggered || '').split(',').map(r => r.trim()).filter(Boolean).map(r => (
+                <span key={r} style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                  {RULE_LABELS[r] || r}
+                </span>
+              ))}
+              <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', background: `${priorityColors[topAlert.adjusted_severity] || '#64748b'}1a`, color: priorityColors[topAlert.adjusted_severity] || '#64748b' }}>{topAlert.adjusted_severity} severity</span>
+            </div>
+            {/* Score */}
+            {topAlert.anomaly_score != null && (
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                Anomaly score: <strong style={{ color: topAlert.anomaly_score > 0.7 ? '#ef4444' : topAlert.anomaly_score >= 0.4 ? '#f97316' : 'var(--text-primary)' }}>{topAlert.anomaly_score.toFixed(3)}</strong>
+                <span style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 5px', borderRadius: '3px', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>{anomalyLabel(topAlert.anomaly_score)}</span>
+              </div>
+            )}
+            {/* Explanation */}
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>{topAlert.explanation}</div>
+          </div>
+          {extraAlerts.length > 0 && (
+            <button onClick={() => setShowAllAlerts(o => !o)} style={{ marginTop: '8px', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '11px', padding: 0 }}>
+              {showAllAlerts ? '▲ Hide' : `+${extraAlerts.length} more alert${extraAlerts.length > 1 ? 's' : ''} linked`}
+            </button>
+          )}
+          {showAllAlerts && extraAlerts.map(a => (
+            <div key={a.alert_id} style={{ marginTop: '6px', background: 'var(--bg-app)', borderRadius: '6px', padding: '8px 12px', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              <strong>{a.adjusted_severity}</strong> — {a.explanation}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* OCR Clock */}
+      {!!(caseObj.requires_ocr_review) && (
+        <div style={{ marginBottom: '14px' }}>
+          <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)', marginBottom: '6px', display: 'inline-block' }}>OCR Review Required</span>
+          {ocrStatus?.ocr_notified_at ? (
+            <div style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>✓ OCR Notified — {new Date(ocrStatus.ocr_notified_at).toLocaleString()}</div>
+          ) : ocrStatus?.ocr_clock_started ? (
+            <div style={{ fontSize: '11px', color: '#fbbf24', fontWeight: '600' }}>
+              BREACH NOTIFICATION CLOCK RUNNING — {ocrStatus.hours_remaining != null ? `${Math.floor(ocrStatus.hours_remaining)}h ${Math.round((ocrStatus.hours_remaining % 1) * 60)}m remaining` : 'calculating...'}
+            </div>
+          ) : (
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>OCR Assessment Pending</div>
+          )}
+        </div>
+      )}
+
+      {/* Decision History */}
+      {auditLog.length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '6px' }}>Decision History</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            {displayAudit.map((log, i) => (
+              <div key={i} style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{log.changed_by_name || log.user_id || 'System'}</span>
+                {' '}{actionLabel(log.action)}{log.new_value ? ` → ${log.new_value}` : ''}
+                {' '}<span style={{ color: 'var(--text-muted)' }}>at {new Date(log.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+              </div>
+            ))}
+          </div>
+          {auditLog.length > 5 && !showFullAudit && (
+            <button onClick={() => setShowFullAudit(true)} style={{ marginTop: '6px', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '11px', padding: 0 }}>View full audit log →</button>
+          )}
+        </div>
+      )}
+
+      {/* Score — de-emphasized, bottom right */}
+      {topAlert?.anomaly_score != null && (
+        <div style={{ textAlign: 'right', marginTop: '4px' }}>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Anomaly Score: {topAlert.anomaly_score.toFixed(3)}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CasesWorkflowView = ({ authHeaders, userRole, onOpenCase, handleGenerateReport }) => {
   const [openCases, setOpenCases] = React.useState([]);
   const [pendingCases, setPendingCases] = React.useState([]);
@@ -2022,7 +2174,8 @@ export default function AppV2() {
   const [addingNote, setAddingNote] = useState(false)
   const [ocrStatus, setOcrStatus] = useState(null)
   const [startingOcr, setStartingOcr] = useState(false)
-  const [flaggingCase, setFlaggingCase] = useState(false) 
+  const [flaggingCase, setFlaggingCase] = useState(false)
+  const [statusSnackbar, setStatusSnackbar] = useState(null) 
   
   const [investigateId, setInvestigateId] = useState('') 
   const [thresholds, setThresholds] = useState({ critical: 0.7, high: 0.4, medium: 0.2 })
@@ -2368,9 +2521,12 @@ export default function AppV2() {
           headers: authHeaders(), 
           body: JSON.stringify({ 
             status: caseStatusUpdate, 
-            note: caseNote || 'Status updated' 
+            note: caseNote || 'Status updated',
+            reason: caseNote || 'Status updated'
           }) 
-        }) 
+        })
+        setStatusSnackbar(caseStatusUpdate);
+        setTimeout(() => setStatusSnackbar(null), 5000);
       } 
       if (caseOutcome && caseOutcome !== caseDetail.outcome) { 
         await secureFetch(`${API_BASE}/cases/${selectedCase}/outcome`, { 
@@ -3998,6 +4154,9 @@ export default function AppV2() {
                         </div>
                       )}
 
+                      {/* Case Summary — evidence-first layout */}
+                      <CaseSummary caseObj={caseDetail} authHeaders={authHeaders} ocrStatus={ocrStatus} />
+
                       {/* Threaded Notes */}
                       <div>
                         <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Investigation Notes</div>
@@ -4332,6 +4491,20 @@ export default function AppV2() {
       </footer>
 
       <CaseReportModal report={caseReport} onClose={() => setCaseReport(null)} />
+
+      {/* Status change snackbar */}
+      {statusSnackbar && (
+        <div style={{
+          position: 'fixed', bottom: '60px', left: '50%', transform: 'translateX(-50%)',
+          background: '#1e293b', border: '1px solid rgba(140,144,159,0.3)', borderRadius: '8px',
+          padding: '10px 20px', fontSize: '13px', color: '#d3e4fe', zIndex: 999,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: '8px'
+        }}>
+          <span style={{ color: '#22c55e' }}>✓</span>
+          Status changed to <strong>{statusSnackbar}</strong> — refresh to see audit log update
+          <button onClick={() => setStatusSnackbar(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginLeft: '8px', fontSize: '14px' }}>×</button>
+        </div>
+      )}
 
       {showLogoutConfirm && (
         <div style={{
