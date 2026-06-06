@@ -1244,25 +1244,6 @@ const CaseSummary = ({ caseObj, authHeaders, ocrStatus }) => {
         </div>
       )}
 
-      {/* Decision History */}
-      {auditLog.length > 0 && (
-        <div style={{ marginBottom: '10px' }}>
-          <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '6px' }}>Decision History</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            {displayAudit.map((log, i) => (
-              <div key={i} style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{log.changed_by_name || log.user_id || 'System'}</span>
-                {' '}{actionLabel(log.action)}{log.new_value ? ` → ${log.new_value}` : ''}
-                {' '}<span style={{ color: 'var(--text-muted)' }}>at {new Date(log.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-              </div>
-            ))}
-          </div>
-          {auditLog.length > 5 && !showFullAudit && (
-            <button onClick={() => setShowFullAudit(true)} style={{ marginTop: '6px', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '11px', padding: 0 }}>View full audit log →</button>
-          )}
-        </div>
-      )}
-
       {/* Score — de-emphasized, bottom right */}
       {topAlert?.anomaly_score != null && (
         <div style={{ textAlign: 'right', marginTop: '4px' }}>
@@ -4175,16 +4156,25 @@ export default function AppV2() {
 
                       {/* SECTION 3 — EMPLOYEE SNAPSHOT */}
                       {(() => {
-                        const emp = caseDetail.emp_id;
+                        const [empProfile, setEmpProfile] = React.useState(null);
+                        const [empCaseCount, setEmpCaseCount] = React.useState(null);
+                        React.useEffect(() => {
+                          if (!caseDetail?.emp_id) return;
+                          const h = authHeaders();
+                          fetch(`${API_BASE}/employees/${caseDetail.emp_id}/profile`, { headers: h })
+                            .then(r => r.ok ? r.json() : null).then(d => setEmpProfile(d)).catch(() => {});
+                          fetch(`${API_BASE}/cases?emp_id=${caseDetail.emp_id}&limit=50`, { headers: h })
+                            .then(r => r.json()).then(d => setEmpCaseCount((d.cases||[]).filter(c => c.status !== 'Closed' && c.status !== 'Resolved').length)).catch(() => {});
+                        }, [caseDetail?.emp_id]);
                         return (
                           <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
                             <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px' }}>Employee Snapshot</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
                               {[
-                                ['Role', caseDetail.employee_role || '—'],
-                                ['Dept', caseDetail.department || '—'],
-                                ['EMP ID', `EMP-${emp}`],
-                                ['Cases', caseDetail.case_id ? '—' : '—'],
+                                ['Role', empProfile?.role || caseDetail.employee_role || '—'],
+                                ['Dept', empProfile?.dept_id ? `Dept ${empProfile.dept_id}` : caseDetail.department || '—'],
+                                ['EMP ID', `EMP-${caseDetail.emp_id}`],
+                                ['Open Cases', empCaseCount !== null ? String(empCaseCount) : '…'],
                               ].map(([label, val]) => (
                                 <div key={label}>
                                   <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>

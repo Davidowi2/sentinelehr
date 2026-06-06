@@ -1532,7 +1532,7 @@ def get_case(
     raise HTTPException(404, "Case not found") 
   
   cursor.execute( 
-    """SELECT l.*, u.username as changed_by_name 
+    """SELECT l.*, u.email as changed_by_name 
        FROM case_audit_log l 
        LEFT JOIN users u ON l.user_id = u.id 
        WHERE l.case_id = %s 
@@ -2003,7 +2003,7 @@ def export_case_report(
             
         # 4. Fetch audit log / timeline
         cursor.execute("""
-            SELECT l.*, u.username as actor_name 
+            SELECT l.*, u.email as actor_name 
             FROM case_audit_log l 
             LEFT JOIN users u ON l.user_id = u.id 
             WHERE l.case_id = %s 
