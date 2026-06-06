@@ -4212,7 +4212,7 @@ export default function AppV2() {
                                   </div>
                                   <div style={{ flex: 1, minWidth: 0, paddingBottom: '4px' }}>
                                     <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
-                                      {log.changed_by_name || `User ${log.user_id}` || 'System'} — {actionMap[log.action] || log.action}
+                                      {log.user_email || `User ${log.user_id}` || 'System'} — {actionMap[log.action] || log.action}
                                       {log.new_value ? ` → ${log.new_value}` : ''}
                                     </div>
                                     {log.note && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>"{log.note}"</div>}

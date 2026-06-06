@@ -1532,7 +1532,7 @@ def get_case(
     raise HTTPException(404, "Case not found") 
   
   cursor.execute( 
-    """SELECT l.*, u.email as changed_by_name 
+    """SELECT l.*, u.email as user_email 
        FROM case_audit_log l 
        LEFT JOIN users u ON l.user_id = u.id 
        WHERE l.case_id = %s 
