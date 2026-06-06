@@ -2163,7 +2163,8 @@ export default function AppV2() {
   const [alertsTotal, setAlertsTotal] = useState(0) 
   const [alertsLoading, setAlertsLoading] = useState(false) 
   const [alertSeverity, setAlertSeverity] = useState('') 
-  const [alertStatus, setAlertStatus] = useState('') 
+  const [alertStatus, setAlertStatus] = useState('open') 
+  const [alertSortBy, setAlertSortBy] = useState('Priority') 
   const [alertsOffset, setAlertsOffset] = useState(0) 
   const [selectedAlert, setSelectedAlert] = useState(null) 
   const [alertDetail, setAlertDetail] = useState(null) 
@@ -2215,7 +2216,7 @@ export default function AppV2() {
   const [unsavedWarningType, setUnsavedWarningType] = useState(null)
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
   const [notifCount, setNotifCount] = useState(0)
-  const [dismissForm, setDismissForm] = useState({ open: false, reasonCode: '', reasonDetail: '' })
+  const [dismissForm, setDismissForm] = useState({ open: false, alertId: null, reasonCode: '', reasonDetail: '' })
   const [dismissing, setDismissing] = useState(false)
   const [briefingCases, setBriefingCases] = useState([])
   const [briefingLoading, setBriefingLoading] = useState(false)
@@ -2412,7 +2413,8 @@ export default function AppV2() {
         limit: LIMIT, 
         offset: alertsOffset, 
         severity: alertSeverity, 
-        status: alertStatus 
+        status: alertStatus,
+        sort_by: alertSortBy
       }) 
       const res = await secureFetch(`${API_BASE}/alerts?${query}`, { 
         headers: authHeaders() 
@@ -2755,7 +2757,7 @@ export default function AppV2() {
 
   useEffect(() => { 
     if (token && activeView === 'alerts') fetchAlerts() 
-  }, [token, activeView, alertSeverity, alertStatus, alertsOffset]) 
+  }, [token, activeView, alertSeverity, alertStatus, alertSortBy, alertsOffset]) 
   
   useEffect(() => { 
     if (token && activeView === 'cases') fetchCases() 
@@ -3736,6 +3738,36 @@ export default function AppV2() {
                       textTransform: 'uppercase',
                       color: '#879298',
                       marginBottom: '8px'
+                    }}>STATUS</div>
+                    <select 
+                      value={alertStatus} 
+                      onChange={e => {setAlertStatus(e.target.value); setAlertsOffset(0)}}
+                      style={{
+                        background: '#000f21',
+                        border: '1px solid rgba(140,144,159,0.2)',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '13px',
+                        color: '#d3e4fe',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        outline: 'none',
+                        minWidth: '160px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">All</option>
+                      <option value="open">Needs Review</option>
+                      <option value="dismissed">Dismissed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: '#879298',
+                      marginBottom: '8px'
                     }}>SEVERITY</div>
                     <select 
                       value={alertSeverity} 
@@ -3767,10 +3799,10 @@ export default function AppV2() {
                       textTransform: 'uppercase',
                       color: '#879298',
                       marginBottom: '8px'
-                    }}>STATUS</div>
+                    }}>SORT BY</div>
                     <select 
-                      value={alertStatus} 
-                      onChange={e => {setAlertStatus(e.target.value); setAlertsOffset(0)}}
+                      value={alertSortBy} 
+                      onChange={e => {setAlertSortBy(e.target.value); setAlertsOffset(0)}}
                       style={{
                         background: '#000f21',
                         border: '1px solid rgba(140,144,159,0.2)',
@@ -3784,11 +3816,9 @@ export default function AppV2() {
                         cursor: 'pointer'
                       }}
                     >
-                      <option value="">All</option>
-                      <option value="open">Open</option>
-                      <option value="investigating">Investigating</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="dismissed">Dismissed</option>
+                      <option value="Priority">Priority</option>
+                      <option value="Date">Date</option>
+                      <option value="Score">Score</option>
                     </select>
                   </div>
                 </div>
@@ -3838,13 +3868,13 @@ export default function AppV2() {
                 <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse' }}> 
                   <thead> 
                     <tr style={{ background: 'rgba(27,43,63,0.5)' }}> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>SEVERITY</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298', width: '100px' }}>SEVERITY</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>STORY</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>EMPLOYEE</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>RULES</th> 
                       <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>SCORE</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>DATE</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>EXPLANATION</th> 
-                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298' }}>ACTION</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298', width: '80px' }}>AGE</th> 
+                      <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298', width: '200px' }}>ACTION</th> 
                     </tr> 
                   </thead> 
                   <tbody> 
@@ -3852,97 +3882,232 @@ export default function AppV2() {
                      alerts.filter(a => {
                        if (!alertDateFilter) return true;
                        return a.alert_date && a.alert_date.split('T')[0] === alertDateFilter;
-                     }).map(a => ( 
-                      <tr 
-                        key={a.alert_id} 
-                        style={{ borderTop: '1px solid rgba(62,72,77,0.3)', transition: 'background 0.2s', verticalAlign: 'middle', opacity: a.status === 'dismissed' ? 0.45 : 1 }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(38,54,74,0.3)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      > 
-                        <td style={{ padding: '14px 20px' }}>
-                          {a.status === 'dismissed' ? (
-                            <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'rgba(107,114,128,0.15)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' }}>DISMISSED</span>
-                          ) : (
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            background: a.adjusted_severity === 'Critical' ? '#f43f5e1a' : a.adjusted_severity === 'High' ? '#f973161a' : '#3b82f61a',
-                            color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6',
-                            border: `1px solid ${a.adjusted_severity === 'Critical' ? '#f43f5e33' : a.adjusted_severity === 'High' ? '#f9731633' : '#3b82f633'}`
-                          }}>{a.adjusted_severity}</span>
-                          )}
-                        </td> 
-                        <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#d3e4fe', fontFamily: "'JetBrains Mono', monospace" }}>EMP-{a.emp_id}</td> 
-                        <td style={{ padding: '14px 20px' }}> 
-                          <div className="flex flex-wrap gap-1">
-                            {a.rules_triggered.split(',').map(r => ( 
-                              <span 
-                                key={r} 
-                                title={RULE_DESCRIPTIONS[r.trim()] || r}
-                                style={{ 
-                                  fontSize: '10px', 
-                                  background: '#26364a', 
-                                  border: '1px solid rgba(140,144,159,0.2)', 
-                                  padding: '3px 8px', 
-                                  borderRadius: '6px', 
-                                  color: '#bdc8ce',
-                                  cursor: 'help',
-                                  display: 'inline-block'
-                                }}
-                              >
-                                {r}
-                              </span> 
-                            ))} 
-                          </div>
-                        </td> 
-                        <td style={{ 
-                          padding: '14px 20px', 
-                          fontSize: '14px', 
-                          fontWeight: '700', 
-                          fontFamily: "'JetBrains Mono', monospace",
-                          color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6'
-                        }}>
-                          {a.anomaly_score.toFixed(2)}
-                          <span style={{
-                            marginLeft: '8px',
-                            fontSize: '9px',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: a.anomaly_score > 0.7 ? '#f43f5e1a' : a.anomaly_score >= 0.4 ? '#f973161a' : '#8792981a',
-                            color: a.anomaly_score > 0.7 ? '#f43f5e' : a.anomaly_score >= 0.4 ? '#f97316' : '#879298',
-                            border: `1px solid ${a.anomaly_score > 0.7 ? '#f43f5e33' : a.anomaly_score >= 0.4 ? '#f9731633' : '#87929833'}`
-                          }}>
-                            {a.anomaly_score > 0.7 ? 'HIGH' : a.anomaly_score >= 0.4 ? 'MED' : 'LOW'}
-                          </span>
-                        </td> 
-                        <td style={{ padding: '14px 20px', fontSize: '14px', color: '#bdc8ce' }}>{new Date(a.alert_date).toLocaleDateString()}</td> 
-                        <td style={{ padding: '14px 20px', fontSize: '14px', color: '#879298', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.explanation}>{a.explanation}</td> 
-                        <td style={{ padding: '14px 20px' }}> 
-                          <button 
-                            onClick={() => {setSelectedAlert(a.alert_id); fetchAlertDetail(a.alert_id)}} 
+                     }).map(a => {
+                      const daysSince = Math.floor((new Date() - new Date(a.alert_date)) / (1000 * 60 * 60 * 24));
+                      const isDismissed = a.status === 'dismissed';
+                      
+                      const RULE_LABELS_FULL = {
+                        'R1': 'Volume Spike',
+                        'R2': 'Off-Hours',
+                        'R3': 'Cross-Department',
+                        'R4': 'VIP Record',
+                        'R7': 'Break Glass',
+                        'R8': 'Sensitive Record',
+                        'R_SENSITIVE': 'Sensitive Flag'
+                      };
+
+                      return (
+                        <React.Fragment key={a.alert_id}>
+                          <tr 
                             style={{ 
-                              padding: '4px 12px', 
-                              background: '#2563eb', 
-                              color: '#fff', 
-                              border: 'none', 
-                              borderRadius: '6px', 
-                              fontSize: '11px', 
-                              fontWeight: '700', 
-                              cursor: 'pointer',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
-                              transition: 'all 0.2s'
+                              borderTop: '1px solid rgba(62,72,77,0.3)', 
+                              transition: 'background 0.2s', 
+                              verticalAlign: 'middle', 
+                              opacity: isDismissed ? 0.45 : 1,
+                              background: isDismissed ? 'rgba(0,0,0,0.1)' : 'transparent'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
-                          >REVIEW</button> 
-                        </td> 
-                      </tr> 
-                    ))} 
+                            onMouseEnter={e => !isDismissed && (e.currentTarget.style.background = 'rgba(38,54,74,0.3)')}
+                            onMouseLeave={e => !isDismissed && (e.currentTarget.style.background = 'transparent')}
+                          > 
+                            <td style={{ padding: '14px 20px' }}>
+                              {isDismissed ? (
+                                <span style={{ padding: '4px 10px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'rgba(107,114,128,0.15)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' }}>DISMISSED</span>
+                              ) : (
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: '800',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                background: a.adjusted_severity === 'Critical' ? '#f43f5e1a' : a.adjusted_severity === 'High' ? '#f973161a' : '#3b82f61a',
+                                color: a.adjusted_severity === 'Critical' ? '#f43f5e' : a.adjusted_severity === 'High' ? '#f97316' : '#3b82f6',
+                                border: `1px solid ${a.adjusted_severity === 'Critical' ? '#f43f5e33' : a.adjusted_severity === 'High' ? '#f9731633' : '#3b82f633'}`
+                              }}>{a.adjusted_severity}</span>
+                              )}
+                            </td> 
+                            <td style={{ padding: '14px 20px' }}>
+                              <div style={{ fontSize: '14px', fontWeight: '500', color: isDismissed ? '#879298' : '#d3e4fe', lineHeight: '1.4' }}>
+                                {/* Plain-English story (full explanation) */}
+                                {a.explanation}
+                              </div>
+                              {isDismissed && a.reviewed_at && (
+                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                                  Dismissed by {a.reviewed_by || 'System'} at {new Date(a.reviewed_at).toLocaleString()}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '14px 20px' }}>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#bdc8ce' }}>{a.emp_name || `EMP-${a.emp_id}`}</div>
+                              <div style={{ fontSize: '11px', color: '#879298', marginTop: '2px' }}>{(a.emp_role || '').split('_').map(w => w[0]?.toUpperCase()).join('')} • {a.emp_dept || 'General'}</div>
+                            </td> 
+                            <td style={{ padding: '14px 20px' }}> 
+                              <div className="flex flex-wrap gap-1">
+                                {(a.rules_triggered || '').split(',').map(r => ( 
+                                  <span 
+                                    key={r} 
+                                    title={RULE_DESCRIPTIONS[r.trim()] || r}
+                                    style={{ 
+                                      fontSize: '9px', 
+                                      background: '#26364a', 
+                                      border: '1px solid rgba(140,144,159,0.2)', 
+                                      padding: '2px 6px', 
+                                      borderRadius: '4px', 
+                                      color: '#bdc8ce',
+                                      cursor: 'help',
+                                      display: 'inline-block',
+                                      fontWeight: '600'
+                                    }}
+                                  >
+                                    {RULE_LABELS_FULL[r.trim()] || r}
+                                  </span> 
+                                ))} 
+                              </div>
+                            </td> 
+                            <td style={{ 
+                              padding: '14px 20px', 
+                              fontSize: '13px', 
+                              fontWeight: '700', 
+                              fontFamily: "'JetBrains Mono', monospace",
+                              color: isDismissed ? '#64748b' : (a.anomaly_score > 0.7 ? '#f43f5e' : a.anomaly_score >= 0.4 ? '#f97316' : '#3b82f6')
+                            }}>
+                              {a.anomaly_score.toFixed(2)}
+                              <div style={{
+                                fontSize: '9px',
+                                fontWeight: '800',
+                                color: isDismissed ? '#64748b' : (a.anomaly_score > 0.7 ? '#f43f5e' : a.anomaly_score >= 0.4 ? '#f97316' : '#879298'),
+                                marginTop: '2px'
+                              }}>
+                                {a.anomaly_score > 0.7 ? 'HIGH' : a.anomaly_score >= 0.4 ? 'MED' : 'LOW'}
+                              </div>
+                            </td> 
+                            <td style={{ padding: '14px 20px', fontSize: '13px', color: '#879298', fontWeight: '600' }}>
+                              {daysSince === 0 ? 'Today' : `${daysSince}d`}
+                            </td> 
+                            <td style={{ padding: '14px 20px' }}> 
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                {!isDismissed && (
+                                  <button 
+                                    onClick={() => setDismissForm({ open: true, alertId: a.alert_id, reasonCode: '', reasonDetail: '' })} 
+                                    style={{ 
+                                      padding: '6px 12px', 
+                                      background: 'transparent', 
+                                      color: '#879298', 
+                                      border: '1px solid rgba(135,146,152,0.3)', 
+                                      borderRadius: '6px', 
+                                      fontSize: '11px', 
+                                      fontWeight: '700', 
+                                      cursor: 'pointer',
+                                      textTransform: 'uppercase',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.borderColor = '#879298'}
+                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(135,146,152,0.3)'}
+                                  >Dismiss</button> 
+                                )}
+                                <button 
+                                  onClick={async () => {
+                                    if (a.case_id) {
+                                      setSelectedCase(a.case_id);
+                                      setActiveView('cases');
+                                      await fetchCaseDetail(a.case_id);
+                                    } else {
+                                      handleCreateCaseFromAlert(a.alert_id);
+                                    }
+                                  }} 
+                                  style={{ 
+                                    padding: '6px 12px', 
+                                    background: '#2563eb', 
+                                    color: '#fff', 
+                                    border: 'none', 
+                                    borderRadius: '6px', 
+                                    fontSize: '11px', 
+                                    fontWeight: '700', 
+                                    cursor: 'pointer',
+                                    textTransform: 'uppercase',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+                                  onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+                                >{a.case_id ? 'View Case' : 'Open Case'}</button>
+                              </div>
+                            </td> 
+                          </tr>
+                          {dismissForm.open && dismissForm.alertId === a.alert_id && (
+                            <tr>
+                              <td colSpan="7" style={{ padding: '0 20px 20px' }}>
+                                <div style={{ 
+                                  background: 'rgba(15,23,42,0.6)', 
+                                  border: '1px solid rgba(140,144,159,0.2)', 
+                                  borderRadius: '8px', 
+                                  padding: '16px',
+                                  marginTop: '-1px',
+                                  animation: 'slideIn 0.2s ease-out'
+                                }}>
+                                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontSize: '10px', fontWeight: '700', color: '#879298', textTransform: 'uppercase', marginBottom: '8px' }}>Reason for dismissal</div>
+                                      <select 
+                                        value={dismissForm.reasonCode}
+                                        onChange={e => setDismissForm(prev => ({ ...prev, reasonCode: e.target.value }))}
+                                        style={{ width: '100%', background: '#000f21', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '6px', padding: '8px', color: '#d3e4fe', fontSize: '13px', outline: 'none' }}
+                                      >
+                                        <option value="">Select a reason...</option>
+                                        <option value="False Positive">False Positive</option>
+                                        <option value="Expected Business Activity">Expected Business Activity</option>
+                                        <option value="Duplicate">Duplicate</option>
+                                        <option value="Previously Investigated">Previously Investigated</option>
+                                        <option value="Other">Other</option>
+                                      </select>
+                                    </div>
+                                    <div style={{ flex: 2 }}>
+                                      <div style={{ fontSize: '10px', fontWeight: '700', color: '#879298', textTransform: 'uppercase', marginBottom: '8px' }}>Additional Detail (Optional)</div>
+                                      <input 
+                                        type="text"
+                                        placeholder="Add notes..."
+                                        value={dismissForm.reasonDetail}
+                                        onChange={e => setDismissForm(prev => ({ ...prev, reasonDetail: e.target.value }))}
+                                        style={{ width: '100%', background: '#000f21', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '6px', padding: '8px', color: '#d3e4fe', fontSize: '13px', outline: 'none' }}
+                                      />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '24px' }}>
+                                      <button 
+                                        disabled={!dismissForm.reasonCode || dismissing}
+                                        onClick={async () => {
+                                          setDismissing(true);
+                                          try {
+                                            const res = await secureFetch(`${API_BASE}/alerts/${a.alert_id}/dismiss`, {
+                                              method: 'POST',
+                                              headers: authHeaders(),
+                                              body: JSON.stringify({ 
+                                                reason_code: dismissForm.reasonCode,
+                                                reason_detail: dismissForm.reasonDetail,
+                                                reviewed_by: userEmail
+                                              })
+                                            });
+                                            if (res.ok) {
+                                              showToast('Alert dismissed');
+                                              setDismissForm({ open: false, alertId: null, reasonCode: '', reasonDetail: '' });
+                                              fetchAlerts();
+                                            }
+                                          } catch(e) {}
+                                          setDismissing(false);
+                                        }}
+                                        style={{ padding: '8px 16px', background: '#f43f5e', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: dismissForm.reasonCode ? 'pointer' : 'default', opacity: dismissForm.reasonCode ? 1 : 0.5 }}
+                                      >Confirm Dismiss</button>
+                                      <button 
+                                        onClick={() => setDismissForm({ open: false, alertId: null, reasonCode: '', reasonDetail: '' })}
+                                        style={{ background: 'transparent', border: 'none', color: '#879298', fontSize: '12px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                                      >Cancel</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                     })} 
                   </tbody> 
                 </table> 
                 {alertsTotal > LIMIT && ( 
