@@ -2175,7 +2175,11 @@ export default function AppV2() {
   const [ocrStatus, setOcrStatus] = useState(null)
   const [startingOcr, setStartingOcr] = useState(false)
   const [flaggingCase, setFlaggingCase] = useState(false)
-  const [statusSnackbar, setStatusSnackbar] = useState(null) 
+  const [statusSnackbar, setStatusSnackbar] = useState(null)
+  const [showSnoozeForm, setShowSnoozeForm] = useState(false)
+  const [snoozeForm, setSnoozeForm] = useState({ waiting_on: '', due_back_date: '', reminder_date: '', reason: '' })
+  const [snoozingCase, setSnoozingCase] = useState(false)
+  const [auditTrailOpen, setAuditTrailOpen] = useState(false) 
   
   const [investigateId, setInvestigateId] = useState('') 
   const [thresholds, setThresholds] = useState({ critical: 0.7, high: 0.4, medium: 0.2 })
@@ -4145,244 +4149,289 @@ export default function AppV2() {
               {selectedCase && ( 
                 <Drawer title="Case Investigation" id={selectedCase} onClose={handleCloseCaseDrawer} loading={!caseDetail} subtitle={caseDetail && <SeverityBadge severity={caseDetail.priority} />}> 
                   {caseDetail && ( 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                      {/* IT Director Flagged Banner */}
-                      {!!(caseDetail.it_director_flagged) && (
-                        <div style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', fontWeight: '600', color: '#f97316', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          ⚑ Flagged for re-review by IT Director
+                      {/* SECTION 1 — HEADER */}
+                      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px 20px' }}>
+                        {!!(caseDetail.it_director_flagged) && (
+                          <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: '6px', padding: '6px 12px', fontSize: '11px', fontWeight: '700', color: '#f97316', marginBottom: '12px' }}>⚑ Flagged for re-review by IT Director</div>
+                        )}
+                        <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '10px', lineHeight: '1.3' }}>
+                          {caseDetail.case_title || `Case ${caseDetail.case_id}`}
                         </div>
-                      )}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{caseDetail.case_id}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>EMP-{caseDetail.emp_id}</span>
+                          {(() => { const pc = { Critical:'#f43f5e',High:'#f97316',Medium:'#3b82f6',Low:'#64748b' }; const c = pc[caseDetail.priority]||'#64748b'; return <span style={{ padding:'2px 8px', borderRadius:'4px', fontSize:'10px', fontWeight:'700', textTransform:'uppercase', background:`${c}1a`, color:c, border:`1px solid ${c}33` }}>{caseDetail.priority}</span>; })()}
+                          <span style={{ padding:'2px 8px', borderRadius:'4px', fontSize:'10px', fontWeight:'600', background:'rgba(100,116,139,0.1)', color:'var(--text-secondary)', border:'1px solid rgba(100,116,139,0.2)' }}>{caseDetail.status}</span>
+                          <span style={{ fontSize:'11px', color:'var(--text-secondary)' }}>
+                            {caseDetail.status?.startsWith('Pending') ? `${caseDetail.status} • ${caseDetail.days_open||0}d waiting${caseDetail.waiting_on ? ` on ${caseDetail.waiting_on}` : ''}` : `${caseDetail.days_open||0}d open`}
+                          </span>
+                        </div>
+                      </div>
 
-                      {/* Case Summary — evidence-first layout */}
+                      {/* SECTION 2 — THE WHY */}
                       <CaseSummary caseObj={caseDetail} authHeaders={authHeaders} ocrStatus={ocrStatus} />
 
-                      {/* Threaded Notes */}
-                      <div>
-                        <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Investigation Notes</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', maxHeight: '320px', overflowY: 'auto' }}>
+                      {/* SECTION 3 — EMPLOYEE SNAPSHOT */}
+                      {(() => {
+                        const emp = caseDetail.emp_id;
+                        return (
+                          <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
+                            <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px' }}>Employee Snapshot</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                              {[
+                                ['Role', caseDetail.employee_role || '—'],
+                                ['Dept', caseDetail.department || '—'],
+                                ['EMP ID', `EMP-${emp}`],
+                                ['Cases', caseDetail.case_id ? '—' : '—'],
+                              ].map(([label, val]) => (
+                                <div key={label}>
+                                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
+                                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: label === 'EMP ID' ? 'monospace' : 'inherit' }}>{val}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* SECTION 4 — DECISION HISTORY */}
+                      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '4px' }}>Decision History</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>Every action on this case, with who did it and why.</div>
+                        {(!caseDetail.audit_log || caseDetail.audit_log.length === 0) ? (
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Only created — no actions taken yet.</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                            {[...caseDetail.audit_log].reverse().map((log, i) => {
+                              const actionMap = { status_change:'Status changed', status_changed:'Status changed', outcome_change:'Outcome set', outcome_set:'Outcome set', snoozed:'Snoozed', unsnoozed:'Unsnoozed', created:'Created', note_added:'Note added', assigned:'Assigned', flag_for_review:'Flagged' };
+                              return (
+                                <div key={i} style={{ display: 'flex', gap: '12px', paddingBottom: '10px', position: 'relative' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', marginTop: '3px', flexShrink: 0 }} />
+                                    {i < caseDetail.audit_log.length - 1 && <div style={{ width: '2px', flex: 1, background: 'var(--border)', marginTop: '4px' }} />}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0, paddingBottom: '4px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                      {log.changed_by_name || `User ${log.user_id}` || 'System'} — {actionMap[log.action] || log.action}
+                                      {log.new_value ? ` → ${log.new_value}` : ''}
+                                    </div>
+                                    {log.note && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>"{log.note}"</div>}
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(log.timestamp).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* SECTION 5 — INVESTIGATION NOTES */}
+                      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px' }}>Investigation Notes</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px', maxHeight: '280px', overflowY: 'auto' }}>
                           {caseNotesLoading ? (
                             <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Loading notes...</div>
                           ) : caseNotes.length === 0 ? (
-                            <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>No notes yet.</div>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '13px', fontStyle: 'italic' }}>No investigation notes yet. Be the first to document your findings.</div>
                           ) : caseNotes.map(note => {
-                            const roleBadgeColor = note.author_role === 'it_director' ? { bg: 'rgba(249,115,22,0.12)', color: '#f97316', border: 'rgba(249,115,22,0.3)' }
-                              : note.author_role === 'system' ? { bg: 'rgba(107,114,128,0.12)', color: '#9ca3af', border: 'rgba(107,114,128,0.3)' }
-                              : { bg: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: 'rgba(59,130,246,0.3)' };
+                            const rbc = note.author_role==='it_director' ? {bg:'rgba(249,115,22,0.12)',color:'#f97316',border:'rgba(249,115,22,0.3)'}
+                              : note.author_role==='system' ? {bg:'rgba(107,114,128,0.12)',color:'#9ca3af',border:'rgba(107,114,128,0.3)'}
+                              : {bg:'rgba(59,130,246,0.12)',color:'#60a5fa',border:'rgba(59,130,246,0.3)'};
                             return (
-                              <div key={note.id} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', background: roleBadgeColor.bg, color: roleBadgeColor.color, border: `1px solid ${roleBadgeColor.border}` }}>
-                                      {(note.author_role || '').replace(/_/g, ' ')}
-                                    </span>
-                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{note.author_email}</span>
+                              <div key={note.id} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ padding:'2px 6px', borderRadius:'4px', fontSize:'9px', fontWeight:'700', textTransform:'uppercase', background:rbc.bg, color:rbc.color, border:`1px solid ${rbc.border}` }}>{(note.author_role||'').replace(/_/g,' ')}</span>
+                                    <span style={{ fontSize:'11px', color:'var(--text-secondary)' }}>{note.author_email}</span>
                                   </div>
-                                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{new Date(note.created_at).toLocaleString()}</span>
+                                  <span style={{ fontSize:'10px', color:'var(--text-muted)' }}>{new Date(note.created_at).toLocaleString()}</span>
                                 </div>
                                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.5' }}>{note.content}</div>
                               </div>
                             );
                           })}
                         </div>
-                        <textarea
-                          value={caseNote}
-                          onChange={e => setCaseNote(e.target.value)}
+                        <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '6px', padding: '8px 12px', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                          💡 <strong>Tip:</strong> Document your reasoning. This becomes part of the legal audit trail.
+                        </div>
+                        <textarea value={caseNote} onChange={e => setCaseNote(e.target.value)}
                           style={{ width: '100%', minHeight: '72px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
-                          placeholder="Add a note..."
-                        />
-                        <button
-                          disabled={!caseNote.trim() || addingNote}
+                          placeholder="Add a note..." />
+                        <button disabled={!caseNote.trim() || addingNote}
                           onClick={async () => {
                             if (!caseNote.trim()) return;
                             setAddingNote(true);
                             try {
-                              const res = await fetch(`${API_BASE}/cases/${selectedCase}/notes`, {
-                                method: 'POST', headers: authHeaders(),
-                                body: JSON.stringify({ content: caseNote, note_type: 'investigation' })
-                              });
-                              if (res.ok) {
-                                const newNote = await res.json();
-                                setCaseNotes(prev => [...prev, newNote]);
-                                setCaseNote('');
-                                fetchNotifCount();
-                              } else { showToast('Failed to add note', 'error'); }
+                              const res = await fetch(`${API_BASE}/cases/${selectedCase}/notes`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ content: caseNote, note_type: 'investigation' }) });
+                              if (res.ok) { const n = await res.json(); setCaseNotes(prev => [...prev, n]); setCaseNote(''); fetchNotifCount(); }
+                              else { showToast('Failed to add note', 'error'); }
                             } catch { showToast('Connection error', 'error'); }
                             setAddingNote(false);
                           }}
-                          style={{ marginTop: '8px', width: '100%', padding: '10px', background: caseNote.trim() ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: caseNote.trim() ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: caseNote.trim() ? 'pointer' : 'default', opacity: addingNote ? 0.7 : 1 }}
-                        >
+                          style={{ marginTop: '8px', width: '100%', padding: '10px', background: caseNote.trim() ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: caseNote.trim() ? '#000' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: caseNote.trim() ? 'pointer' : 'default', opacity: addingNote ? 0.7 : 1 }}>
                           {addingNote ? 'Adding...' : 'Add Note'}
                         </button>
                       </div>
 
-                      {/* Role-based controls */}
-                      {userRole === 'it_director' ? (
-                        /* IT Director: Flag only */
-                        <button
-                          disabled={flaggingCase || caseDetail.it_director_flagged}
-                          onClick={async () => {
-                            setFlaggingCase(true);
-                            try {
-                              const res = await fetch(`${API_BASE}/cases/${selectedCase}/flag`, { method: 'POST', headers: authHeaders() });
-                              if (res.ok) {
-                                showToast('Case flagged — compliance officer notified', 'success');
-                                setCaseDetail(prev => ({ ...prev, it_director_flagged: true, status: 'Under Investigation' }));
-                                fetchCases();
-                                fetchNotifCount();
-                              } else { showToast('Failed to flag case', 'error'); }
-                            } catch { showToast('Connection error', 'error'); }
-                            setFlaggingCase(false);
-                          }}
-                          style={{ width: '100%', padding: '12px', background: caseDetail.it_director_flagged ? 'rgba(249,115,22,0.1)' : '#0f172a', border: `1px solid ${caseDetail.it_director_flagged ? '#f97316' : '#f97316'}`, color: '#f97316', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: caseDetail.it_director_flagged ? 'default' : 'pointer', opacity: flaggingCase ? 0.7 : 1 }}
-                        >
-                          {caseDetail.it_director_flagged ? '⚑ Already Flagged' : flaggingCase ? 'Flagging...' : '⚑ Flag for Re-Review'}
-                        </button>
-                      ) : (
-                        /* Compliance officer / admin: status + outcome + save + OCR */
-                        <>
-                          <div>
-                            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div>
-                            <StatusButtons options={['Open', 'Under Investigation', 'Pending HR', 'Resolved']} current={caseStatusUpdate} onChange={setCaseStatusUpdate} />
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Outcome</div>
-                            <Select value={caseOutcome} onChange={e => setCaseOutcome(e.target.value)} style={{ width: '100%' }}>
-                              <option value="">— Not set —</option>
-                              <option>Legitimate Access</option>
-                              <option>Policy Violation</option>
-                              <option>Training Required</option>
-                              <option>Termination Recommended</option>
-                            </Select>
-                          </div>
-                          <button onClick={saveCaseUpdate} disabled={savingCase} style={{ width: '100%', padding: '14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', opacity: savingCase ? 0.7 : 1 }}>
-                            {savingCase ? 'Saving...' : 'Save Changes'}
+                      {/* SECTION 6 — ACTIONS */}
+                      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px' }}>Actions</div>
+
+                        {userRole === 'it_director' ? (
+                          <button disabled={flaggingCase || !!(caseDetail.it_director_flagged)}
+                            onClick={async () => {
+                              setFlaggingCase(true);
+                              try {
+                                const res = await fetch(`${API_BASE}/cases/${selectedCase}/flag`, { method: 'POST', headers: authHeaders() });
+                                if (res.ok) { showToast('Case flagged — compliance officer notified', 'success'); setCaseDetail(prev => ({ ...prev, it_director_flagged: true, status: 'Under Investigation' })); fetchCases(); fetchNotifCount(); }
+                                else { showToast('Failed to flag case', 'error'); }
+                              } catch { showToast('Connection error', 'error'); }
+                              setFlaggingCase(false);
+                            }}
+                            style={{ width: '100%', padding: '12px', background: !!(caseDetail.it_director_flagged) ? 'rgba(249,115,22,0.1)' : '#0f172a', border: '1px solid #f97316', color: '#f97316', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: !!(caseDetail.it_director_flagged) ? 'default' : 'pointer', opacity: flaggingCase ? 0.7 : 1 }}>
+                            {!!(caseDetail.it_director_flagged) ? '⚑ Already Flagged' : flaggingCase ? 'Flagging...' : '⚑ Flag for Re-Review'}
                           </button>
+                        ) : (
+                          <>
+                            <div style={{ marginBottom: '12px' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div>
+                              <StatusButtons options={['Open', 'Under Investigation', 'Pending HR', 'Resolved']} current={caseStatusUpdate} onChange={setCaseStatusUpdate} />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Outcome</div>
+                              <Select value={caseOutcome} onChange={e => setCaseOutcome(e.target.value)} style={{ width: '100%' }}>
+                                <option value="">— Not set —</option>
+                                <option>Legitimate Access</option>
+                                <option>Policy Violation</option>
+                                <option>Training Required</option>
+                                <option>Termination Recommended</option>
+                              </Select>
+                            </div>
+                            <button onClick={saveCaseUpdate} disabled={savingCase} style={{ width: '100%', padding: '12px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: '700', textTransform: 'uppercase', fontSize: '13px', cursor: 'pointer', opacity: savingCase ? 0.7 : 1, marginBottom: '10px' }}>
+                              {savingCase ? 'Saving...' : 'Save Changes'}
+                            </button>
 
-                          {/* OCR Assessment — full panel */}
-                          {!!(caseDetail.requires_ocr_review) && !!ocrStatus && (() => {
-                            const hrs = ocrStatus.hours_remaining;
-                            const breachConfirmed = ocrStatus.breach_confirmed;
-                            const clockStarted = ocrStatus.ocr_clock_started;
-                            const notifiedAt = ocrStatus.ocr_notified_at;
+                            {/* Snooze / Park */}
+                            <button onClick={() => setShowSnoozeForm(o => !o)}
+                              style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: '8px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', marginBottom: showSnoozeForm ? '12px' : '0' }}>
+                              {showSnoozeForm ? '▲ Cancel Snooze' : '⏸ Snooze / Park Case'}
+                            </button>
 
-                            const urgentBg = hrs != null && hrs <= 6
-                              ? 'rgba(239,68,68,0.12)' : hrs != null && hrs <= 24
-                              ? 'rgba(251,191,36,0.10)' : 'rgba(239,68,68,0.08)';
-                            const urgentBorder = hrs != null && hrs <= 6
-                              ? 'rgba(239,68,68,0.5)' : hrs != null && hrs <= 24
-                              ? 'rgba(251,191,36,0.4)' : 'rgba(239,68,68,0.3)';
+                            {showSnoozeForm && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px' }}>
+                                <div>
+                                  <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>Waiting On</div>
+                                  <select value={snoozeForm.waiting_on} onChange={e => setSnoozeForm(f => ({ ...f, waiting_on: e.target.value }))}
+                                    style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}>
+                                    <option value="">Select...</option>
+                                    {['HR', 'IT', 'Manager', 'Legal', 'Other'].map(o => <option key={o} value={o}>{o}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>Due Back</div>
+                                  <input type="date" value={snoozeForm.due_back_date} onChange={e => setSnoozeForm(f => ({ ...f, due_back_date: e.target.value }))}
+                                    style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>Reminder (optional)</div>
+                                  <input type="date" value={snoozeForm.reminder_date} onChange={e => setSnoozeForm(f => ({ ...f, reminder_date: e.target.value }))}
+                                    style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>Reason (required)</div>
+                                  <input type="text" value={snoozeForm.reason} onChange={e => setSnoozeForm(f => ({ ...f, reason: e.target.value }))} placeholder="Why are you parking this case?"
+                                    style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                                <button disabled={snoozingCase || !snoozeForm.waiting_on || !snoozeForm.due_back_date || !snoozeForm.reason}
+                                  onClick={async () => {
+                                    setSnoozingCase(true);
+                                    try {
+                                      const res = await fetch(`${API_BASE}/cases/${selectedCase}/snooze`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(snoozeForm) });
+                                      if (res.ok) {
+                                        showToast('Case parked — will appear in Waiting on Others', 'success');
+                                        setShowSnoozeForm(false);
+                                        setSnoozeForm({ waiting_on: '', due_back_date: '', reminder_date: '', reason: '' });
+                                        fetchCaseDetail(selectedCase);
+                                      } else { showToast('Failed to snooze case', 'error'); }
+                                    } catch { showToast('Connection error', 'error'); }
+                                    setSnoozingCase(false);
+                                  }}
+                                  style={{ padding: '10px', background: snoozeForm.waiting_on && snoozeForm.due_back_date && snoozeForm.reason ? '#6366f1' : 'rgba(255,255,255,0.05)', color: snoozeForm.waiting_on && snoozeForm.due_back_date && snoozeForm.reason ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: snoozingCase ? 0.7 : 1 }}>
+                                  {snoozingCase ? 'Parking...' : 'Park Case'}
+                                </button>
+                              </div>
+                            )}
 
-                            const hrsWhole = hrs != null ? Math.floor(hrs) : null;
-                            const minsRem = hrs != null ? Math.round((hrs - Math.floor(hrs)) * 60) : null;
-                            const countdownStr = hrsWhole != null ? `${hrsWhole}h ${minsRem}m remaining` : 'calculating...';
-
-                            return (
-                              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                                <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f97316', marginBottom: '10px' }}>OCR BREACH ASSESSMENT</div>
-
-                                {/* State: notified */}
-                                {notifiedAt ? (
-                                  <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', padding: '14px' }}>
-                                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#22c55e', marginBottom: '6px' }}>✓ OCR Notified</div>
-                                    <div style={{ fontSize: '12px', color: '#86efac' }}>Notified at: {new Date(notifiedAt).toLocaleString()}</div>
-                                    {ocrStatus.notified_by && <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>By: {ocrStatus.notified_by}</div>}
-                                  </div>
-
-                                ) : breachConfirmed === false && clockStarted === null ? (
-                                  /* State: no breach documented */
-                                  <div style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.3)', borderRadius: '8px', padding: '14px', fontSize: '13px', color: '#9ca3af' }}>
-                                    No Breach Confirmed — documented.
-                                  </div>
-
-                                ) : breachConfirmed && clockStarted ? (
-                                  /* State: clock running */
-                                  <div style={{ background: urgentBg, border: `1px solid ${urgentBorder}`, borderRadius: '8px', padding: '14px' }}>
-                                    <div style={{ fontSize: '12px', fontWeight: '700', color: hrs != null && hrs <= 6 ? '#fca5a5' : '#fbbf24', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                      BREACH CONFIRMED — OCR Notification Required
+                            {/* OCR Panel */}
+                            {!!(caseDetail.requires_ocr_review) && !!ocrStatus && (() => {
+                              const hrs = ocrStatus.hours_remaining;
+                              const urgentBg = hrs != null && hrs <= 6 ? 'rgba(239,68,68,0.12)' : hrs != null && hrs <= 24 ? 'rgba(251,191,36,0.10)' : 'rgba(239,68,68,0.08)';
+                              const urgentBorder = hrs != null && hrs <= 6 ? 'rgba(239,68,68,0.5)' : hrs != null && hrs <= 24 ? 'rgba(251,191,36,0.4)' : 'rgba(239,68,68,0.3)';
+                              const countdownStr = hrs != null ? `${Math.floor(hrs)}h ${Math.round((hrs % 1) * 60)}m remaining` : 'calculating...';
+                              return (
+                                <div style={{ marginTop: '10px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                                  <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: '#f97316', marginBottom: '10px' }}>OCR Breach Assessment</div>
+                                  {ocrStatus.ocr_notified_at ? (
+                                    <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', padding: '12px', fontSize: '12px', fontWeight: '700', color: '#22c55e' }}>✓ OCR Notified — {new Date(ocrStatus.ocr_notified_at).toLocaleString()}</div>
+                                  ) : ocrStatus.breach_confirmed && ocrStatus.ocr_clock_started ? (
+                                    <div style={{ background: urgentBg, border: `1px solid ${urgentBorder}`, borderRadius: '8px', padding: '12px' }}>
+                                      <div style={{ fontSize: '11px', fontWeight: '700', color: hrs != null && hrs <= 6 ? '#fca5a5' : '#fbbf24', marginBottom: '6px', textTransform: 'uppercase' }}>BREACH CONFIRMED — OCR Notification Required</div>
+                                      <div style={{ fontSize: '24px', fontWeight: '700', fontFamily: 'monospace', color: hrs != null && hrs <= 6 ? '#f87171' : '#fbbf24', marginBottom: '8px' }}>{countdownStr}</div>
+                                      {ocrStatus.deadline_at && <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px' }}>Deadline: {new Date(ocrStatus.deadline_at).toLocaleString()}</div>}
+                                      <button disabled={startingOcr} onClick={async () => { setStartingOcr(true); try { const r = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-notified`, { method: 'PATCH', headers: authHeaders() }); if (r.ok) { showToast('OCR notification recorded', 'success'); fetchOcrStatus(selectedCase); fetchCaseNotes(selectedCase); } } catch {} setStartingOcr(false); }}
+                                        style={{ width: '100%', padding: '10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#86efac', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
+                                        {startingOcr ? 'Saving...' : 'Mark as OCR Notified'}
+                                      </button>
                                     </div>
-                                    <div style={{ fontSize: '28px', fontWeight: '700', fontFamily: 'monospace', color: hrs != null && hrs <= 6 ? '#f87171' : '#fbbf24', marginBottom: '6px' }}>{countdownStr}</div>
-                                    {ocrStatus.deadline_at && <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '12px' }}>Deadline: {new Date(ocrStatus.deadline_at).toLocaleString()}</div>}
-                                    <button
-                                      disabled={startingOcr}
-                                      onClick={async () => {
-                                        setStartingOcr(true);
-                                        try {
-                                          const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-notified`, { method: 'PATCH', headers: authHeaders() });
-                                          if (res.ok) { showToast('OCR notification recorded', 'success'); fetchOcrStatus(selectedCase); fetchCaseNotes(selectedCase); }
-                                          else { showToast('Failed to record notification', 'error'); }
-                                        } catch { showToast('Connection error', 'error'); }
-                                        setStartingOcr(false);
-                                      }}
-                                      style={{ width: '100%', padding: '10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#86efac', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
-                                    >
-                                      {startingOcr ? 'Saving...' : 'Mark as OCR Notified'}
-                                    </button>
-                                  </div>
-
-                                ) : (
-                                  /* State: not yet assessed */
-                                  <div style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.3)', borderRadius: '8px', padding: '14px' }}>
-                                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px' }}>OCR Review Required — Assess whether this case constitutes a reportable breach.</div>
+                                  ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                      <button
-                                        disabled={startingOcr}
-                                        onClick={async () => {
-                                          setStartingOcr(true);
-                                          try {
-                                            const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ breach_confirmed: true }) });
-                                            if (res.ok) { showToast('72-hour OCR notification window started', 'success'); fetchOcrStatus(selectedCase); fetchNotifCount(); }
-                                            else { showToast('Failed to start OCR assessment', 'error'); }
-                                          } catch { showToast('Connection error', 'error'); }
-                                          setStartingOcr(false);
-                                        }}
-                                        style={{ width: '100%', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
-                                      >
+                                      <button disabled={startingOcr} onClick={async () => { setStartingOcr(true); try { const r = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ breach_confirmed: true }) }); if (r.ok) { showToast('72-hour OCR clock started', 'success'); fetchOcrStatus(selectedCase); fetchNotifCount(); } } catch {} setStartingOcr(false); }}
+                                        style={{ padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
                                         {startingOcr ? 'Starting...' : 'Start OCR Assessment (72hr Clock)'}
                                       </button>
-                                      <button
-                                        disabled={startingOcr}
-                                        onClick={async () => {
-                                          setStartingOcr(true);
-                                          try {
-                                            const res = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ breach_confirmed: false }) });
-                                            if (res.ok) { showToast('No-breach documented', 'success'); fetchOcrStatus(selectedCase); }
-                                            else { showToast('Failed to record assessment', 'error'); }
-                                          } catch { showToast('Connection error', 'error'); }
-                                          setStartingOcr(false);
-                                        }}
-                                        style={{ width: '100%', padding: '10px', background: 'rgba(107,114,128,0.1)', border: '1px solid rgba(107,114,128,0.3)', color: '#9ca3af', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', opacity: startingOcr ? 0.7 : 1 }}
-                                      >
+                                      <button disabled={startingOcr} onClick={async () => { setStartingOcr(true); try { const r = await fetch(`${API_BASE}/cases/${selectedCase}/ocr-assess`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ breach_confirmed: false }) }); if (r.ok) { showToast('No-breach documented', 'success'); fetchOcrStatus(selectedCase); } } catch {} setStartingOcr(false); }}
+                                        style={{ padding: '10px', background: 'rgba(107,114,128,0.1)', border: '1px solid rgba(107,114,128,0.3)', color: '#9ca3af', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
                                         No Breach — Document and Close
                                       </button>
                                     </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </div>
+
+                      {/* SECTION 7 — AUDIT TRAIL (collapsed) */}
+                      {caseDetail.audit_log && caseDetail.audit_log.length > 0 && (
+                        <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+                          <button onClick={() => setAuditTrailOpen(o => !o)}
+                            style={{ width: '100%', padding: '12px 20px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                            <span>View Full Audit Log ({caseDetail.audit_log.length} entries)</span>
+                            <span>{auditTrailOpen ? '▲' : '▼'}</span>
+                          </button>
+                          {auditTrailOpen && (
+                            <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {caseDetail.audit_log.map((log, i) => (
+                                <div key={i} style={{ padding: '10px 12px', background: 'var(--bg-elevated)', borderRadius: '8px', borderLeft: '3px solid var(--border)', fontSize: '12px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span style={{ fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', fontSize: '10px' }}>{log.action}</span>
+                                    <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '10px' }}>{new Date(log.timestamp).toLocaleString()}</span>
                                   </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </>
+                                  <div style={{ color: 'var(--text-secondary)' }}>{log.note}</div>
+                                  <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>by {log.changed_by_name}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
 
-                      {/* Audit Trail */}
-                      {caseDetail.audit_log && caseDetail.audit_log.length > 0 && ( 
-                        <div style={{ marginTop: '4px' }}> 
-                          <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Audit Trail</div> 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}> 
-                            {caseDetail.audit_log.map((log, i) => ( 
-                              <div key={i} style={{ padding: '12px', background: 'var(--bg-elevated)', borderRadius: '8px', borderLeft: '3px solid var(--border)', fontSize: '12px' }}> 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}> 
-                                  <span style={{ fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', fontSize: '10px' }}>{log.action}</span> 
-                                  <span style={{ color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px' }}>{new Date(log.timestamp).toLocaleString()}</span> 
-                                </div> 
-                                <div style={{ color: 'var(--text-secondary)' }}>{log.note}</div> 
-                                <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>by {log.changed_by_name}</div> 
-                              </div> 
-                            ))} 
-                          </div> 
-                        </div> 
-                      )}
-                    </div> 
+                    </div>
+
+                    </div>
                   )} 
                 </Drawer> 
               )} 
