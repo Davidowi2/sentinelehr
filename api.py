@@ -1061,6 +1061,7 @@ def get_alerts(
     request: Request,
     severity: Optional[str] = None,
     status: Optional[str] = None,
+    sort_by: Optional[str] = Query(None),
     limit: int = Query(50, le=200),
     offset: int = 0,
     token_data = Depends(verify_token)
@@ -1088,6 +1089,14 @@ def get_alerts(
         count_query = f"SELECT COUNT(*) FROM ({query}) AS subquery"
         cursor.execute(count_query, params)
         total_count = cursor.fetchone()['count']
+
+        # Apply sort order
+        order_by_map = {
+            "Priority": "ORDER BY priority_rank ASC, alert_date DESC",
+            "Date":     "ORDER BY alert_date DESC",
+            "Score":    "ORDER BY anomaly_score DESC, alert_date DESC",
+        }
+        query += " " + order_by_map.get(sort_by, "ORDER BY priority_rank ASC, alert_date DESC")
         
         # Get paginated results
         query += " LIMIT %s OFFSET %s"
@@ -1553,9 +1562,9 @@ def get_case(
     raise HTTPException(404, "Case not found") 
   
   cursor.execute( 
-    """SELECT l.*, u.email as user_email 
+    """SELECT l.*, COALESCE(u.email, CASE WHEN l.user_id = 0 THEN 'system@sentinelehr.com' ELSE 'unknown@sentinelehr.com' END) as user_email 
        FROM case_audit_log l 
-       LEFT JOIN users u ON l.user_id = u.id 
+       LEFT JOIN users u ON l.user_id = u.id AND l.user_id != 0
        WHERE l.case_id = %s 
        ORDER BY l.timestamp ASC""", 
     (case_id,) 

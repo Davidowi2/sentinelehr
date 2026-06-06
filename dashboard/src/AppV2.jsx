@@ -933,7 +933,7 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ fontSize: '10px', color: '#bdc8ce' }}>{s.count} open cases</div>
-                  <div style={{ fontSize: '10px', color: '#64748b' }}>Max risk: <span style={{ color: s.maxScore > 0.7 ? '#f43f5e' : s.maxScore > 0.4 ? '#f97316' : '#879298', fontWeight: '700' }}>{s.maxScore.toFixed(2)}</span></div>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>Max risk: <span style={{ color: s.maxScore > 0.7 ? '#f43f5e' : s.maxScore > 0.4 ? '#f97316' : '#879298', fontWeight: '700' }}>{s.maxScore > 0 ? s.maxScore.toFixed(2) : '—'}</span></div>
                 </div>
               </div>
             ))}
@@ -1809,16 +1809,40 @@ const AnalyticsView = ({ summary, digest, dataLoading, chartRef, alerts }) => {
   );
 };
 
-const SystemView = ({ authHeaders }) => {
+const SystemView = ({ authHeaders, userRole, showToast }) => {
   const [data, setData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [runningDetection, setRunningDetection] = React.useState(false);
 
-  React.useEffect(() => {
+  const loadStatus = () => {
     fetch(`${API_BASE}/system/status`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  };
+
+  React.useEffect(() => { loadStatus(); }, []);
+
+  const handleRunDetection = async () => {
+    setRunningDetection(true);
+    try {
+      const orgId = data?.organization?.id || 1;
+      const res = await fetch(`${API_BASE}/admin/run-detection/${orgId}`, {
+        method: 'POST',
+        headers: authHeaders()
+      });
+      if (res.ok) {
+        showToast('Detection pipeline started — refresh in 1-2 minutes to see new alerts.', 'success');
+        setTimeout(() => loadStatus(), 3000);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        showToast(d.detail || 'Detection failed — check server logs', 'error');
+      }
+    } catch {
+      showToast('Connection error — could not start detection', 'error');
+    }
+    setRunningDetection(false);
+  };
 
   if (loading) return (
     <div style={{ padding: '40px', color: 'var(--text-secondary)' }}>Loading system status...</div>
@@ -1872,6 +1896,30 @@ const SystemView = ({ authHeaders }) => {
         <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
           Last detection run: {stats.last_detection_run ? new Date(stats.last_detection_run).toLocaleString() : 'Never'}
         </div>
+        <div style={{ marginTop: '16px' }}>
+          <button
+            onClick={handleRunDetection}
+            disabled={runningDetection}
+            style={{
+              padding: '10px 20px',
+              background: runningDetection ? 'var(--bg-elevated)' : '#2563eb',
+              color: runningDetection ? 'var(--text-secondary)' : '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: runningDetection ? 'default' : 'pointer',
+              opacity: runningDetection ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s'
+            }}
+          >
+            {runningDetection ? '⏳ Starting...' : '▶ Run Detection Now'}
+          </button>
+        </div>
+
       </div>
 
       {/* Sync State */}
@@ -2369,15 +2417,14 @@ export default function AppV2() {
             };
           }
           acc[c.emp_id].count += 1;
-          // Note: anomaly_score might need to be fetched from alerts, but cases usually have ocr_risk_score
-          // or we can assume the request meant the case's risk score
-          const score = parseFloat(c.ocr_risk_score || 0);
+          // Use priority_score first, then ocr_risk_score as fallback (both may be null on older cases)
+          const score = parseFloat(c.priority_score || c.ocr_risk_score || 0);
           if (score > acc[c.emp_id].maxScore) acc[c.emp_id].maxScore = score;
           return acc;
         }, {});
 
         const sorted = Object.values(stats)
-          .sort((a, b) => b.count - a.count)
+          .sort((a, b) => b.maxScore !== a.maxScore ? b.maxScore - a.maxScore : b.count - a.count)
           .slice(0, 5);
         
         setSuggestedInvestigate(sorted);
@@ -2929,7 +2976,18 @@ export default function AppV2() {
   
   useEffect(() => { 
     if (token && activeView === 'cases') fetchCases() 
-  }, [token, activeView, caseStatusFilter, casePriorityFilter, casesOffset]) 
+  }, [token, activeView, caseStatusFilter, casePriorityFilter, casesOffset])
+
+  // Reset case drawer state whenever a different case is opened
+  useEffect(() => {
+    if (!selectedCase) return;
+    setCaseDetail(null);
+    setShowSnoozeForm(false);
+    setSnoozeForm({ waiting_on: '', due_back_date: '', reminder_date: '', reason: '' });
+    setDismissForm({ open: false, alertId: null, reasonCode: '', reasonDetail: '' });
+    setStatusSnackbar(null);
+    setAuditTrailOpen(false);
+  }, [selectedCase]); 
 
   useEffect(() => { 
     if (!digest.length || !chartRef.current) return 
@@ -4756,7 +4814,7 @@ export default function AppV2() {
                                     <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '10px' }}>{new Date(log.timestamp).toLocaleString()}</span>
                                   </div>
                                   <div style={{ color: 'var(--text-secondary)' }}>{log.note}</div>
-                                  <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>by {log.changed_by_name}</div>
+                                  <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>by {log.user_email || log.author_email || 'System'}</div>
                                 </div>
                               ))}
                             </div>
@@ -4799,7 +4857,7 @@ export default function AppV2() {
           )}
 
           {activeView === 'system' && (userRole === 'it_director' || userRole === 'admin') && (
-            <SystemView authHeaders={authHeaders} />
+            <SystemView authHeaders={authHeaders} userRole={userRole} showToast={showToast} />
           )}
 
           {activeView === 'admin' && userRole === 'admin' && (
