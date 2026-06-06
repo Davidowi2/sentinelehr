@@ -1165,6 +1165,27 @@ def update_alert_status(alert_id: int, update: StatusUpdate, token_data = Depend
         print(f"[ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail="An internal error occurred")
 
+@app.get("/employees")
+def list_employees(
+    limit: int = Query(2000, ge=1, le=5000),
+    token_data = Depends(verify_token)
+):
+    org_id = token_data.get('org_id', 1)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT emp_id, role, dept_id, is_float FROM employees WHERE organization_id = %s ORDER BY emp_id LIMIT %s",
+            (org_id, limit)
+        )
+        employees = [dict(e) for e in cursor.fetchall()]
+        conn.close()
+        return {"employees": employees}
+    except Exception as e:
+        print(f"[ERROR] list_employees: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
+
+
 @app.get("/employees/{emp_id}/profile")
 @limiter.limit("30/minute") 
 def get_employee_profile(request: Request, emp_id: int, token_data = Depends(require_role('compliance_officer', 'admin'))):

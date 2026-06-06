@@ -605,6 +605,23 @@ const SettingsView = ({
   const [passwordData, setPasswordData] = useState({current: '', new: '', confirm: ''}); 
   const [passwordMsg, setPasswordMsg] = useState(null); 
 
+  // Fetch current thresholds from DB on mount
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_BASE}/settings/thresholds`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          setThresholds({
+            critical: d.critical_threshold,
+            high: d.high_threshold,
+            medium: d.medium_threshold
+          });
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
   return (
     <div style={{ width: '100%' }}>
       {userRole !== 'admin' && ( 
@@ -770,7 +787,7 @@ const SettingsView = ({
               const newEmail = document.getElementById('emailUpdateInput').value; 
               if (!newEmail || !newEmail.includes('@')) return; 
               try { 
-                const res = await secureFetch('https://sentinelehr.onrender.com/users/update-email', { 
+                const res = await secureFetch(`${API_BASE}/users/update-email`, { 
                   method: 'POST', 
                   headers: authHeaders(), 
                   body: JSON.stringify({new_email: newEmail}) 
@@ -826,7 +843,7 @@ const SettingsView = ({
                 return; 
               } 
               try { 
-                const res = await secureFetch('https://sentinelehr.onrender.com/users/change-password', { 
+                const res = await secureFetch(`${API_BASE}/users/change-password`, { 
                   method: 'POST', 
                   headers: authHeaders(), 
                   body: JSON.stringify({current_password: passwordData.current, new_password: passwordData.new}) 
@@ -2404,7 +2421,7 @@ export default function AppV2() {
   useEffect(() => { 
     const tryRefresh = async () => { 
       try { 
-        const res = await fetch('https://sentinelehr.onrender.com/auth/refresh', { 
+        const res = await fetch(`${API_BASE}/auth/refresh`, { 
           method: 'POST', 
           credentials: 'include', 
           headers: { 'Content-Type': 'application/json' } 
@@ -2477,7 +2494,7 @@ export default function AppV2() {
 
   const handleLogout = async () => { 
     try { 
-      await fetch('https://sentinelehr.onrender.com/auth/logout', { 
+      await fetch(`${API_BASE}/auth/logout`, { 
         method: 'POST', 
         credentials: 'include' 
       }); 
@@ -2698,14 +2715,14 @@ export default function AppV2() {
         await secureFetch(`${API_BASE}/cases/${selectedCase}/outcome`, { 
           method: 'PATCH', 
           headers: authHeaders(), 
-          body: JSON.stringify({ outcome: caseOutcome }) 
+          body: JSON.stringify({ outcome: caseOutcome, reason: caseNote.trim() || 'Outcome updated' }) 
         }) 
       } 
       if (caseNote.trim()) { 
         await secureFetch(`${API_BASE}/cases/${selectedCase}/notes`, { 
           method: 'POST', 
           headers: authHeaders(), 
-          body: JSON.stringify({ note: caseNote }) 
+          body: JSON.stringify({ content: caseNote, note_type: 'investigation' }) 
         }) 
       } 
       await fetchCaseDetail(selectedCase) 
