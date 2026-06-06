@@ -1633,31 +1633,6 @@ def update_case_status(
         print(f'[ERROR] update_case_status: {str(e)}')
         raise HTTPException(status_code=500, detail="An internal error occurred")
  
-@app.post("/cases/{case_id}/notes") 
-def add_note( 
-  case_id: str, 
-  body: dict, 
-  token_data = Depends(require_role('admin','compliance_officer')) 
-): 
-  org_id = token_data.get('org_id', 1) 
-  # Accept both "note" (legacy saveCaseUpdate path) and "content" (Add Note button path)
-  note_text = (body.get("content") or body.get("note") or "").strip()
-  if not note_text: 
-    raise HTTPException(400, "Note cannot be empty") 
-  
-  # Verify case exists for this organization
-  conn = get_connection()
-  cursor = conn.cursor()
-  cursor.execute("SELECT 1 FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
-  if not cursor.fetchone():
-    conn.close()
-    raise HTTPException(404, "Case not found")
-  conn.close()
-  
-  user = get_current_user_from_token(token_data)
-  case_logic.add_case_note(case_id, user['user_id'], note_text) 
-  return {"case_id": case_id, "note_added": True} 
- 
 @app.patch("/cases/{case_id}/assign") 
 def assign_case( 
   case_id: str, 
