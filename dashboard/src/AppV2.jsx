@@ -862,7 +862,7 @@ const SettingsView = ({
 };
 
 
-const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating }) => (
+const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating, suggestedInvestigate, handleLookup }) => (
   <div> 
     {/* Query Section */}
     <div className="w-full" style={{
@@ -872,6 +872,58 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
       padding: '24px',
       marginBottom: '24px'
     }}>
+      {/* Suggested Investigations */}
+      {!investigateResults && !investigating && suggestedInvestigate && suggestedInvestigate.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ 
+            fontSize: '10px', 
+            fontWeight: '700', 
+            color: '#879298', 
+            letterSpacing: '0.1em', 
+            textTransform: 'uppercase', 
+            marginBottom: '16px' 
+          }}>SUGGESTED INVESTIGATIONS</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+            {suggestedInvestigate.map(s => (
+              <div 
+                key={s.emp_id}
+                onClick={() => {
+                  setInvestigateId(String(s.emp_id));
+                  handleLookup(String(s.emp_id));
+                }}
+                style={{
+                  background: 'rgba(173,198,255,0.05)',
+                  border: '1px solid rgba(173,198,255,0.1)',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(173,198,255,0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(173,198,255,0.3)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(173,198,255,0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(173,198,255,0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#adc6ff', marginBottom: '4px' }}>EMP-{s.emp_id}</div>
+                <div style={{ fontSize: '11px', color: '#879298', marginBottom: '8px' }}>
+                  {(s.role || '').split('_').map(w => w[0]?.toUpperCase()).join('')} • {s.dept || 'Staff'}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontSize: '10px', color: '#bdc8ce' }}>{s.count} open cases</div>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>Max risk: <span style={{ color: s.maxScore > 0.7 ? '#f43f5e' : s.maxScore > 0.4 ? '#f97316' : '#879298', fontWeight: '700' }}>{s.maxScore.toFixed(2)}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleInvestigate} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}> 
         <div style={{ flex: 1 }}>
           <div style={{
@@ -2220,6 +2272,10 @@ export default function AppV2() {
   const [dismissing, setDismissing] = useState(false)
   const [briefingCases, setBriefingCases] = useState([])
   const [briefingLoading, setBriefingLoading] = useState(false)
+  const [suggestedInvestigate, setSuggestedInvestigate] = useState([])
+  const [suggestedLoading, setSuggestedLoading] = useState(false)
+  const [empMap, setEmpMap] = useState({})
+  const [empMapLoading, setEmpMapLoading] = useState(false)
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -2246,6 +2302,65 @@ export default function AppV2() {
       setBriefingCases(all);
     } catch(e) {}
     setBriefingLoading(false);
+  };
+
+  const fetchSuggestedInvestigations = async () => {
+    if (!token) return;
+    setSuggestedLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/cases?status=Open&limit=200`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const cases = data.cases || [];
+        
+        // Group by emp_id
+        const stats = cases.reduce((acc, c) => {
+          if (!acc[c.emp_id]) {
+            acc[c.emp_id] = { 
+              emp_id: c.emp_id, 
+              count: 0, 
+              maxScore: 0,
+              dept: c.department,
+              role: c.emp_role || 'Staff'
+            };
+          }
+          acc[c.emp_id].count += 1;
+          // Note: anomaly_score might need to be fetched from alerts, but cases usually have ocr_risk_score
+          // or we can assume the request meant the case's risk score
+          const score = parseFloat(c.ocr_risk_score || 0);
+          if (score > acc[c.emp_id].maxScore) acc[c.emp_id].maxScore = score;
+          return acc;
+        }, {});
+
+        const sorted = Object.values(stats)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+        
+        setSuggestedInvestigate(sorted);
+      }
+    } catch(e) {}
+    setSuggestedLoading(false);
+  };
+
+  const fetchEmployeeMap = async () => {
+    if (!token || Object.keys(empMap).length > 0) return;
+    setEmpMapLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/employees?limit=2000`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const mapping = (data.employees || []).reduce((acc, e) => {
+          acc[e.emp_id] = {
+            name: e.emp_name,
+            dept: e.dept,
+            role: e.role
+          };
+          return acc;
+        }, {});
+        setEmpMap(mapping);
+      }
+    } catch(e) {}
+    setEmpMapLoading(false);
   };
   
   const LIMIT = 50 
@@ -2756,8 +2871,17 @@ export default function AppV2() {
   useEffect(() => { fetchNotifCount(); }, [token]);
 
   useEffect(() => { 
-    if (token && activeView === 'alerts') fetchAlerts() 
+    if (token && activeView === 'alerts') {
+      fetchAlerts();
+      fetchEmployeeMap();
+    }
   }, [token, activeView, alertSeverity, alertStatus, alertSortBy, alertsOffset]) 
+
+  useEffect(() => { 
+    if (token && activeView === 'investigate') {
+      fetchSuggestedInvestigations();
+    }
+  }, [token, activeView]);
   
   useEffect(() => { 
     if (token && activeView === 'cases') fetchCases() 
@@ -3938,8 +4062,12 @@ export default function AppV2() {
                               )}
                             </td>
                             <td style={{ padding: '14px 20px' }}>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#bdc8ce' }}>{a.emp_name || `EMP-${a.emp_id}`}</div>
-                              <div style={{ fontSize: '11px', color: '#879298', marginTop: '2px' }}>{(a.emp_role || '').split('_').map(w => w[0]?.toUpperCase()).join('')} • {a.emp_dept || 'General'}</div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#bdc8ce' }}>
+                                {empMap[a.emp_id]?.name || a.emp_name || `EMP-${a.emp_id}`}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#879298', marginTop: '2px' }}>
+                                {(empMap[a.emp_id]?.role || a.emp_role || '').split('_').map(w => w[0]?.toUpperCase()).join('')} • {empMap[a.emp_id]?.dept || a.emp_dept || 'General'}
+                              </div>
                             </td> 
                             <td style={{ padding: '14px 20px' }}> 
                               <div className="flex flex-wrap gap-1">
@@ -4607,6 +4735,8 @@ export default function AppV2() {
               handleInvestigate={handleInvestigate} 
               investigateResults={investigateResults} 
               investigating={investigating} 
+              suggestedInvestigate={suggestedInvestigate}
+              handleLookup={handleLookup}
             />
           )} 
         
