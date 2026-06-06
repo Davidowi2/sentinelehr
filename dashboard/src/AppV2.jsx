@@ -1254,6 +1254,43 @@ const CaseSummary = ({ caseObj, authHeaders, ocrStatus }) => {
   );
 };
 
+const EmployeeSnapshot = ({ empId, caseObj, authHeaders }) => {
+  const [empProfile, setEmpProfile] = React.useState(null);
+  const [empCaseCount, setEmpCaseCount] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!empId) return;
+    const h = authHeaders();
+    fetch(`${API_BASE}/employees/${empId}/profile`, { headers: h })
+      .then(r => r.ok ? r.json() : null).then(d => setEmpProfile(d)).catch(() => {});
+    fetch(`${API_BASE}/cases?emp_id=${empId}&limit=50`, { headers: h })
+      .then(r => r.json())
+      .then(d => setEmpCaseCount((d.cases || []).filter(c => c.status !== 'Closed' && c.status !== 'Resolved').length))
+      .catch(() => {});
+  }, [empId]);
+
+  const stats = [
+    ['Role', empProfile?.role || caseObj?.employee_role || '—'],
+    ['Dept', empProfile?.dept_id ? `Dept ${empProfile.dept_id}` : caseObj?.department || '—'],
+    ['EMP ID', `EMP-${empId}`],
+    ['Open Cases', empCaseCount !== null ? String(empCaseCount) : '…'],
+  ];
+
+  return (
+    <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
+      <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px' }}>Employee Snapshot</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+        {stats.map(([label, val]) => (
+          <div key={label}>
+            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: label === 'EMP ID' ? 'monospace' : 'inherit' }}>{val}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const CasesWorkflowView = ({ authHeaders, userRole, onOpenCase, handleGenerateReport }) => {
   const [openCases, setOpenCases] = React.useState([]);
   const [pendingCases, setPendingCases] = React.useState([]);
@@ -4155,36 +4192,7 @@ export default function AppV2() {
                       <CaseSummary caseObj={caseDetail} authHeaders={authHeaders} ocrStatus={ocrStatus} />
 
                       {/* SECTION 3 — EMPLOYEE SNAPSHOT */}
-                      {(() => {
-                        const [empProfile, setEmpProfile] = React.useState(null);
-                        const [empCaseCount, setEmpCaseCount] = React.useState(null);
-                        React.useEffect(() => {
-                          if (!caseDetail?.emp_id) return;
-                          const h = authHeaders();
-                          fetch(`${API_BASE}/employees/${caseDetail.emp_id}/profile`, { headers: h })
-                            .then(r => r.ok ? r.json() : null).then(d => setEmpProfile(d)).catch(() => {});
-                          fetch(`${API_BASE}/cases?emp_id=${caseDetail.emp_id}&limit=50`, { headers: h })
-                            .then(r => r.json()).then(d => setEmpCaseCount((d.cases||[]).filter(c => c.status !== 'Closed' && c.status !== 'Resolved').length)).catch(() => {});
-                        }, [caseDetail?.emp_id]);
-                        return (
-                          <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
-                            <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px' }}>Employee Snapshot</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                              {[
-                                ['Role', empProfile?.role || caseDetail.employee_role || '—'],
-                                ['Dept', empProfile?.dept_id ? `Dept ${empProfile.dept_id}` : caseDetail.department || '—'],
-                                ['EMP ID', `EMP-${caseDetail.emp_id}`],
-                                ['Open Cases', empCaseCount !== null ? String(empCaseCount) : '…'],
-                              ].map(([label, val]) => (
-                                <div key={label}>
-                                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
-                                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontFamily: label === 'EMP ID' ? 'monospace' : 'inherit' }}>{val}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      <EmployeeSnapshot empId={caseDetail.emp_id} caseObj={caseDetail} authHeaders={authHeaders} />
 
                       {/* SECTION 4 — DECISION HISTORY */}
                       <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 20px' }}>
