@@ -211,8 +211,8 @@ const Select = (props) => (
 
 const TableCard = ({ children }) => ( 
   <div style={{ 
-    background: '#131b2e', borderRadius: '10px', 
-    border: '1px solid rgba(140,144,159,0.2)',
+    background: 'var(--bg-surface)', borderRadius: '10px', 
+    border: '1px solid var(--border)',
     overflow: 'hidden' 
   }}>{children}</div> 
 ); 
@@ -233,7 +233,7 @@ const Drawer = ({ title, subtitle, id, onClose, children, loading }) => (
     }} /> 
     <div style={{ 
       position: 'fixed', top: 0, right: 0, width: '480px', height: '100vh', 
-      background: '#0d1f35', borderLeft: '1px solid rgba(255,255,255,0.08)',
+      background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)',
       zIndex: 101, overflowY: 'auto', 
       display: 'flex', flexDirection: 'column' 
     }}> 
@@ -553,7 +553,7 @@ const InvestigateResults = React.memo(({ results }) => {
 
 const SettingsSection = ({ title, icon, children }) => (
   <div className="w-full" style={{ 
-    background: '#0d1f35', border: '1px solid rgba(255,255,255,0.08)', 
+    background: 'var(--bg-surface)', border: '1px solid var(--border)', 
     borderRadius: '12px', padding: '24px', marginBottom: '24px'
   }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>

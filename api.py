@@ -1289,9 +1289,10 @@ def get_employee_profile(request: Request, emp_id: int, token_data = Depends(req
 @limiter.limit("30/minute") 
 def get_digest(request: Request, days: int = Query(180, ge=1, le=365), token_data = Depends(verify_token)):
     try:
+        org_id = token_data.get('org_id', 1)
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM daily_digest LIMIT %s", (days,))
+        cursor.execute("SELECT * FROM daily_digest WHERE organization_id = %s ORDER BY alert_date DESC LIMIT %s", (org_id, days))
         digest = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return digest
@@ -2289,7 +2290,7 @@ def get_thresholds(
 
 @app.post('/admin/run-detection/{org_id}')
 @limiter.limit("5/minute")
-def trigger_detection(request: Request, org_id: int, token_data = Depends(require_role('admin'))):
+def trigger_detection(request: Request, org_id: int, token_data = Depends(require_role('admin', 'it_director'))):
     import subprocess
     import sys
     import os

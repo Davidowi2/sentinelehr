@@ -131,14 +131,51 @@ def run_alert_manager(org_id: int = 1):
         conn.close()
 
     # Trigger emails for new critical alerts (after transaction closes)
+    # Dedup: only send if reviewer_email_sent is FALSE (prevents spam on re-runs)
+    try:
+        conn2 = get_db_connection()
+        c2 = conn2.cursor()
+        c2.execute("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS reviewer_email_sent BOOLEAN DEFAULT FALSE")
+        conn2.commit()
+        conn2.close()
+    except Exception:
+        pass
+
     critical_alerts = df[df['adjusted_severity'] == 'Critical']
+    email_sent_ids = []
     for _, row in critical_alerts.iterrows():
+        # Only send if not already sent
+        try:
+            conn3 = get_db_connection()
+            c3 = conn3.cursor()
+            c3.execute("SELECT reviewer_email_sent FROM alerts WHERE alert_id = %s", (int(row['alert_id']),))
+            rec = c3.fetchone()
+            conn3.close()
+            if rec and rec['reviewer_email_sent']:
+                continue  # already emailed this alert
+        except Exception:
+            pass
         send_critical_alert_email(
             alert_id=int(row['alert_id']),
             anomaly_type=row['rules_triggered'],
             emp_id=int(row['emp_id']),
             score=float(row['anomaly_score'])
         )
+        email_sent_ids.append(int(row['alert_id']))
+
+    if email_sent_ids:
+        try:
+            conn4 = get_db_connection()
+            c4 = conn4.cursor()
+            from psycopg2.extras import execute_values
+            execute_values(c4,
+                "UPDATE alerts SET reviewer_email_sent = TRUE WHERE alert_id IN %s",
+                [(i,) for i in email_sent_ids]
+            )
+            conn4.commit()
+            conn4.close()
+        except Exception:
+            pass
 
     # Final Summary
     counts = df['adjusted_severity'].value_counts()

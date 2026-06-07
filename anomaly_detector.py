@@ -15,15 +15,17 @@ load_dotenv()
 # ─── CONFIGURATION ──────────────────────────────────────────
 MOCK_DATA_DIR = "./mock_data/"
 
+# Module-level SQLAlchemy engine — created once, reused by all functions
+_DATABASE_URL = os.getenv("DATABASE_URL", "")
+if _DATABASE_URL.startswith("postgres://"):
+    _DATABASE_URL = _DATABASE_URL.replace("postgres://", "postgresql://", 1)
+engine = create_engine(_DATABASE_URL) if _DATABASE_URL else None
+
 def get_db_connection():
     return get_connection()
 
 def build_feature_matrix(conn, org_id: int):
     print("Building feature matrix from audit events and baselines...")
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    engine = create_engine(DATABASE_URL)
     
     df_audit = pd.read_sql_query("""
         SELECT audit_id, emp_id, action_datetime, pat_id, in_panel, is_vip_access, dept_id, action_c, is_sensitive_access
@@ -132,11 +134,6 @@ def run_anomaly_detector(org_id: int = 1):
 
         # Store scores
         print("Storing anomaly scores...")
-        DATABASE_URL = os.getenv("DATABASE_URL")
-        if DATABASE_URL.startswith("postgres://"):
-            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        engine = create_engine(DATABASE_URL)
-
         scores_to_store = df_features[['emp_id', 'score_date', 'normalized_score']].copy()
         scores_to_store.columns = ['emp_id', 'score_date', 'anomaly_score']
         scores_to_store['organization_id'] = org_id
@@ -191,4 +188,15 @@ def run_anomaly_detector(org_id: int = 1):
     print(f"Total processing time:        {time.time() - start_time:.2f}s")
 
 if __name__ == "__main__":
-    run_anomaly_detector()
+    import sys
+    if len(sys.argv) > 1:
+        try:
+            _org_id = int(sys.argv[1])
+        except ValueError:
+            print("Error: org_id must be an integer. Usage: python anomaly_detector.py <org_id>")
+            sys.exit(1)
+    else:
+        print("Error: org_id required. Usage: python anomaly_detector.py <org_id>")
+        print("Example: python anomaly_detector.py 1")
+        sys.exit(1)
+    run_anomaly_detector(_org_id)
