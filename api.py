@@ -2322,78 +2322,58 @@ def trigger_detection(request: Request, org_id: int, token_data = Depends(requir
     import subprocess
     import sys
     import os
+    import threading
 
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    results = {}
 
-    try:
-        # Step 1 — Baseline calculator
-        result0 = subprocess.run(
-            [sys.executable, os.path.join(SCRIPT_DIR, 'baseline_calculator.py'), str(org_id)],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        if result0.returncode != 0:
-            raise Exception("Detection step failed. Check server logs for details.")
-        results['baseline_calculator'] = 'success'
+    def run_pipeline():
+        print(f"[DETECTION] Pipeline started for org {org_id}")
+        try:
+            for script in ['baseline_calculator.py', 'rules_engine.py', 'anomaly_detector.py',
+                           'alert_manager.py', 'auto_case_creator.py']:
+                result = subprocess.run(
+                    [sys.executable, os.path.join(SCRIPT_DIR, script), str(org_id)],
+                    capture_output=True, text=True, timeout=300
+                )
+                print(f"[DETECTION] {script} exit={result.returncode}")
+                if result.returncode != 0:
+                    print(f"[DETECTION] {script} stderr: {result.stderr[:500]}")
+                    break
 
-        # Step 2 — Rules engine
-        result1 = subprocess.run(
-            [sys.executable, os.path.join(SCRIPT_DIR, 'rules_engine.py'), str(org_id)],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        if result1.returncode != 0:
-            raise Exception("Detection step failed. Check server logs for details.")
-        results['rules_engine'] = 'success'
+            # After pipeline completes, propagate anomaly scores to alerts table
+            try:
+                from db import get_connection
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE alerts
+                    SET anomaly_score = COALESCE((
+                        SELECT MAX(s.anomaly_score)
+                        FROM anomaly_scores s
+                        WHERE s.emp_id = alerts.emp_id
+                          AND s.score_date::date = alerts.alert_date::date
+                          AND s.organization_id = alerts.organization_id
+                    ), anomaly_score)
+                    WHERE organization_id = %s
+                """, (org_id,))
+                conn.commit()
+                conn.close()
+                print(f"[DETECTION] Anomaly scores propagated to alerts for org {org_id}")
+            except Exception as e:
+                print(f"[DETECTION] Score propagation error: {str(e)}")
 
-        # Step 3 — Anomaly detector
-        result2 = subprocess.run(
-            [sys.executable, os.path.join(SCRIPT_DIR, 'anomaly_detector.py'), str(org_id)],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        if result2.returncode != 0:
-            raise Exception("Detection step failed. Check server logs for details.")
-        results['anomaly_detector'] = 'success'
+            print(f"[DETECTION] Pipeline complete for org {org_id}")
+        except Exception as e:
+            print(f"[DETECTION] Pipeline error for org {org_id}: {str(e)}")
 
-        # Step 4 — Alert manager
-        result3 = subprocess.run(
-            [sys.executable, os.path.join(SCRIPT_DIR, 'alert_manager.py'), str(org_id)],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        if result3.returncode != 0:
-            raise Exception("Detection step failed. Check server logs for details.")
-        results['alert_manager'] = 'success'
+    thread = threading.Thread(target=run_pipeline, daemon=True)
+    thread.start()
 
-        # Step 5 — Auto case creator
-        result4 = subprocess.run(
-            [sys.executable, os.path.join(SCRIPT_DIR, 'auto_case_creator.py'), str(org_id)],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        if result4.returncode != 0:
-            raise Exception("Detection step failed. Check server logs for details.")
-        results['auto_case_creator'] = 'success'
-
-        return {
-            'status': 'success',
-            'org_id': org_id,
-            'pipeline': results,
-            'message': f'Detection pipeline completed for organization {org_id}'
-        }
-
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail='Detection pipeline timed out after 5 minutes')
-    except Exception as e:
-        print(f"[ERROR] {str(e)}")
-        raise HTTPException(status_code=500, detail="An internal error occurred")
+    return {
+        'status': 'started',
+        'org_id': org_id,
+        'message': 'Detection pipeline running in background. Refresh in 1-2 minutes.'
+    }
 
 
 @app.get('/admin/detection-status/{org_id}')

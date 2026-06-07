@@ -2006,16 +2006,18 @@ const SystemView = ({ authHeaders, userRole, showToast }) => {
         headers: authHeaders()
       });
       if (res.ok) {
-        showToast('Detection pipeline started — refresh in 1-2 minutes to see new alerts.', 'success');
-        setTimeout(() => loadStatus(), 3000);
+        const d = await res.json().catch(() => ({}));
+        showToast(d.message || 'Detection pipeline started — refresh in 1-2 minutes.', 'success');
       } else {
         const d = await res.json().catch(() => ({}));
         showToast(d.detail || 'Detection failed — check server logs', 'error');
       }
     } catch {
       showToast('Connection error — could not start detection', 'error');
+    } finally {
+      setRunningDetection(false);
+      setTimeout(() => loadStatus(), 30000);
     }
-    setRunningDetection(false);
   };
 
   if (loading) return (
