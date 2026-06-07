@@ -2264,23 +2264,396 @@ const SystemView = ({ authHeaders, userRole, showToast }) => {
   );
 };
 
-const AdminView = ({ authHeaders }) => {
+const AdminView = ({ authHeaders, userEmail: currentAdminEmail, showToast }) => {
+  // ── shared state ────────────────────────────────────────
   const [orgs, setOrgs] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  const [users, setUsers] = React.useState([]);
+  const [founderStats, setFounderStats] = React.useState(null);
+  const [recentActivity, setRecentActivity] = React.useState(null);
+  const [loadingStats, setLoadingStats] = React.useState(true);
+  const [loadingOrgs, setLoadingOrgs] = React.useState(true);
+  const [loadingUsers, setLoadingUsers] = React.useState(true);
+  const [healthStatus, setHealthStatus] = React.useState({ db: null, api: null, lastChecked: null });
+  const [mtResults, setMtResults] = React.useState(null);
+  const [runningMt, setRunningMt] = React.useState(false);
+
+  // ── org form ────────────────────────────────────────────
   const [newApiKey, setNewApiKey] = React.useState(null);
   const [newOrgName, setNewOrgName] = React.useState('');
   const [showCreateOrg, setShowCreateOrg] = React.useState(false);
-  const [orgForm, setOrgForm] = React.useState({
-    name: '', type: 'community_hospital',
-    contact_name: '', contact_email: '',
-    subscription_tier: 'design_partner'
-  });
-  const [userForm, setUserForm] = React.useState({
-    email: '', password: '',
-    role: 'compliance_officer', organization_id: ''
-  });
+  const [creatingOrg, setCreatingOrg] = React.useState(false);
+  const [orgForm, setOrgForm] = React.useState({ name:'', type:'community_hospital', contact_name:'', contact_email:'', subscription_tier:'design_partner' });
   const [orgMsg, setOrgMsg] = React.useState(null);
+
+  // ── user form ───────────────────────────────────────────
+  const [showCreateUser, setShowCreateUser] = React.useState(false);
+  const [creatingUser, setCreatingUser] = React.useState(false);
+  const [userForm, setUserForm] = React.useState({ email:'', password:'', role:'compliance_officer', organization_id:'' });
   const [userMsg, setUserMsg] = React.useState(null);
+
+  // ── user table filters ──────────────────────────────────
+  const [userSearch, setUserSearch] = React.useState('');
+  const [userRoleFilter, setUserRoleFilter] = React.useState('');
+  const [userOrgFilter, setUserOrgFilter] = React.useState('');
+  const [deactivateConfirm, setDeactivateConfirm] = React.useState(null); // user_id
+
+  const h = () => authHeaders();
+
+  const loadAll = React.useCallback(() => {
+    // Stats
+    setLoadingStats(true);
+    fetch(`${API_BASE}/admin/founder-stats`, { headers: h() })
+      .then(r => r.ok ? r.json() : null).then(d => { if(d) setFounderStats(d); setLoadingStats(false); })
+      .catch(() => setLoadingStats(false));
+
+    // Orgs
+    setLoadingOrgs(true);
+    fetch(`${API_BASE}/admin/organizations`, { headers: h() })
+      .then(r => r.json()).then(d => { setOrgs(d.organizations || []); setLoadingOrgs(false); })
+      .catch(() => setLoadingOrgs(false));
+
+    // Users (all orgs — founder view)
+    setLoadingUsers(true);
+    fetch(`${API_BASE}/admin/users-all`, { headers: h() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if(d) setUsers(d.users || []); setLoadingUsers(false); })
+      .catch(() => setLoadingUsers(false));
+
+    // Recent activity
+    fetch(`${API_BASE}/admin/recent-activity`, { headers: h() })
+      .then(r => r.ok ? r.json() : null).then(d => setRecentActivity(d))
+      .catch(() => setRecentActivity([]));
+
+    // Health
+    fetch(`${API_BASE}/health`).then(r => r.json())
+      .then(d => setHealthStatus({ db: d.db === 'connected', api: true, lastChecked: new Date().toLocaleTimeString() }))
+      .catch(() => setHealthStatus({ db: false, api: false, lastChecked: new Date().toLocaleTimeString() }));
+  }, []);
+
+  React.useEffect(() => { loadAll(); }, []);
+
+  const createOrg = async () => {
+    setCreatingOrg(true); setOrgMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/admin/organizations`, { method:'POST', headers:h(), body:JSON.stringify(orgForm) });
+      const data = await res.json();
+      if (res.ok) {
+        setNewApiKey(data.api_key); setNewOrgName(data.name);
+        setOrgForm({ name:'', type:'community_hospital', contact_name:'', contact_email:'', subscription_tier:'design_partner' });
+        setShowCreateOrg(false); loadAll();
+      } else { setOrgMsg({ type:'error', text: data.detail || 'Failed' }); }
+    } catch { setOrgMsg({ type:'error', text:'Connection error' }); }
+    setCreatingOrg(false);
+  };
+
+  const createUser = async () => {
+    setCreatingUser(true); setUserMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/create`, { method:'POST', headers:h(), body:JSON.stringify({ ...userForm, organization_id: parseInt(userForm.organization_id) }) });
+      const data = await res.json();
+      if (res.ok) {
+        setUserMsg({ type:'success', text:`User ${data.email} created` });
+        setUserForm({ email:'', password:'', role:'compliance_officer', organization_id:'' });
+        loadAll();
+      } else { setUserMsg({ type:'error', text: data.detail || 'Failed' }); }
+    } catch { setUserMsg({ type:'error', text:'Connection error' }); }
+    setCreatingUser(false);
+  };
+
+  const deactivateUser = async (userId) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/deactivate`, { method:'POST', headers:h() });
+      if (res.ok) { showToast('User deactivated', 'success'); loadAll(); }
+      else { const d = await res.json(); showToast(d.detail || 'Failed to deactivate', 'error'); }
+    } catch { showToast('Connection error', 'error'); }
+    setDeactivateConfirm(null);
+  };
+
+  const runMtTests = async () => {
+    setRunningMt(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/run-multi-tenancy-tests`, { method:'POST', headers:h() });
+      if (res.ok) { const d = await res.json(); setMtResults(d); }
+      else showToast('Test runner failed', 'error');
+    } catch { showToast('Not implemented yet', 'error'); }
+    setRunningMt(false);
+  };
+
+  const relativeTime = (ts) => {
+    if (!ts) return '—';
+    const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  };
+
+  const filteredUsers = users.filter(u => {
+    if (userSearch && !u.email.toLowerCase().includes(userSearch.toLowerCase())) return false;
+    if (userRoleFilter && u.role !== userRoleFilter) return false;
+    if (userOrgFilter && String(u.organization_id) !== String(userOrgFilter)) return false;
+    return true;
+  });
+
+  const isStale = (lastSync) => {
+    if (!lastSync) return false;
+    return (Date.now() - new Date(lastSync)) > 7 * 86400 * 1000;
+  };
+
+  const inp = { width:'100%', padding:'10px 12px', background:'var(--bg-app)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text-primary)', fontSize:'14px', boxSizing:'border-box' };
+  const lbl = { fontSize:'11px', fontWeight:'600', letterSpacing:'0.05em', color:'var(--text-secondary)', marginBottom:'6px', display:'block' };
+  const btn = (extra={}) => ({ padding:'10px 20px', background:'var(--accent)', border:'none', borderRadius:'8px', color:'#000', fontWeight:'700', cursor:'pointer', fontSize:'13px', ...extra });
+  const card = { background:'var(--bg-surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'24px', marginBottom:'20px' };
+  const secHead = (title, count, action) => (
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+        <span style={{ fontSize:'13px', fontWeight:'700', color:'var(--text-secondary)', letterSpacing:'0.05em', textTransform:'uppercase' }}>{title}</span>
+        {count != null && <span style={{ padding:'2px 8px', borderRadius:'12px', fontSize:'11px', fontWeight:'700', background:'var(--bg-app)', color:'var(--text-secondary)', border:'1px solid var(--border)' }}>{count}</span>}
+      </div>
+      {action}
+    </div>
+  );
+  const msgBox = (msg) => msg && (
+    <div style={{ padding:'10px', borderRadius:'6px', marginBottom:'12px', background: msg.type==='error'?'rgba(239,68,68,0.1)':'rgba(34,197,94,0.1)', color: msg.type==='error'?'#ef4444':'#22c55e', fontSize:'13px' }}>{msg.text}</div>
+  );
+
+  // ── STAT CARD DATA ────────────────────────────────────────
+  const statCards = [
+    { label:'Active Users',       value: founderStats?.active_users,       desc:'Total active accounts', color:'var(--accent)' },
+    { label:'Organizations',      value: founderStats?.organizations,       desc:'Connected hospitals', color:'var(--accent)' },
+    { label:'Total Alerts',       value: founderStats?.total_alerts,        desc:'All-time, all orgs', color:'var(--accent)' },
+    { label:'Open Cases',         value: founderStats?.open_cases,          desc:'Awaiting decision', color:'var(--high)' },
+    { label:'OCR Review Pending', value: founderStats?.ocr_review_pending,  desc:'Breach assessment needed',
+      color: founderStats?.ocr_review_pending > 0 ? '#f59e0b' : '#22c55e' },
+    { label:'Last Detection Run', value: founderStats?.last_detection_run ? relativeTime(founderStats.last_detection_run) : '—', desc:'Pipeline last ran', color:'var(--accent)', mono: true },
+  ];
+
+  return (
+    <div style={{ padding:'32px', maxWidth:'1200px' }}>
+
+      {/* API Key Modal */}
+      {newApiKey && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+          <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border)', borderRadius:'16px', padding:'32px', maxWidth:'520px', width:'90%' }}>
+            <div style={{ fontSize:'18px', fontWeight:'700', color:'var(--text-primary)', marginBottom:'8px' }}>Organization Created: {newOrgName}</div>
+            <div style={{ fontSize:'13px', color:'#f97316', marginBottom:'20px', fontWeight:'600' }}>⚠ Copy this API key now. It will not be shown again.</div>
+            <div style={{ background:'var(--bg-app)', border:'1px solid var(--border)', borderRadius:'8px', padding:'14px', fontFamily:'monospace', fontSize:'13px', color:'var(--accent)', wordBreak:'break-all', marginBottom:'16px' }}>{newApiKey}</div>
+            <div style={{ display:'flex', gap:'12px' }}>
+              <button onClick={() => navigator.clipboard.writeText(newApiKey)} style={btn({ flex:1 })}>Copy to Clipboard</button>
+              <button onClick={() => setNewApiKey(null)} style={btn({ flex:1, background:'rgba(255,255,255,0.08)', color:'var(--text-primary)' })}>I've Saved This</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate Confirm Dialog */}
+      {deactivateConfirm && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+          <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'32px', maxWidth:'400px', width:'90%', textAlign:'center' }}>
+            <div style={{ fontSize:'16px', fontWeight:'700', color:'var(--text-primary)', marginBottom:'12px' }}>Deactivate User?</div>
+            <div style={{ fontSize:'13px', color:'var(--text-secondary)', marginBottom:'24px' }}>This will prevent them from logging in. You can reactivate from the database.</div>
+            <div style={{ display:'flex', gap:'12px' }}>
+              <button onClick={() => setDeactivateConfirm(null)} style={btn({ flex:1, background:'var(--bg-elevated)', color:'var(--text-primary)' })}>Cancel</button>
+              <button onClick={() => deactivateUser(deactivateConfirm)} style={btn({ flex:1, background:'#ef4444', color:'#fff' })}>Deactivate</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 1 — At a Glance ── */}
+      <div style={{ marginBottom:'24px' }}>
+        <div style={{ fontSize:'10px', fontWeight:'700', letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-muted)', marginBottom:'16px' }}>At a Glance</div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:'12px' }}>
+          {statCards.map(sc => (
+            <div key={sc.label} style={{ background:'var(--bg-surface)', border:'1px solid var(--border)', borderRadius:'10px', padding:'16px' }}>
+              <div style={{ fontSize:'10px', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:'8px' }}>{sc.label}</div>
+              {loadingStats ? (
+                <div style={{ height:'28px', background:'var(--bg-elevated)', borderRadius:'4px', animation:'pulse 1.5s ease infinite' }} />
+              ) : (
+                <div style={{ fontSize:'24px', fontWeight:'700', color: sc.color, fontFamily: sc.mono ? "'JetBrains Mono',monospace" : 'inherit', marginBottom:'4px' }}>{sc.value ?? '—'}</div>
+              )}
+              <div style={{ fontSize:'10px', color:'var(--text-muted)' }}>{sc.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── SECTION 2 — Organizations ── */}
+      <div style={card}>
+        {secHead('Organizations', orgs.length,
+          <button onClick={() => setShowCreateOrg(o => !o)} style={btn()}>{showCreateOrg ? 'Cancel' : '+ New Organization'}</button>
+        )}
+
+        {showCreateOrg && (
+          <div style={{ background:'var(--bg-app)', borderRadius:'10px', padding:'20px', marginBottom:'20px', border:'1px solid var(--border)' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'16px' }}>
+              {[['ORGANIZATION NAME','name','text','e.g. CommUnityCare Health Centers'],['CONTACT NAME','contact_name','text','Primary contact'],['CONTACT EMAIL','contact_email','email','contact@hospital.org']].map(([label,field,type,ph]) => (
+                <div key={field}><label style={lbl}>{label}</label><input type={type} placeholder={ph} value={orgForm[field]} onChange={e=>setOrgForm({...orgForm,[field]:e.target.value})} style={inp} /></div>
+              ))}
+              <div><label style={lbl}>TYPE</label><select value={orgForm.type} onChange={e=>setOrgForm({...orgForm,type:e.target.value})} style={inp}><option value="community_hospital">Community Hospital</option><option value="fqhc">FQHC</option><option value="demo">Demo</option></select></div>
+              <div><label style={lbl}>TIER</label><select value={orgForm.subscription_tier} onChange={e=>setOrgForm({...orgForm,subscription_tier:e.target.value})} style={inp}><option value="design_partner">Design Partner</option><option value="paid">Paid</option></select></div>
+            </div>
+            {msgBox(orgMsg)}
+            <button onClick={createOrg} disabled={creatingOrg} style={btn({ opacity: creatingOrg ? 0.7 : 1 })}>{creatingOrg ? 'Creating...' : 'Create Organization'}</button>
+          </div>
+        )}
+
+        {loadingOrgs ? <div style={{ color:'var(--text-secondary)', fontSize:'14px' }}>Loading...</div> : (
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead><tr style={{ borderBottom:'1px solid var(--border)' }}>
+              {['Name','Tier','Status','Last Sync','API Key'].map(h => (
+                <th key={h} style={{ textAlign:'left', padding:'8px 12px', fontSize:'11px', color:'var(--text-secondary)', fontWeight:'600', letterSpacing:'0.05em' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {orgs.map(org => {
+                const stale = isStale(org.last_sync_at);
+                const statusColor = org.epic_connection_verified ? '#22c55e' : stale ? '#ef4444' : '#f59e0b';
+                const statusLabel = org.epic_connection_verified ? 'Active' : stale ? 'Stale' : 'Never Connected';
+                return (
+                  <tr key={org.id} style={{ borderBottom:'1px solid var(--border)' }}>
+                    <td style={{ padding:'10px 12px', fontSize:'13px', color:'var(--text-primary)', fontWeight:'600' }}>{org.name}</td>
+                    <td style={{ padding:'10px 12px', fontSize:'12px', color:'var(--text-secondary)' }}>{org.subscription_tier}</td>
+                    <td style={{ padding:'10px 12px' }}><span style={{ padding:'2px 8px', borderRadius:'4px', fontSize:'11px', fontWeight:'600', background:`${statusColor}1a`, color: statusColor }}>{statusLabel}</span></td>
+                    <td style={{ padding:'10px 12px', fontSize:'12px', color:'var(--text-secondary)' }}>{org.last_sync_at ? new Date(org.last_sync_at).toLocaleDateString() : 'Never'}</td>
+                    <td style={{ padding:'10px 12px', fontSize:'12px', color:'var(--text-secondary)', fontFamily:'monospace' }}>{org.api_key_preview || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── SECTION 3 — Users ── */}
+      <div style={card}>
+        {secHead('Users', filteredUsers.length,
+          <button onClick={() => setShowCreateUser(o => !o)} style={btn()}>{showCreateUser ? 'Cancel' : '+ New User'}</button>
+        )}
+
+        {/* Filters */}
+        <div style={{ display:'flex', gap:'10px', marginBottom:'16px', flexWrap:'wrap' }}>
+          <input placeholder="Search email..." value={userSearch} onChange={e=>setUserSearch(e.target.value)} style={{ ...inp, width:'200px', padding:'7px 10px' }} />
+          <select value={userRoleFilter} onChange={e=>setUserRoleFilter(e.target.value)} style={{ ...inp, width:'160px', padding:'7px 10px' }}>
+            <option value="">All roles</option>
+            <option value="compliance_officer">Compliance Officer</option>
+            <option value="it_director">IT Director</option>
+            <option value="admin">Admin</option>
+          </select>
+          <select value={userOrgFilter} onChange={e=>setUserOrgFilter(e.target.value)} style={{ ...inp, width:'200px', padding:'7px 10px' }}>
+            <option value="">All orgs</option>
+            {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </div>
+
+        {showCreateUser && (
+          <div style={{ background:'var(--bg-app)', borderRadius:'10px', padding:'20px', marginBottom:'20px', border:'1px solid var(--border)' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'16px' }}>
+              <div><label style={lbl}>EMAIL</label><input type="email" placeholder="user@hospital.org" value={userForm.email} onChange={e=>setUserForm({...userForm,email:e.target.value})} style={inp} /></div>
+              <div><label style={lbl}>TEMPORARY PASSWORD</label><input type="password" placeholder="Min 8 chars" value={userForm.password} onChange={e=>setUserForm({...userForm,password:e.target.value})} style={inp} /></div>
+              <div><label style={lbl}>ROLE</label><select value={userForm.role} onChange={e=>setUserForm({...userForm,role:e.target.value})} style={inp}><option value="compliance_officer">Compliance Officer</option><option value="it_director">IT Director</option><option value="admin">Admin</option></select></div>
+              <div><label style={lbl}>ORGANIZATION</label><select value={userForm.organization_id} onChange={e=>setUserForm({...userForm,organization_id:e.target.value})} style={inp}><option value="">Select org</option>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></div>
+            </div>
+            {msgBox(userMsg)}
+            <button onClick={createUser} disabled={creatingUser} style={btn({ opacity: creatingUser ? 0.7 : 1 })}>{creatingUser ? 'Creating...' : 'Create User'}</button>
+          </div>
+        )}
+
+        {loadingUsers ? <div style={{ color:'var(--text-secondary)', fontSize:'14px' }}>Loading...</div> : (
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead><tr style={{ borderBottom:'1px solid var(--border)' }}>
+              {['Email','Role','Last Login','Status','Actions'].map(h => (
+                <th key={h} style={{ textAlign:'left', padding:'8px 12px', fontSize:'11px', color:'var(--text-secondary)', fontWeight:'600', letterSpacing:'0.05em' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {filteredUsers.length === 0 ? (
+                <tr><td colSpan="5" style={{ padding:'20px', textAlign:'center', color:'var(--text-muted)', fontSize:'13px' }}>No users match filters</td></tr>
+              ) : filteredUsers.map(u => (
+                <tr key={u.id} style={{ borderBottom:'1px solid var(--border)' }}>
+                  <td style={{ padding:'10px 12px', fontSize:'13px', color:'var(--text-primary)' }}>{u.email}</td>
+                  <td style={{ padding:'10px 12px', fontSize:'12px', color:'var(--text-secondary)', textTransform:'capitalize' }}>{(u.role||'').replace(/_/g,' ')}</td>
+                  <td style={{ padding:'10px 12px', fontSize:'12px', color:'var(--text-secondary)' }}>{u.last_login ? relativeTime(u.last_login) : 'Never'}</td>
+                  <td style={{ padding:'10px 12px' }}>
+                    <span style={{ padding:'2px 8px', borderRadius:'4px', fontSize:'11px', fontWeight:'600', background: u.is_active?'rgba(34,197,94,0.1)':'rgba(239,68,68,0.1)', color: u.is_active?'#22c55e':'#ef4444' }}>{u.is_active ? 'Active' : 'Inactive'}</span>
+                  </td>
+                  <td style={{ padding:'10px 12px' }}>
+                    {u.email !== currentAdminEmail && u.is_active && (
+                      <button onClick={() => setDeactivateConfirm(u.id)} style={{ padding:'4px 10px', background:'transparent', border:'1px solid rgba(239,68,68,0.4)', borderRadius:'5px', color:'#ef4444', fontSize:'11px', fontWeight:'600', cursor:'pointer' }}>Deactivate</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── SECTION 4 — Recent Activity ── */}
+      <div style={card}>
+        {secHead('Recent Activity (last 24 hours)', null, null)}
+        {recentActivity === null ? (
+          <div style={{ color:'var(--text-secondary)', fontSize:'13px' }}>Loading...</div>
+        ) : recentActivity === undefined || (Array.isArray(recentActivity) && recentActivity.length === 0) ? (
+          <div style={{ color:'var(--text-muted)', fontSize:'13px', fontStyle:'italic' }}>No activity in the last 24 hours.</div>
+        ) : !Array.isArray(recentActivity) ? (
+          <div style={{ color:'var(--text-muted)', fontSize:'13px', fontStyle:'italic' }}>Recent activity feed not yet implemented — coming soon</div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:'2px' }}>
+            {recentActivity.slice(0, 10).map((a, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:'16px', padding:'8px 10px', borderRadius:'6px', fontSize:'12px' }}
+                onMouseEnter={e=>e.currentTarget.style.background='var(--bg-app)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <span style={{ color:'var(--text-muted)', width:'72px', flexShrink:0, fontFamily:'monospace', fontSize:'11px' }}>{relativeTime(a.timestamp)}</span>
+                <span style={{ flex:1, color:'var(--text-primary)' }}>{a.action}{a.case_id ? ` on ${a.case_id}` : a.alert_id ? ` on alert ${a.alert_id}` : ''}</span>
+                <span style={{ color:'var(--text-secondary)', fontSize:'11px' }}>{a.actor_email}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── SECTION 5 — System Health ── */}
+      <div style={card}>
+        {secHead('System Health', null, null)}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'12px' }}>
+          {[
+            { label:'Database', ok: healthStatus.db, desc: healthStatus.db ? 'Connected' : healthStatus.db === false ? 'Disconnected' : 'Checking...' },
+            { label:'Detection Pipeline', ok: founderStats?.last_detection_run && (Date.now() - new Date(founderStats.last_detection_run)) < 7*86400*1000, desc: founderStats?.last_detection_run ? `Last: ${relativeTime(founderStats.last_detection_run)}` : 'Never run' },
+            { label:'API Endpoint', ok: healthStatus.api, desc: healthStatus.api ? 'Responding' : 'Not reachable' },
+            { label:'Multi-Tenancy', ok: mtResults?.passed ?? null, desc: mtResults ? (mtResults.passed ? `PASS — ${mtResults.last_verified}` : 'FAIL') : 'Not tested' },
+          ].map(c => (
+            <div key={c.label} style={{ background:'var(--bg-app)', border:`1px solid ${c.ok===true?'rgba(34,197,94,0.3)':c.ok===false?'rgba(239,68,68,0.3)':'var(--border)'}`, borderRadius:'10px', padding:'16px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
+                <span style={{ fontSize:'12px', fontWeight:'700', color:'var(--text-primary)' }}>{c.label}</span>
+                <span style={{ width:'8px', height:'8px', borderRadius:'50%', background: c.ok===true?'#22c55e':c.ok===false?'#ef4444':'#64748b', flexShrink:0 }} />
+              </div>
+              <div style={{ fontSize:'11px', color:'var(--text-secondary)', marginBottom:'8px' }}>{c.desc}</div>
+              {c.label === 'Multi-Tenancy' && (
+                <button onClick={runMtTests} disabled={runningMt} style={{ width:'100%', padding:'6px', background:'var(--accent)', border:'none', borderRadius:'6px', color:'#000', fontSize:'11px', fontWeight:'700', cursor: runningMt?'default':'pointer', opacity: runningMt?0.7:1 }}>
+                  {runningMt ? 'Running...' : 'Run Tests'}
+                </button>
+              )}
+              {healthStatus.lastChecked && c.label === 'API Endpoint' && (
+                <div style={{ fontSize:'10px', color:'var(--text-muted)', marginTop:'4px' }}>Checked {healthStatus.lastChecked}</div>
+              )}
+              {mtResults && c.label === 'Multi-Tenancy' && (
+                <div style={{ marginTop:'8px', display:'flex', flexDirection:'column', gap:'2px' }}>
+                  {mtResults.suite_results?.map((s,i) => (
+                    <div key={i} style={{ fontSize:'10px', color:'#22c55e' }}>✓ {s}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+export default function AppV2() {
 
   const loadOrgs = () => {
     fetch(`${API_BASE}/admin/organizations`, { headers: authHeaders() })
@@ -5142,7 +5515,7 @@ export default function AppV2() {
           )}
 
           {activeView === 'admin' && userRole === 'admin' && (
-            <AdminView authHeaders={authHeaders} />
+            <AdminView authHeaders={authHeaders} userEmail={userEmail} showToast={showToast} />
           )}
         </div>
       </main>
