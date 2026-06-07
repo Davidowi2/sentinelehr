@@ -770,7 +770,6 @@ const SettingsView = ({
 
       <SettingsSection title="Account" icon={<User size={20} />}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <SettingsField label="Email" value={userEmail || 'demo'} disabled />
           <SettingsField label="Role" value={userRole ? userRole.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User'} disabled />
         </div>
         
@@ -879,7 +878,7 @@ const SettingsView = ({
 };
 
 
-const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, investigating, suggestedInvestigate, handleLookup }) => (
+const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, investigateResults, setInvestigateResults, investigating, suggestedInvestigate, handleLookup }) => (
   <div> 
     {/* Query Section */}
     <div className="w-full" style={{
@@ -1002,7 +1001,29 @@ const InvestigateTab = ({ investigateId, setInvestigateId, handleInvestigate, in
         > 
           <Search size={16} />
           {investigating ? 'Searching...' : 'Run Query'} 
-        </button> 
+        </button>
+        {investigateResults && !investigating && (
+          <button
+            type="button"
+            onClick={() => { setInvestigateResults(null); setInvestigateId(''); }}
+            style={{
+              padding: '10px 16px',
+              background: 'transparent',
+              color: '#879298',
+              border: '1px solid rgba(140,144,159,0.3)',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#879298'; e.currentTarget.style.color = '#d3e4fe'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(140,144,159,0.3)'; e.currentTarget.style.color = '#879298'; }}
+          >
+            <X size={14} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+            Clear
+          </button>
+        )}
       </form> 
     </div>
 
@@ -2621,7 +2642,8 @@ export default function AppV2() {
         severity: alertSeverity, 
         status: alertStatus,
         sort_by: alertSortBy
-      }) 
+      })
+      if (alertDateFilter) query.set('date', alertDateFilter)
       const res = await secureFetch(`${API_BASE}/alerts?${query}`, { 
         headers: authHeaders() 
       }) 
@@ -2824,7 +2846,7 @@ export default function AppV2() {
         const data = await res.json().catch(() => ({}));
         setThresholdMessage({ 
           type: 'error', 
-          text: data.message || 'Failed to update thresholds' 
+          text: data.detail || 'Failed to update thresholds' 
         });
       }
     } catch(e) {
@@ -2966,7 +2988,7 @@ export default function AppV2() {
       fetchAlerts();
       fetchEmployeeMap();
     }
-  }, [token, activeView, alertSeverity, alertStatus, alertSortBy, alertsOffset]) 
+  }, [token, activeView, alertSeverity, alertStatus, alertSortBy, alertsOffset, alertDateFilter]) 
 
   useEffect(() => { 
     if (token && activeView === 'investigate') {
@@ -4690,7 +4712,7 @@ export default function AppV2() {
                           <>
                             <div style={{ marginBottom: '12px' }}>
                               <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Update Status</div>
-                              <StatusButtons options={['Open', 'Under Investigation', 'Pending HR', 'Resolved']} current={caseStatusUpdate} onChange={setCaseStatusUpdate} />
+                              <StatusButtons options={['Open', 'Under Investigation', 'Pending Internal Review', 'Pending HR', 'Pending IT', 'Pending Manager Response', 'Resolved', 'Closed', 'Overdue']} current={caseStatusUpdate} onChange={setCaseStatusUpdate} />
                             </div>
                             <div style={{ marginBottom: '12px' }}>
                               <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Outcome</div>
@@ -4835,7 +4857,8 @@ export default function AppV2() {
               investigateId={investigateId} 
               setInvestigateId={setInvestigateId} 
               handleInvestigate={handleInvestigate} 
-              investigateResults={investigateResults} 
+              investigateResults={investigateResults}
+              setInvestigateResults={setInvestigateResults}
               investigating={investigating} 
               suggestedInvestigate={suggestedInvestigate}
               handleLookup={handleLookup}

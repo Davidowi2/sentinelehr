@@ -1062,6 +1062,7 @@ def get_alerts(
     severity: Optional[str] = None,
     status: Optional[str] = None,
     sort_by: Optional[str] = Query(None),
+    date: Optional[str] = Query(None),
     limit: int = Query(50, le=200),
     offset: int = 0,
     token_data = Depends(verify_token)
@@ -1084,6 +1085,10 @@ def get_alerts(
         else:
             # Default: exclude resolved and suppressed
             query += " AND status != 'resolved' AND adjusted_severity != 'Suppressed'"
+
+        if date:
+            query += " AND alert_date::date = %s"
+            params.append(date)
             
         # Get total count for pagination
         count_query = f"SELECT COUNT(*) FROM ({query}) AS subquery"
@@ -1793,6 +1798,20 @@ def snooze_case(
             "UPDATE cases SET case_title = %s WHERE case_id = %s AND organization_id = %s AND (case_title IS NULL OR case_title = '')",
             (title, case_id, org_id)
         )
+        # Notify all compliance_officer and admin users in the org
+        due_label = str(due_back_date) if due_back_date else 'TBD'
+        notif_msg = f"Case {case_id} parked — waiting on {waiting_on}, due {due_label}"
+        cursor.execute(
+            "SELECT role FROM users WHERE organization_id = %s AND is_active = TRUE AND role IN ('compliance_officer', 'admin')",
+            (org_id,)
+        )
+        notif_roles = [r['role'] for r in cursor.fetchall()]
+        for role in set(notif_roles):
+            cursor.execute(
+                """INSERT INTO case_notifications (case_id, recipient_role, message, is_read, created_at, organization_id)
+                   VALUES (%s, %s, %s, FALSE, NOW(), %s)""",
+                (case_id, role, notif_msg, org_id)
+            )
         conn.commit()
         cursor.execute("SELECT * FROM cases WHERE case_id = %s AND organization_id = %s", (case_id, org_id))
         updated = dict(cursor.fetchone())
