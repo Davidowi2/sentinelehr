@@ -2511,6 +2511,85 @@ def rotate_api_key(request: Request, org_id: int, token_data = Depends(require_r
         raise HTTPException(status_code=500, detail="An internal error occurred")
 
 
+@app.put('/admin/organizations/{org_id}/epic-connection')
+def update_epic_connection(
+    org_id: int,
+    body: dict,
+    token_data = Depends(require_role('admin', 'it_director'))
+):
+    token_org_id = token_data.get('org_id', 1)
+    if token_data.get('role') == 'it_director' and token_org_id != org_id:
+        raise HTTPException(status_code=403, detail='Cannot modify other organizations')
+
+    required = ['epic_host', 'epic_port', 'epic_db_user', 'epic_db_password']
+    for field in required:
+        if not body.get(field):
+            raise HTTPException(status_code=400, detail=f'{field} is required')
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE organizations
+            SET epic_host = %s,
+                epic_port = %s,
+                epic_db_user = %s,
+                epic_db_password_encrypted = %s,
+                epic_connection_verified = FALSE
+            WHERE id = %s
+        """, (
+            body['epic_host'],
+            int(body['epic_port']),
+            body['epic_db_user'],
+            body['epic_db_password'],
+            org_id
+        ))
+        conn.commit()
+        conn.close()
+        return {'status': 'saved', 'verified': False}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] update_epic_connection: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
+@app.post('/admin/organizations/{org_id}/epic-test-connection')
+def test_epic_connection(
+    org_id: int,
+    token_data = Depends(require_role('admin', 'it_director'))
+):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT epic_host, epic_port FROM organizations WHERE id = %s',
+            (org_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row or not row.get('epic_host'):
+            return {'status': 'no_config', 'message': 'No Epic connection configured yet'}
+
+        import socket
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            result = sock.connect_ex((row['epic_host'], int(row['epic_port'])))
+            sock.close()
+            if result == 0:
+                return {'status': 'reachable', 'message': f"Port {row['epic_port']} on {row['epic_host']} is reachable"}
+            return {'status': 'unreachable', 'message': f"Cannot reach {row['epic_host']}:{row['epic_port']}"}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f'[ERROR] test_epic_connection: {str(e)}')
+        raise HTTPException(status_code=500, detail='An internal error occurred')
+
+
 # ─── ADMIN USER MANAGEMENT ──────────────────────────────────
 
 @app.post('/admin/users/create')

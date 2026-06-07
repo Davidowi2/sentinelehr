@@ -1983,6 +1983,10 @@ const SystemView = ({ authHeaders, userRole, showToast }) => {
   const [data, setData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [runningDetection, setRunningDetection] = React.useState(false);
+  const [epicForm, setEpicForm] = React.useState({ host: '', port: '1433', db_user: '', db_password: '' });
+  const [epicSaveStatus, setEpicSaveStatus] = React.useState('');
+  const [epicTestStatus, setEpicTestStatus] = React.useState('');
+  const [epicEditing, setEpicEditing] = React.useState(false);
 
   const loadStatus = () => {
     fetch(`${API_BASE}/system/status`, { headers: authHeaders() })
@@ -2045,6 +2049,104 @@ const SystemView = ({ authHeaders, userRole, showToast }) => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Epic Connection */}
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '16px' }}>EPIC CONNECTION</h3>
+
+        {/* Status row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: epicSaveStatus === 'saved' && !epicEditing ? '0' : '16px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+            Status:{' '}
+            <span style={{ fontWeight: '700', color: epicSaveStatus === 'saved' ? '#22c55e' : epicSaveStatus === 'saving' ? '#f97316' : 'var(--text-muted)' }}>
+              {epicSaveStatus === 'saved' ? 'Saved' : epicSaveStatus === 'saving' ? 'Saving...' : 'Not configured'}
+            </span>
+          </div>
+          {epicSaveStatus === 'saved' && !epicEditing && (
+            <button onClick={() => setEpicEditing(true)}
+              style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+              Edit
+            </button>
+          )}
+        </div>
+
+        {/* Form — hidden when saved and not editing */}
+        {(epicSaveStatus !== 'saved' || epicEditing) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[
+              { label: 'Host', key: 'host', type: 'text', placeholder: 'e.g. clarity.hospital.org' },
+              { label: 'Port', key: 'port', type: 'number', placeholder: '1433' },
+              { label: 'Database User', key: 'db_user', type: 'text', placeholder: 'sentinelehr_readonly' },
+              { label: 'Database Password', key: 'db_password', type: 'password', placeholder: '••••••••' },
+            ].map(f => (
+              <div key={f.key}>
+                <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '6px' }}>{f.label}</div>
+                <input
+                  type={f.type}
+                  placeholder={f.placeholder}
+                  value={epicForm[f.key]}
+                  onChange={e => setEpicForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '7px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+            ))}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button
+                onClick={async () => {
+                  setEpicSaveStatus('saving');
+                  setEpicTestStatus('');
+                  try {
+                    const orgId = data?.organization?.id || 1;
+                    const res = await fetch(`${API_BASE}/admin/organizations/${orgId}/epic-connection`, {
+                      method: 'PUT',
+                      headers: authHeaders(),
+                      body: JSON.stringify({ epic_host: epicForm.host, epic_port: epicForm.port, epic_db_user: epicForm.db_user, epic_db_password: epicForm.db_password })
+                    });
+                    if (res.ok) {
+                      setEpicSaveStatus('saved');
+                      setEpicEditing(false);
+                      showToast('Epic connection saved', 'success');
+                    } else {
+                      const d = await res.json().catch(() => ({}));
+                      setEpicSaveStatus('');
+                      showToast(d.detail || 'Failed to save Epic connection', 'error');
+                    }
+                  } catch {
+                    setEpicSaveStatus('');
+                    showToast('Connection error', 'error');
+                  }
+                }}
+                style={{ flex: 1, padding: '10px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+              >Save Connection</button>
+              <button
+                onClick={async () => {
+                  setEpicTestStatus('Testing...');
+                  try {
+                    const orgId = data?.organization?.id || 1;
+                    const res = await fetch(`${API_BASE}/admin/organizations/${orgId}/epic-test-connection`, { method: 'POST', headers: authHeaders() });
+                    const d = await res.json();
+                    setEpicTestStatus(d.message || d.status);
+                  } catch {
+                    setEpicTestStatus('Connection error');
+                  }
+                }}
+                style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '8px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+              >Test Connection</button>
+            </div>
+
+            {epicTestStatus && (
+              <div style={{ padding: '10px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: '600',
+                background: epicTestStatus.includes('reachable') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                color: epicTestStatus.includes('reachable') ? '#22c55e' : '#ef4444',
+                border: `1px solid ${epicTestStatus.includes('reachable') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
+              }}>
+                {epicTestStatus}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Alert Volume */}
