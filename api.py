@@ -1052,13 +1052,17 @@ def get_summary(request: Request, token_data = Depends(verify_token)):
         open_cases_row = cursor.fetchone()
         open_cases = open_cases_row['open_cases'] if open_cases_row else 0
 
-        # OCR review required count
-        cursor.execute("""
-            SELECT COUNT(*) as ocr_required FROM cases
-            WHERE organization_id = %s AND requires_ocr_review = TRUE
-        """, (org_id,))
-        ocr_row = cursor.fetchone()
-        ocr_required = ocr_row['ocr_required'] if ocr_row else 0
+        # OCR review required count — column may not exist on older schemas
+        try:
+            cursor.execute("""
+                SELECT COUNT(*) as ocr_required FROM cases
+                WHERE organization_id = %s AND requires_ocr_review = TRUE
+            """, (org_id,))
+            ocr_row = cursor.fetchone()
+            ocr_required = ocr_row['ocr_required'] if ocr_row else 0
+        except Exception:
+            conn.rollback()
+            ocr_required = 0
         
         # Total employees monitored
         cursor.execute('SELECT COUNT(*) FROM employees WHERE organization_id = %s', (org_id,)) 
