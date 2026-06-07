@@ -2049,6 +2049,132 @@ def export_case_report(
         print(f"[ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail="An internal error occurred")
 
+
+# ─── ANALYTICS ENDPOINTS ────────────────────────────────────
+
+@app.get("/analytics/top-employees")
+@limiter.limit("30/minute")
+def get_top_employees(request: Request, limit: int = Query(5, le=20), token_data = Depends(verify_token)):
+    """Top employees by open case count, with highest anomaly score."""
+    org_id = token_data.get('org_id', 1)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT c.emp_id, e.role,
+                   COUNT(*) as open_cases,
+                   MAX(a.anomaly_score) as max_anomaly
+            FROM cases c
+            LEFT JOIN employees e ON c.emp_id = e.emp_id AND e.organization_id = c.organization_id
+            LEFT JOIN alerts a ON c.emp_id = a.emp_id AND a.organization_id = c.organization_id
+            WHERE c.status NOT IN ('Closed', 'Resolved')
+              AND c.organization_id = %s
+            GROUP BY c.emp_id, e.role
+            ORDER BY open_cases DESC, max_anomaly DESC NULLS LAST
+            LIMIT %s
+        """, (org_id, limit))
+        rows = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return {"employees": rows}
+    except Exception as e:
+        print(f"[ERROR] get_top_employees: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
+
+
+@app.get("/analytics/rule-frequency")
+@limiter.limit("30/minute")
+def get_rule_frequency(request: Request, token_data = Depends(verify_token)):
+    """Count how many alerts each rule code appears in."""
+    org_id = token_data.get('org_id', 1)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT rules_triggered FROM alerts
+            WHERE organization_id = %s
+              AND adjusted_severity != 'Suppressed'
+              AND alert_date >= NOW() - INTERVAL '180 days'
+        """, (org_id,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        from collections import Counter
+        counter = Counter()
+        for row in rows:
+            if row['rules_triggered']:
+                for rule in row['rules_triggered'].split(','):
+                    rule = rule.strip()
+                    if rule:
+                        counter[rule] += 1
+
+        RULE_LABELS = {
+            'R1': 'Volume Spike', 'R2': 'Off-Hours Access', 'R3': 'Cross-Department',
+            'R4': 'VIP Record', 'R7': 'Break Glass', 'R8': 'Sensitive Record',
+            'R_SENSITIVE': 'Sensitive Flag'
+        }
+        result = [
+            {"rule": rule, "label": RULE_LABELS.get(rule, rule), "count": count}
+            for rule, count in counter.most_common(8)
+        ]
+        return {"rules": result, "total_alerts": len(rows)}
+    except Exception as e:
+        print(f"[ERROR] get_rule_frequency: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
+
+
+@app.get("/analytics/summary")
+@limiter.limit("30/minute")
+def get_analytics_summary(request: Request, token_data = Depends(verify_token)):
+    """Extended summary for analytics view: active alerts, open cases, OCR required, suppressed."""
+    org_id = token_data.get('org_id', 1)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                COUNT(*) FILTER (WHERE adjusted_severity = 'Critical') as critical,
+                COUNT(*) FILTER (WHERE adjusted_severity = 'High') as high,
+                COUNT(*) FILTER (WHERE adjusted_severity = 'Medium') as medium,
+                COUNT(*) FILTER (WHERE adjusted_severity = 'Suppressed') as suppressed,
+                COUNT(*) as total
+            FROM alerts
+            WHERE organization_id = %s
+              AND alert_date >= NOW() - INTERVAL '180 days'
+        """, (org_id,))
+        alert_counts = dict(cursor.fetchone())
+
+        cursor.execute("""
+            SELECT COUNT(*) as open_cases FROM cases
+            WHERE organization_id = %s AND status NOT IN ('Closed', 'Resolved')
+        """, (org_id,))
+        open_cases = cursor.fetchone()['open_cases']
+
+        cursor.execute("""
+            SELECT COUNT(*) as ocr_required FROM cases
+            WHERE organization_id = %s AND requires_ocr_review = TRUE
+        """, (org_id,))
+        ocr_required_row = cursor.fetchone()
+        ocr_required = ocr_required_row['ocr_required'] if ocr_required_row else 0
+
+        cursor.execute("""
+            SELECT COUNT(*) as active_alerts FROM active_alerts
+            WHERE organization_id = %s
+        """, (org_id,))
+        active_alerts = cursor.fetchone()['active_alerts']
+
+        conn.close()
+        return {
+            "active_alerts": active_alerts,
+            "open_cases": open_cases,
+            "ocr_required": ocr_required,
+            "alert_counts": alert_counts
+        }
+    except Exception as e:
+        print(f"[ERROR] get_analytics_summary: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal error occurred")
+
+
 # SETTINGS MANAGEMENT
 
 class ThresholdUpdate(BaseModel):

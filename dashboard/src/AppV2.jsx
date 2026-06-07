@@ -1777,55 +1777,197 @@ const MorningBriefingView = ({ authHeaders, onOpenCase, setActiveView, summary, 
   );
 };
 
-const AnalyticsView = ({ summary, digest, dataLoading, chartRef, alerts }) => {
-  const priorityColors = { Critical: '#f43f5e', High: '#f97316', Medium: '#3b82f6', Low: '#64748b' };
+const AnalyticsView = ({ summary, digest, dataLoading, chartRef, setActiveView, setAlertDateFilter, authHeaders }) => {
+  const [analyticsSummary, setAnalyticsSummary] = React.useState(null);
+  const [topEmployees, setTopEmployees] = React.useState([]);
+  const [ruleFrequency, setRuleFrequency] = React.useState([]);
+  const [loadingExtra, setLoadingExtra] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!authHeaders) return;
+    const h = authHeaders();
+    setLoadingExtra(true);
+    Promise.all([
+      fetch(`${API_BASE}/analytics/summary`, { headers: h }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${API_BASE}/analytics/top-employees`, { headers: h }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${API_BASE}/analytics/rule-frequency`, { headers: h }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([sum, emp, rules]) => {
+      if (sum) setAnalyticsSummary(sum);
+      if (emp) setTopEmployees(emp.employees || []);
+      if (rules) setRuleFrequency(rules.rules || []);
+      setLoadingExtra(false);
+    });
+  }, []);
+
+  // Compute 30-day avg from digest
+  const avgDaily = digest.length > 0
+    ? Math.round(digest.slice(-30).reduce((s, d) => s + (d.critical_count || 0) + (d.high_count || 0) + (d.medium_count || 0), 0) / Math.max(digest.slice(-30).length, 1))
+    : 0;
+
+  const ac = analyticsSummary?.alert_counts || {};
+  const total = (ac.critical || 0) + (ac.high || 0) + (ac.medium || 0) + (ac.suppressed || 0) || 1;
+  const pct = (n) => Math.round((n / total) * 100);
+
+  const ROLE_ABBR = { RN:'RN', LPN:'LPN', MD:'MD', DO:'DO', PA:'PA', NP:'NP', MA:'MA',
+    Nurse:'RN', Doctor:'MD', Physician:'MD', Pharmacist:'Pharm', Technician:'Tech',
+    Administrative:'Admin', Billing:'Billing' };
+  const roleAbbr = (role) => ROLE_ABBR[role] || (role ? role.slice(0, 6) : 'Staff');
+
+  const maxRuleCount = ruleFrequency.length > 0 ? ruleFrequency[0].count : 1;
+
+  const sectionHead = (title) => (
+    <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '16px' }}>{title}</div>
+  );
+
+  const card = (children, extra = {}) => (
+    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', ...extra }}>
+      {children}
+    </div>
+  );
+
   return (
-    <div style={{ width: '100%' }}>
-      {/* Stat cards */}
-      <div className="w-full" style={{ display: 'flex', gap: '24px', marginBottom: '40px' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {/* SECTION 1 — Header strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
         {[
-          { label: 'CRITICAL THREATS', value: summary?.critical ?? alerts.filter(a => a.adjusted_severity === 'Critical').length, sub: 'Require immediate action', color: '#f43f5e', icon: <AlertTriangle size={20} /> },
-          { label: 'HIGH RISK', value: summary?.high ?? alerts.filter(a => a.adjusted_severity === 'High').length, sub: 'ML-elevated alerts', color: '#f97316', icon: <AlertOctagon size={20} /> },
-          { label: 'MEDIUM RISK', value: summary?.medium ?? alerts.filter(a => a.adjusted_severity === 'Medium').length, sub: 'Under observation', color: '#3b82f6', icon: <Info size={20} /> },
-          { label: 'ML PEAK SCORE', value: summary?.top_anomaly_score ? summary.top_anomaly_score.toFixed(2) : (alerts.length > 0 ? Math.max(...alerts.map(a => a.anomaly_score)).toFixed(2) : '—'), sub: '90-day highest anomaly', color: '#adc6ff', icon: <Activity size={20} /> }
-        ].map((card) => (
-          <div key={card.label} style={{ flex: 1, minWidth: 0, background: '#131b2e', border: '1px solid rgba(140,144,159,0.2)', borderBottom: '2px solid transparent', borderRadius: '12px', padding: '32px', position: 'relative', cursor: 'pointer', transition: 'border-bottom-color 0.2s ease' }}
-            onMouseEnter={e => e.currentTarget.style.borderBottomColor = card.color}
-            onMouseLeave={e => e.currentTarget.style.borderBottomColor = 'transparent'}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#64748b' }}>{card.label}</div>
-              <div style={{ color: card.color }}>{card.icon}</div>
-            </div>
-            <div style={{ fontSize: '56px', fontWeight: '700', color: card.color, lineHeight: 1, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '-0.02em', marginBottom: '12px' }}>{card.value}</div>
-            <div style={{ fontSize: '12px', color: '#475569', fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>{card.sub}</div>
+          { label: 'Active Alerts', value: analyticsSummary?.active_alerts ?? summary?.total_active ?? '—' },
+          { label: 'Open Cases', value: analyticsSummary?.open_cases ?? '—' },
+          { label: 'OCR Review Required', value: analyticsSummary?.ocr_required ?? '—' },
+          { label: '30-Day Avg Daily', value: loadingExtra ? '—' : `${avgDaily} alerts/day` },
+        ].map(s => (
+          <div key={s.label} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px 20px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</div>
+            <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{s.value}</div>
           </div>
         ))}
       </div>
-      {/* Chart card */}
-      <div className="w-full" style={{ background: '#131b2e', border: '1px solid rgba(140,144,159,0.2)', borderRadius: '12px', overflow: 'hidden', marginBottom: '40px' }}>
-        <div style={{ padding: '24px 28px 0', background: '#102034', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+      {/* SECTION 2 — 30-Day Chart */}
+      {card(<>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
           <div>
-            <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#879298', marginBottom: '6px' }}>ALERT TREND ANALYSIS</div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: '#d3e4fe', letterSpacing: '-0.02em' }}>30-Day Alert Trend</div>
+            {sectionHead('Alert Trend Analysis')}
+            <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', marginTop: '-8px', marginBottom: '16px' }}>30-Day Alert Trend</div>
           </div>
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-            {[{ c: '#f43f5e', l: 'Critical' }, { c: '#f97316', l: 'High' }, { c: '#3b82f6', l: 'Medium' }].map(item => (
-              <span key={item.l} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: '#bdc8ce' }}>
-                <span style={{ display: 'inline-block', width: '24px', height: '3px', background: item.c, borderRadius: '2px' }} />{item.l}
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            {[{ c: 'var(--critical)', l: 'Critical' }, { c: 'var(--high)', l: 'High' }, { c: 'var(--medium)', l: 'Medium' }].map(item => (
+              <span key={item.l} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                <span style={{ display: 'inline-block', width: '20px', height: '3px', background: item.c, borderRadius: '2px' }} />{item.l}
               </span>
             ))}
           </div>
         </div>
-        <div style={{ padding: '20px 28px', height: '320px', position: 'relative', background: '#102034' }}>
+        <div style={{ height: '280px', position: 'relative' }}>
           {dataLoading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#879298', fontSize: '13px' }}>Loading chart data...</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '13px' }}>Loading chart data...</div>
           ) : digest.length === 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#879298', fontSize: '13px' }}>No activity detected in the last 30 days.</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '13px' }}>No activity in the last 30 days.</div>
           ) : (
             <canvas ref={chartRef} style={{ width: '100%', height: '100%', cursor: 'pointer' }} />
           )}
         </div>
+        <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>Click a bar to filter Alerts tab by that date.</div>
+      </>)}
+
+      {/* SECTION 3 — Severity Breakdown */}
+      {card(<>
+        {sectionHead('Severity Breakdown — All Alerts (180 days)')}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
+          {[
+            { label: 'Critical', count: ac.critical || 0, color: 'var(--critical)' },
+            { label: 'High', count: ac.high || 0, color: 'var(--high)' },
+            { label: 'Medium', count: ac.medium || 0, color: 'var(--medium)' },
+            { label: 'Suppressed (ML low)', count: ac.suppressed || 0, color: 'var(--text-muted)' },
+          ].map(s => (
+            <div key={s.label} style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px' }}>
+              <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px' }}>{s.label}</div>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: s.color, fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>
+                {pct(s.count)}%
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{s.count.toLocaleString()} / {total.toLocaleString()}</div>
+              <div style={{ height: '4px', background: 'var(--bg-elevated)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct(s.count)}%`, background: s.color, borderRadius: '2px', transition: 'width 0.6s ease' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Full-width stacked bar */}
+        <div style={{ display: 'flex', height: '8px', borderRadius: '4px', overflow: 'hidden', gap: '1px' }}>
+          {[
+            { count: ac.critical || 0, color: 'var(--critical)' },
+            { count: ac.high || 0, color: 'var(--high)' },
+            { count: ac.medium || 0, color: 'var(--medium)' },
+            { count: ac.suppressed || 0, color: 'var(--text-muted)' },
+          ].map((s, i) => (
+            <div key={i} style={{ flex: s.count, background: s.color, minWidth: s.count > 0 ? '2px' : '0' }} />
+          ))}
+        </div>
+      </>)}
+
+      {/* SECTION 4 + 5 — Side by side */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+        {/* SECTION 4 — Top 5 Employees */}
+        {card(<>
+          {sectionHead('Top 5 Employees — Open Cases')}
+          {loadingExtra ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
+          ) : topEmployees.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No open cases found.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {topEmployees.map((e, i) => (
+                <div key={e.emp_id}
+                  onClick={() => { setActiveView('investigate'); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={ev => ev.currentTarget.style.background = 'var(--bg-app)'}
+                  onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', flexShrink: 0 }}>{i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--accent)', fontFamily: 'monospace' }}>EMP-{e.emp_id} <span style={{ color: 'var(--text-muted)', fontFamily: 'inherit', fontWeight: '400' }}>({roleAbbr(e.role)})</span></div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)' }}>{e.open_cases} open</div>
+                    {e.max_anomaly != null && (
+                      <div style={{ fontSize: '10px', color: parseFloat(e.max_anomaly) > 0.7 ? 'var(--critical)' : parseFloat(e.max_anomaly) > 0.4 ? 'var(--high)' : 'var(--text-muted)' }}>
+                        peak {parseFloat(e.max_anomaly).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>, { flex: 1 })}
+
+        {/* SECTION 5 — Rule Frequency */}
+        {card(<>
+          {sectionHead('Rule Frequency — 180 Days')}
+          {loadingExtra ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>
+          ) : ruleFrequency.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No rule data found.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {ruleFrequency.map(r => (
+                <div key={r.rule}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>{r.label}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace" }}>{r.count.toLocaleString()}</span>
+                  </div>
+                  <div style={{ height: '6px', background: 'var(--bg-elevated)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.round((r.count / maxRuleCount) * 100)}%`, background: 'var(--accent)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>, { flex: 1 })}
+
       </div>
+
     </div>
   );
 };
@@ -3919,6 +4061,9 @@ export default function AppV2() {
               dataLoading={dataLoading}
               chartRef={chartRef}
               alerts={alerts}
+              authHeaders={authHeaders}
+              setActiveView={setActiveView}
+              setAlertDateFilter={setAlertDateFilter}
             />
           )} 
           
