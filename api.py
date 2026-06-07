@@ -996,7 +996,21 @@ def health_check():
             "timestamp": datetime.now().isoformat()
         }
 
-@app.get("/test-email")
+
+@app.get("/diag/cases-schema")
+def diag_cases_schema(token_data = Depends(require_role('admin'))):
+    """TEMPORARY DIAGNOSTIC — remove after use"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'cases'
+        ORDER BY ordinal_position
+    """)
+    cols = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return {"columns": cols}@app.get("/test-email")
 def test_email(token_data = Depends(require_role('admin'))):
     try:
         ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "compliance@sentinelehr.com")
