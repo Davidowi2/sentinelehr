@@ -659,6 +659,14 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] cases new columns skip: {str(e)}')
 
+        try:
+            cursor.execute('ALTER TABLE alerts ADD COLUMN IF NOT EXISTS reviewer_email_sent BOOLEAN DEFAULT FALSE')
+            conn.commit()
+            print('[DATABASE] reviewer_email_sent column verified')
+        except Exception as e:
+            conn.rollback()
+            print(f'[DATABASE] reviewer_email_sent skip: {str(e)}')
+
         cursor.close()
         conn.close()
         
@@ -1292,7 +1300,22 @@ def get_digest(request: Request, days: int = Query(180, ge=1, le=365), token_dat
         org_id = token_data.get('org_id', 1)
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM daily_digest WHERE organization_id = %s ORDER BY alert_date DESC LIMIT %s", (org_id, days))
+        # Query alerts table directly — daily_digest view does not have organization_id
+        cursor.execute("""
+            SELECT
+                alert_date,
+                COUNT(*) as total_alerts,
+                SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END) as critical_count,
+                SUM(CASE WHEN adjusted_severity = 'High' THEN 1 ELSE 0 END) as high_count,
+                SUM(CASE WHEN adjusted_severity = 'Medium' THEN 1 ELSE 0 END) as medium_count,
+                MAX(anomaly_score) as top_score
+            FROM alerts
+            WHERE adjusted_severity != 'Suppressed'
+              AND organization_id = %s
+            GROUP BY alert_date
+            ORDER BY alert_date DESC
+            LIMIT %s
+        """, (org_id, days))
         digest = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return digest
