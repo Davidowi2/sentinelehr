@@ -1804,8 +1804,13 @@ const AnalyticsView = ({ summary, digest, dataLoading, chartRef, setActiveView, 
     ? Math.round(digest.slice(-30).reduce((s, d) => s + (d.critical_count || 0) + (d.high_count || 0) + (d.medium_count || 0), 0) / Math.max(digest.slice(-30).length, 1))
     : 0;
 
-  const ac = analyticsSummary?.alert_counts || {};
-  const total = (ac.critical || 0) + (ac.high || 0) + (ac.medium || 0) + (ac.suppressed || 0) || 1;
+  // Use summary prop (already loaded) for severity counts + header stats
+  // Fall back to analyticsSummary for anything not in summary
+  const critical = summary?.critical || 0;
+  const high     = summary?.high || 0;
+  const medium   = summary?.medium || 0;
+  const suppressed = summary?.suppressed || analyticsSummary?.alert_counts?.suppressed || 0;
+  const total    = critical + high + medium + suppressed || 1;
   const pct = (n) => Math.round((n / total) * 100);
 
   const ROLE_ABBR = { RN:'RN', LPN:'LPN', MD:'MD', DO:'DO', PA:'PA', NP:'NP', MA:'MA',
@@ -1831,10 +1836,10 @@ const AnalyticsView = ({ summary, digest, dataLoading, chartRef, setActiveView, 
       {/* SECTION 1 — Header strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
         {[
-          { label: 'Active Alerts', value: analyticsSummary?.active_alerts ?? summary?.total_active ?? '—' },
-          { label: 'Open Cases', value: analyticsSummary?.open_cases ?? '—' },
-          { label: 'OCR Review Required', value: analyticsSummary?.ocr_required ?? '—' },
-          { label: '30-Day Avg Daily', value: loadingExtra ? '—' : `${avgDaily} alerts/day` },
+          { label: 'Active Alerts', value: summary?.total_active ?? analyticsSummary?.active_alerts ?? '—' },
+          { label: 'Open Cases', value: summary?.open_cases ?? analyticsSummary?.open_cases ?? '—' },
+          { label: 'OCR Review Required', value: summary?.ocr_required ?? analyticsSummary?.ocr_required ?? '—' },
+          { label: '30-Day Avg Daily', value: loadingExtra && !digest.length ? '—' : `${avgDaily} alerts/day` },
         ].map(s => (
           <div key={s.label} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px 20px' }}>
             <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</div>
@@ -1875,10 +1880,10 @@ const AnalyticsView = ({ summary, digest, dataLoading, chartRef, setActiveView, 
         {sectionHead('Severity Breakdown — All Alerts (180 days)')}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
           {[
-            { label: 'Critical', count: ac.critical || 0, color: 'var(--critical)' },
-            { label: 'High', count: ac.high || 0, color: 'var(--high)' },
-            { label: 'Medium', count: ac.medium || 0, color: 'var(--medium)' },
-            { label: 'Suppressed (ML low)', count: ac.suppressed || 0, color: 'var(--text-muted)' },
+            { label: 'Critical', count: critical, color: 'var(--critical)' },
+            { label: 'High', count: high, color: 'var(--high)' },
+            { label: 'Medium', count: medium, color: 'var(--medium)' },
+            { label: 'Suppressed (ML low)', count: suppressed, color: 'var(--text-muted)' },
           ].map(s => (
             <div key={s.label} style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px' }}>{s.label}</div>
@@ -1895,10 +1900,10 @@ const AnalyticsView = ({ summary, digest, dataLoading, chartRef, setActiveView, 
         {/* Full-width stacked bar */}
         <div style={{ display: 'flex', height: '8px', borderRadius: '4px', overflow: 'hidden', gap: '1px' }}>
           {[
-            { count: ac.critical || 0, color: 'var(--critical)' },
-            { count: ac.high || 0, color: 'var(--high)' },
-            { count: ac.medium || 0, color: 'var(--medium)' },
-            { count: ac.suppressed || 0, color: 'var(--text-muted)' },
+            { count: critical, color: 'var(--critical)' },
+            { count: high, color: 'var(--high)' },
+            { count: medium, color: 'var(--medium)' },
+            { count: suppressed, color: 'var(--text-muted)' },
           ].map((s, i) => (
             <div key={i} style={{ flex: s.count, background: s.color, minWidth: s.count > 0 ? '2px' : '0' }} />
           ))}

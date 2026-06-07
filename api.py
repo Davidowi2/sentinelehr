@@ -1013,7 +1013,7 @@ def get_summary(request: Request, token_data = Depends(verify_token)):
         conn = get_db()
         cursor = conn.cursor()
         
-        # Total active alerts and breakdown
+        # Total active alerts and severity breakdown (active_alerts excludes Suppressed)
         cursor.execute(''' 
             SELECT COUNT(*) as total_active, 
                 SUM(CASE WHEN adjusted_severity = 'Critical' THEN 1 ELSE 0 END) as critical, 
@@ -1025,6 +1025,32 @@ def get_summary(request: Request, token_data = Depends(verify_token)):
             AND organization_id = %s 
         ''', (org_id,)) 
         alert_stats = cursor.fetchone()
+
+        # Suppressed count for severity breakdown
+        cursor.execute("""
+            SELECT COUNT(*) as suppressed FROM alerts
+            WHERE adjusted_severity = 'Suppressed'
+              AND organization_id = %s
+              AND alert_date >= NOW() - INTERVAL '180 days'
+        """, (org_id,))
+        suppressed_row = cursor.fetchone()
+        suppressed_count = suppressed_row['suppressed'] if suppressed_row else 0
+
+        # Open cases count
+        cursor.execute("""
+            SELECT COUNT(*) as open_cases FROM cases
+            WHERE organization_id = %s AND status NOT IN ('Closed', 'Resolved')
+        """, (org_id,))
+        open_cases_row = cursor.fetchone()
+        open_cases = open_cases_row['open_cases'] if open_cases_row else 0
+
+        # OCR review required count
+        cursor.execute("""
+            SELECT COUNT(*) as ocr_required FROM cases
+            WHERE organization_id = %s AND requires_ocr_review = TRUE
+        """, (org_id,))
+        ocr_row = cursor.fetchone()
+        ocr_required = ocr_row['ocr_required'] if ocr_row else 0
         
         # Total employees monitored
         cursor.execute('SELECT COUNT(*) FROM employees WHERE organization_id = %s', (org_id,)) 
@@ -1044,6 +1070,9 @@ def get_summary(request: Request, token_data = Depends(verify_token)):
             "critical": alert_stats["critical"] or 0,
             "high": alert_stats["high"] or 0,
             "medium": alert_stats["medium"] or 0,
+            "suppressed": suppressed_count,
+            "open_cases": open_cases,
+            "ocr_required": ocr_required,
             "top_anomaly_score": float(alert_stats["top_anomaly_score"]) if alert_stats["top_anomaly_score"] is not None else 0.0,
             "total_employees_monitored": total_employees,
             "date_range": {
