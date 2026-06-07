@@ -624,7 +624,7 @@ const SettingsView = ({
 
   return (
     <div style={{ width: '100%' }}>
-      {userRole !== 'admin' && ( 
+      {userRole === 'compliance_officer' && ( 
         <div style={{padding:'12px 16px', background:'rgba(173,198,255,0.08)', border:'1px solid rgba(173,198,255,0.15)', borderRadius:'8px', marginBottom:'24px', fontSize:'13px', color:'var(--text-secondary)', display:'flex', alignItems:'center', gap:'8px'}}> 
           <Info size={14} /> 
           Some settings require admin access. Contact your administrator to make changes. 
@@ -638,6 +638,7 @@ const SettingsView = ({
         </div>
       </SettingsSection>
 
+      {userRole === 'admin' && (
       <SettingsSection title="Alert Thresholds" icon={<AlertTriangle size={20} />}>
         {userRole !== 'admin' && <p style={{fontSize:'12px', color:'var(--text-secondary)', marginBottom:'12px'}}>View only — admin access required to modify thresholds.</p>}
         <div style={{opacity: userRole === 'admin' ? 1 : 0.5, pointerEvents: userRole === 'admin' ? 'auto' : 'none'}}> 
@@ -767,6 +768,7 @@ const SettingsView = ({
           </button>
         </div>
       </SettingsSection>
+      )}
 
       <SettingsSection title="Account" icon={<User size={20} />}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -3665,7 +3667,7 @@ export default function AppV2() {
               }
               
               // Hide Investigate tab for it_director role
-              if (['investigate', 'alerts', 'cases', 'analytics'].includes(item.id) && userRole === 'it_director') {
+              if (['investigate', 'alerts', 'cases', 'analytics', 'overview'].includes(item.id) && userRole === 'it_director') {
                 return null;
               }
 
@@ -3730,7 +3732,8 @@ export default function AppV2() {
           <div style={{ marginTop: 'auto' }}>
             <div style={{ height: '1px', background: 'rgba(140,144,159,0.2)', margin: '16px 0' }} />
             
-            {/* Settings */}
+            {/* Settings — hidden for it_director */}
+            {userRole !== 'it_director' && (
             <button
               onClick={() => setActiveView('settings')}
               style={{
@@ -3753,6 +3756,7 @@ export default function AppV2() {
               <Settings size={18} />
               <span style={{ fontSize: '14px', fontWeight: activeView === 'settings' ? '600' : '500' }}>Settings</span>
             </button>
+            )}
           </div>
         </nav>
 
