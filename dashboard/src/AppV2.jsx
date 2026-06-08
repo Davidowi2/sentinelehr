@@ -3567,17 +3567,6 @@ export default function AppV2() {
               <div style={{ fontSize: '28px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>0</div>
               <div style={{ fontSize: '11px', color: '#879298', marginTop: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PHI Stored</div>
             </div>
-            <div style={{
-              flex: 1,
-              background: '#0b1326',
-              border: '1px solid rgba(140,144,159,0.2)',
-              borderRadius: '12px',
-              padding: '20px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '28px', fontWeight: '700', color: '#adc6ff', fontFamily: "'JetBrains Mono', monospace" }}>86%</div>
-              <div style={{ fontSize: '11px', color: '#879298', marginTop: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Precision</div>
-            </div>
           </div>
         </div>
 

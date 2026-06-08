@@ -1,0 +1,10 @@
+from db import get_connection
+conn = get_connection()
+cur = conn.cursor()
+cur.execute("SELECT id, email, organization_id FROM users WHERE email LIKE '%hospital2test%'")
+rows = cur.fetchall()
+print('Leftover users:', [dict(r) for r in rows])
+cur.execute("DELETE FROM users WHERE email LIKE '%hospital2test%'")
+print('Deleted:', cur.rowcount, 'users')
+conn.commit()
+conn.close()
