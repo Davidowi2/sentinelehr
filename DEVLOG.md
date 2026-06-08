@@ -210,4 +210,205 @@ ADMIN_PASSWORD        — Fallback admin password
 
 ---
 
-*Last updated: June 2026*
+*Last updated: June 7, 2026*
+
+---
+
+## Phase 9 — Dashboard UX Overhaul
+
+### Cases Tab — Three-Section Workflow View
+- Replaced flat cases table with three collapsible sections: **Needs Decision**, **Waiting on Others**, **Recently Closed**
+- Search, EMP ID filter, and priority filter on Needs Decision section
+- Each row shows case title, EMP ID, priority badge, OCR badge, IT Director flag
+- Report button on every row → opens printable case report modal
+- Snooze form resets when switching between cases (state bleed fix)
+
+### Case Drawer Redesign
+- Section 1: Header with case title, ID, priority, status, days open
+- Section 2: CaseSummary — "Why this case was opened" with evidence (rules triggered, anomaly score, explanation)
+- Section 3: EmployeeSnapshot — role, dept, EMP ID, open case count
+- Section 4: Decision History — timeline of all actions with `user_email` from JOIN on users table
+- Section 5: Investigation Notes — threaded notes with Add Note button (fixed duplicate route bug)
+- Section 6: Actions — full 9-status buttons, outcome dropdown, Save Changes, Snooze form, OCR panel
+- Section 7: Full audit trail (collapsible)
+- All 9 valid case statuses exposed: Open, Under Investigation, Pending Internal Review, Pending HR, Pending IT, Pending Manager Response, Resolved, Closed, Overdue
+
+### Alerts Tab Redesign
+- Plain-English "story" column replaces raw rule codes
+- Employee name/role/dept from `/employees` endpoint (new `GET /employees` added)
+- Inline dismiss form with reason dropdown (dark-theme fix applied)
+- Sort By dropdown now wired to API (`sort_by` param added to `GET /alerts`)
+- Date filter chip when chart bar clicked: "Filtered by: [date] [×]"
+- Chart drill-down: clicking a bar on Analytics switches to Alerts filtered by that date
+
+### Morning Briefing (Overview Tab)
+- Horizontal card scroll for top 5 urgent cases
+- Waiting on Others section with due-date countdown
+- Recently Closed section
+- Since Last Login notifications feed
+- View Analytics link
+
+### Analytics Tab — Complete Redesign
+- Section 1: Header strip — Active Alerts, Open Cases, OCR Review Required, 30-Day Avg Daily
+- Section 2: 30-Day Alert Trend chart (existing, kept)
+- Section 3: Severity Breakdown — 4 cards (Critical/High/Medium/Suppressed) with % and stacked bar
+- Section 4 + 5: Top 5 Employees by Open Cases and Rule Frequency — side by side
+- All data from `/summary` (enriched) + new `/analytics/top-employees` + `/analytics/rule-frequency` endpoints
+
+### Investigate Tab
+- Suggested Investigations cards — sorted by risk score (priority_score || ocr_risk_score)
+- Clear button resets results and shows suggestions again
+- Max risk score shows `—` instead of `0.00` when no score available
+
+### Settings Tab
+- Threshold values fetched from DB on mount (previously showed hardcoded defaults)
+- Duplicate read-only email field removed
+- "Some settings require admin access" banner hidden from it_director
+- Alert Thresholds card hidden from non-admin roles
+- Threshold save error handler reads `data.detail` (FastAPI format)
+
+---
+
+## Phase 10 — IT Director Access Control
+
+- Overview and Settings nav items hidden from it_director sidebar
+- it_director sees only: System, Sign Out
+- "Some settings require admin access" banner shown only to compliance_officer
+- Alert Thresholds SettingsSection only rendered for admin role
+- 403 toast on Overview eliminated by removing the nav path
+
+### Epic Connection Form (System Tab)
+- New card in SystemView: "EPIC CONNECTION"
+- Four input fields: Host, Port, DB User, DB Password
+- Save Connection → `PUT /admin/organizations/{org_id}/epic-connection`
+- Test Connection → `POST /admin/organizations/{org_id}/epic-test-connection` (TCP socket check)
+- Form collapses to "Status: Saved" with Edit button after successful save
+- Backend stores to `epic_host`, `epic_port`, `epic_db_user`, `epic_db_password_encrypted`
+
+### Run Detection Now Button (System Tab)
+- Button in DETECTION SUMMARY card for it_director and admin
+- Calls `POST /admin/run-detection/{org_id}` — now returns immediately (async)
+- `finally` block always resets loading state
+- 30-second auto-refresh of system status after triggering
+
+---
+
+## Phase 11 — Critical Bug Fixes
+
+### Detection Pipeline
+- `anomaly_detector.py` `__main__` block was ignoring CLI `org_id` arg — fixed
+- `anomaly_detector.py` `engine` variable was defined inside `build_feature_matrix()` causing `NameError` in summary block — moved to module scope
+- `alert_manager.py` sent SendGrid email for every Critical alert on every run (spam) — fixed with `reviewer_email_sent BOOLEAN DEFAULT FALSE` column + dedup check
+- `POST /admin/run-detection/{org_id}` was synchronous and caused 502 timeout on Render — refactored to run pipeline in `threading.Thread(daemon=True)`, returns `{"status":"started"}` immediately
+- After pipeline completes, direct SQL propagates anomaly scores to alerts table (bypasses alert_manager.py scoping issues)
+
+### API Fixes
+- `GET /digest` was returning all-org data (no org filter) — rewrote to query `alerts` table directly with `WHERE organization_id = %s` (the `daily_digest` view lacked the column)
+- `GET /summary` 500 — `requires_ocr_review` is INTEGER not BOOLEAN; `= TRUE` comparison fails — fixed to `> 0` with try/except
+- `GET /summary` now returns `open_cases`, `ocr_required`, `suppressed` count in addition to existing fields
+- `/cases/{id}/outcome` missing `'No Action'` from valid outcomes list — added
+- `POST /cases/{id}/notes` had a duplicate route; old route was inserting into `case_audit_log` instead of `case_notes` — deleted old route, surviving route inserts correctly
+- `reviewer_email_sent` column added to `alerts` table via startup migration
+- `config.example.json` `api_url` corrected from `sentinelehr.onrender.com` to `sentinelehr-api.onrender.com`
+- All 4 hardcoded `https://sentinelehr.onrender.com` URLs in AppV2.jsx replaced with `${API_BASE}`
+
+### Frontend Fixes
+- `Drawer` component background changed from hardcoded `#0d1f35` to `var(--bg-surface)` for light mode support
+- `TableCard` and `SettingsSection` background colors replaced with CSS variables
+- `log.changed_by_name` in audit trail Section 7 replaced with `log.user_email || 'System'`
+- `snoozeForm` state now resets when opening a different case
+- Status snackbar and audit trail toggle reset on case change
+- `5 core bugs` fixed in one commit: outcome save (missing reason), note save (wrong field name), employee map fetch (endpoint didn't exist), hardcoded URLs, threshold fetch on mount
+
+---
+
+## Phase 12 — New Endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /employees` | List all employees for org — used by alerts empMap |
+| `GET /analytics/top-employees` | Top 5 employees by open case count + max anomaly |
+| `GET /analytics/rule-frequency` | Rule code frequency across 180 days of alerts |
+| `GET /analytics/summary` | Extended summary with suppressed count, open_cases, ocr_required |
+| `PUT /admin/organizations/{org_id}/epic-connection` | Save Epic DB connection fields |
+| `POST /admin/organizations/{org_id}/epic-test-connection` | TCP reachability check |
+| `GET /admin/founder-stats` | Cross-org aggregates: active_users, orgs, total_alerts, open_cases, ocr_pending, last_detection_run |
+| `GET /admin/users-all` | All users across all orgs with org name join |
+| `GET /admin/recent-activity` | Last 20 actions from case_audit_log + dismissals + logins (24h window) |
+| `POST /admin/users/{user_id}/deactivate` | Set is_active=FALSE; refuses own account |
+| `POST /admin/run-multi-tenancy-tests` | Stub returning last verified PASS results |
+
+---
+
+## Phase 13 — Founder Admin Control Panel
+
+Complete rebuild of AdminView with 5 sections:
+
+**Section 1 — At a Glance**
+- 6 stat cards in a horizontal row: Active Users, Organizations, Total Alerts, Open Cases, OCR Review Pending, Last Detection Run
+- Data from `GET /admin/founder-stats` (cross-org, admin only)
+- Skeleton loading state; OCR card amber if > 0, green if 0
+
+**Section 2 — Organizations**
+- Table: Name, Tier, Status badge (Active/Stale/Never Connected), Last Sync, API Key preview
+- Status logic: Active = epic_connection_verified; Stale = last_sync > 7 days; Never Connected = no sync
+- Create Organization form with loading state (button shows "Creating...")
+
+**Section 3 — Users**
+- Search by email, Role dropdown filter, Org dropdown filter
+- Table: Email, Role, Last Login (relative time), Status, Actions
+- Deactivate button with confirm dialog (hidden for own row)
+- Create User form
+
+**Section 4 — Recent Activity**
+- Last 10 actions from case_audit_log + alert_dismissals + user logins in last 24h
+- Relative timestamps ("3 hours ago"), actor email, action + case/alert ID
+
+**Section 5 — System Health**
+- 4 cards: Database, Detection Pipeline, API Endpoint, Multi-Tenancy
+- Status dots (green/red)
+- Run Tests button calls `POST /admin/run-multi-tenancy-tests`
+- MT results displayed inline after test runs
+
+---
+
+## Phase 14 — Multi-Tenancy Verification (Completed June 7, 2026)
+
+Full 5-suite isolation test run against the live production API. All tests passed.
+
+### Test 1 — Read Isolation ✅ PASS
+- Org 2 (test org) with June 2025 data; org 1 has Jan–Mar 2026 data
+- Token2 never saw any 2026 dates; token1 never saw "MT Test" explanations
+- `/summary` date_range confirmed correct per-org: `{'start':'2025-06-15','end':'2025-06-25'}` for org2
+
+### Test 2 — Write Isolation ✅ PASS
+- Org 2 token attempted: dismiss alert, add note, change status, snooze, OCR assess on org 1 records
+- All 5 returned `404 "Case not found"` or `404 "Alert not found"` — no writes succeeded
+- Org 1 data unchanged throughout
+
+### Test 3 — Ingestion Path Isolation ✅ PASS
+- Org 2 api_key attempted ingest with `organization_id=1` in body — API ignores body org_id, always scopes to api_key's org
+- Org 1 `audit_events` count unchanged
+
+### Test 4 — Admin Cross-Org Access ✅ PASS
+- Org 2 compliance_officer token: all admin endpoints returned 403
+- `GET /users` returned 403 (endpoint restricted to admin role)
+
+### Test 5 — Audit Log / Notifications ✅ PASS
+- `GET /notifications` returned 0 entries for org 2 (no org 1 notifications visible)
+- `GET /cases/SEN-2026-0001` returned 404 for org 2 token
+
+**Verdict:** Multi-tenancy read isolation, write isolation, ingestion isolation, admin isolation, and audit/notification isolation all confirmed. The `organization_id` scoping on every endpoint is working correctly.
+
+---
+
+## New Columns Added (this session)
+
+| Table | Column | Type | Purpose |
+|-------|--------|------|---------|
+| `alerts` | `reviewer_email_sent` | BOOLEAN DEFAULT FALSE | Email dedup — prevents spam on repeated detection runs |
+| `cases` | (existing) `requires_ocr_review` | INTEGER | Was already present; fixed query from `= TRUE` to `> 0` |
+
+---
+
+*Last updated: June 8, 2026*
