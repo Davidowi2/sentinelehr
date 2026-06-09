@@ -3836,9 +3836,9 @@ export default function AppV2() {
           alignItems: 'center',
           gap: '12px'
         }}>
-          <div style={{background:'transparent', border:'none', boxShadow:'none', padding:0, display:'flex', alignItems:'center'}}>
-            <img src='/sentinelehr-logo.png' alt='SentinelEHR' style={{width:'38px', height:'38px', objectFit:'contain'}} />
-          </div>
+          <div style={{backgroundColor:'#0D1117', padding:'4px 8px', borderRadius:'6px', display:'inline-flex', alignItems:'center'}}> 
+            <img src="/sentinelehr-logo.png" style={{height:'32px', objectFit:'contain'}} alt="SentinelEHR logo" /> 
+          </div> 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ fontWeight: '700', fontSize: '18px', color: '#adc6ff', lineHeight: 1 }}>SentinelEHR</span>
             <span style={{ fontSize: '10px', fontWeight: '600', color: '#879298', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COMPLIANCE INTELLIGENCE</span>

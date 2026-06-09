@@ -790,6 +790,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[ 
       "https://sentinelehr.vercel.app", 
+      "https://app.sentinelhr.org",
+      "https://sentinelhr.org",
+      "https://www.sentinelhr.org",
       "http://localhost:5173", 
       "http://localhost:3000" 
     ],
