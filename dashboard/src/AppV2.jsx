@@ -4181,6 +4181,7 @@ export default function AppV2() {
               </div>
             )}
           </div>
+        </div>
           
           {/* Right: Actions and User */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
