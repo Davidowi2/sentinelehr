@@ -3988,19 +3988,23 @@ export default function AppV2() {
           zIndex: 40
         }}>
           {/* Left: Search */}
-          <div 
-            ref={searchContainerRef}
-            style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '12px',
-            background: '#102034',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            width: '320px',
-            border: '1px solid rgba(140,144,159,0.2)',
-            position: 'relative'
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{backgroundColor:'#0D1117', padding:'4px 8px', borderRadius:'6px', display:'inline-flex', alignItems:'center', marginRight:'16px'}}> 
+              <img src="/sentinelehr-logo.png" style={{height:'32px', objectFit:'contain'}} alt="SentinelEHR logo" /> 
+            </div> 
+            <div 
+              ref={searchContainerRef}
+              style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px',
+              background: '#102034',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              width: '320px',
+              border: '1px solid rgba(140,144,159,0.2)',
+              position: 'relative'
+            }}>
             <Search size={20} style={{ color: '#879298' }} />
             <input 
               id="global-search"
