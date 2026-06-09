@@ -2836,16 +2836,21 @@ export default function AppV2() {
   useEffect(() => { 
     const tryRefresh = async () => { 
       try { 
+        const storedRefresh = localStorage.getItem('sentinel_refresh_token');
         const res = await fetch(`${API_BASE}/auth/refresh`, { 
           method: 'POST', 
           credentials: 'include', 
-          headers: { 'Content-Type': 'application/json' } 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: storedRefresh })
         }); 
         if (res.ok) { 
           const data = await res.json(); 
           setToken(data.access_token); 
           setUserRole(data.role); 
           setUserEmail(data.email); 
+          if (data.refresh_token) {
+            localStorage.setItem('sentinel_refresh_token', data.refresh_token);
+          }
         } 
       } catch (e) { 
         // Silent fail — show login 
@@ -2896,6 +2901,11 @@ export default function AppV2() {
         setUserRole(data.role);
         setUserEmail(data.email);
         setUserOrganization(data.organization);
+        
+        // Store refresh token in localStorage
+        if (data.refresh_token) {
+          localStorage.setItem('sentinel_refresh_token', data.refresh_token);
+        }
       } else {
         const errData = await res.json().catch(() => ({}));
         setLoginError(errData.detail || 'Incorrect email or password');

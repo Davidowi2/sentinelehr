@@ -911,6 +911,7 @@ def login(request: Request, body: dict):
 
         response = JSONResponse(content={ 
             'access_token': token, 
+            'refresh_token': refresh_token,
             'token_type': 'bearer', 
             'role': user['role'], 
             'user_id': user['id'], 
@@ -934,8 +935,18 @@ def login(request: Request, body: dict):
 
 @app.post('/auth/refresh')
 @limiter.limit("20/minute")
-def refresh_access_token(request: Request): 
-    refresh_token = request.cookies.get('refresh_token') 
+async def refresh_access_token(request: Request): 
+    # Try reading from body first
+    try:
+        body = await request.json()
+        refresh_token = body.get('refresh_token')
+    except:
+        refresh_token = None
+    
+    # Fallback to cookie
+    if not refresh_token:
+        refresh_token = request.cookies.get('refresh_token') 
+        
     if not refresh_token: 
         raise HTTPException(status_code=401, detail='No refresh token') 
     try: 
