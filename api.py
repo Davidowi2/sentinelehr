@@ -3318,13 +3318,18 @@ def ingest_data(request: Request, body: dict = Body(...)):
         conn.commit()
 
         if is_last_batch:
-            cursor.execute('''
+            # Count rows from the table that was actually synced, not always audit_events
+            if table == 'audit_events':
+                count_query = 'SELECT COUNT(*) FROM audit_events WHERE organization_id = %s'
+            elif table == 'employees':
+                count_query = 'SELECT COUNT(*) FROM employees WHERE organization_id = %s'
+            elif table == 'patient_panels':
+                count_query = 'SELECT COUNT(*) FROM patient_panels WHERE organization_id = %s'
+
+            cursor.execute(f'''
                 UPDATE sync_state
                 SET last_sync_at = NOW(),
-                    last_record_count = (
-                        SELECT COUNT(*) FROM audit_events
-                        WHERE organization_id = %s
-                    ),
+                    last_record_count = ({count_query}),
                     status = 'success',
                     error_message = NULL,
                     updated_at = NOW()
