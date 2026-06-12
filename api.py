@@ -667,6 +667,31 @@ def seed_database():
             conn.rollback()
             print(f'[DATABASE] reviewer_email_sent skip: {str(e)}')
 
+        # batch_id idempotency columns — UUID per batch, nullable for existing rows
+        for tbl, constraint in [
+            ('audit_events',   'audit_events_batch_org_unique'),
+            ('employees',      'employees_batch_org_unique'),
+            ('patient_panels', 'patient_panels_batch_org_unique'),
+        ]:
+            try:
+                cursor.execute(f'ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS batch_id UUID')
+                conn.commit()
+                print(f'[DATABASE] {tbl}.batch_id column verified')
+            except Exception as e:
+                conn.rollback()
+                print(f'[DATABASE] {tbl}.batch_id skip: {str(e)}')
+            try:
+                cursor.execute(f'''
+                    ALTER TABLE {tbl}
+                    ADD CONSTRAINT {constraint}
+                    UNIQUE (batch_id, organization_id)
+                ''')
+                conn.commit()
+                print(f'[DATABASE] {constraint} constraint verified')
+            except Exception as e:
+                conn.rollback()
+                print(f'[DATABASE] {constraint} skip: {str(e)}')
+
         cursor.close()
         conn.close()
         
@@ -3221,8 +3246,14 @@ def ingest_data(request: Request, body: dict = Body(...)):
         raise HTTPException(status_code=400, detail="records must be a list")
     if len(records) > 50000:
         raise HTTPException(status_code=400, detail="Batch too large. Maximum 50000 records per request.")
-    batch_id = body.get('batch_id')
     is_last_batch = body.get('is_last_batch', False)
+
+    # --- batch_id idempotency ---
+    import re as _re
+    UUID_RE = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', _re.IGNORECASE)
+    batch_id = body.get('batch_id')
+    if not batch_id or not UUID_RE.match(str(batch_id)):
+        raise HTTPException(status_code=400, detail="batch_id is required and must be a valid UUID")
 
     valid_tables = ['audit_events', 'employees', 'patient_panels']
     if table not in valid_tables:
@@ -3235,6 +3266,24 @@ def ingest_data(request: Request, body: dict = Body(...)):
         conn = get_connection()
         cursor = conn.cursor()
 
+        # --- batch_id idempotency: check for duplicate batch before inserting ---
+        cursor.execute(
+            f'SELECT EXISTS(SELECT 1 FROM {table} WHERE batch_id = %s AND organization_id = %s)',
+            (batch_id, org_id)
+        )
+        already_processed = cursor.fetchone()[0]
+        if already_processed:
+            conn.close()
+            return {
+                'status': 'duplicate',
+                'batch_id': batch_id,
+                'table': table,
+                'organization_id': org_id,
+                'skipped': len(records),
+                'inserted': 0,
+                'is_last_batch': is_last_batch
+            }
+
         inserted = 0
         skipped = 0
 
@@ -3245,8 +3294,8 @@ def ingest_data(request: Request, body: dict = Body(...)):
                         INSERT INTO audit_events (
                             audit_id, emp_id, pat_id, action_c, action_datetime,
                             dept_id, in_panel, is_vip_access, is_sensitive_access,
-                            is_known_user, organization_id
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            is_known_user, organization_id, batch_id
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (audit_id, organization_id) DO NOTHING
                     ''', (
                         record.get('audit_id'),
@@ -3259,7 +3308,8 @@ def ingest_data(request: Request, body: dict = Body(...)):
                         record.get('is_vip_access', False),
                         record.get('is_sensitive_access', False),
                         record.get('is_known_user', True),
-                        org_id
+                        org_id,
+                        batch_id
                     ))
                     inserted += 1
                 except Exception:
@@ -3273,8 +3323,8 @@ def ingest_data(request: Request, body: dict = Body(...)):
                     cursor.execute('''
                         INSERT INTO employees (
                             emp_id, role, dept_id, normal_start, normal_end,
-                            is_float, organization_id
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            is_float, organization_id, batch_id
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (emp_id, organization_id)
                         DO UPDATE SET
                             role = EXCLUDED.role,
@@ -3289,7 +3339,8 @@ def ingest_data(request: Request, body: dict = Body(...)):
                         record.get('normal_start'),
                         record.get('normal_end'),
                         record.get('is_float', False),
-                        org_id
+                        org_id,
+                        batch_id
                     ))
                     inserted += 1
                 except Exception:
@@ -3301,13 +3352,14 @@ def ingest_data(request: Request, body: dict = Body(...)):
             for record in records:
                 try:
                     cursor.execute('''
-                        INSERT INTO patient_panels (emp_id, pat_id, organization_id)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO patient_panels (emp_id, pat_id, organization_id, batch_id)
+                        VALUES (%s, %s, %s, %s)
                         ON CONFLICT (emp_id, pat_id, organization_id) DO NOTHING
                     ''', (
                         record.get('emp_id'),
                         record.get('pat_id'),
-                        org_id
+                        org_id,
+                        batch_id
                     ))
                     inserted += 1
                 except Exception:
@@ -3379,7 +3431,8 @@ def ingest_data(request: Request, body: dict = Body(...)):
         conn.close()
 
         return {
-            'status': 'success',
+            'status': 'inserted',
+            'batch_id': batch_id,
             'table': table,
             'organization_id': org_id,
             'inserted': inserted,

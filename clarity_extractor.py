@@ -35,6 +35,7 @@ Schedule:
 import os
 import sys
 import json
+import uuid
 import argparse
 import requests
 import logging
@@ -104,6 +105,8 @@ def send_batch(config, table, records, is_last_batch, batch_num, dry_run=False):
         log.info(f'[DRY RUN] Would send {len(records)} records to {table} (batch {batch_num})')
         return True
 
+    batch_id = str(uuid.uuid4())
+
     try:
         response = requests.post(
             f"{config['api_url']}/ingest/data",
@@ -114,17 +117,21 @@ def send_batch(config, table, records, is_last_batch, batch_num, dry_run=False):
             json={
                 'table': table,
                 'records': records,
-                'batch_id': f'{table}_{batch_num}',
+                'batch_id': batch_id,
                 'is_last_batch': is_last_batch
             },
             timeout=120
         )
         response.raise_for_status()
         result = response.json()
-        log.info(f'Batch {batch_num}: inserted={result["inserted"]}, skipped={result["skipped"]}')
+        status = result.get('status', 'unknown')
+        if status == 'duplicate':
+            log.info(f'[DUPLICATE] Batch {batch_num} ({batch_id}): already processed — skipping ({result.get("skipped", 0)} records)')
+        else:
+            log.info(f'Batch {batch_num} ({batch_id}): inserted={result.get("inserted", 0)}, skipped={result.get("skipped", 0)}, status={status}')
         return True
     except requests.RequestException as e:
-        log.error(f'Failed to send batch {batch_num} to {table}: {e}')
+        log.error(f'Failed to send batch {batch_num} ({batch_id}) to {table}: {e}')
         return False
 
 
