@@ -261,29 +261,21 @@ def extract_patient_panels(clarity_conn):
     return records
 
 
-def extract_audit_events(clarity_conn, last_sync_at, full_sync=False):
+def extract_audit_events_streaming(clarity_conn, last_sync_at, send_callback, full_sync=False):
     """
-    Extract access log events from ACCESS_LOG.
+    Stream ACCESS_LOG rows in chunks and pass each chunk to send_callback.
 
-    What IS extracted (behavioral metadata only):
-        - Employee ID (who)
-        - Patient ID (which record was accessed — ID only, no content)
-        - Action type code (view, print, export)
-        - Access timestamp
-        - Department ID
-        - VIP flag (boolean)
-        - Sensitive record flag (boolean)
+    Memory ceiling: AUDIT_CHUNK_SIZE records at any one time (~50K rows).
+    For large hospitals this replaces the previous all-at-once approach which
+    could allocate several GB for millions of audit events.
 
-    What is NOT extracted:
-        - Patient names
-        - Clinical notes or diagnoses
-        - Medications or lab results
-        - Financial information
-        - Any PHI content fields
+    send_callback signature:
+        send_callback(table_name: str, records: list, is_final_table_batch: bool)
+        Returns True on success, False on failure.
     """
-    log.info('Extracting audit events...')
-    cursor = clarity_conn.cursor()
+    AUDIT_CHUNK_SIZE = 50000
 
+    # Determine the since-date for delta vs full sync — unchanged logic
     if full_sync or not last_sync_at:
         since = datetime.now() - timedelta(days=90)
         log.info('Full sync — extracting last 90 days')
@@ -291,84 +283,107 @@ def extract_audit_events(clarity_conn, last_sync_at, full_sync=False):
         since = datetime.fromisoformat(str(last_sync_at))
         log.info(f'Delta sync — extracting records since {since}')
 
-    # Build VIP and sensitive patient sets for derivation
+    # Pre-load lookup sets once (small tables, safe to hold in memory)
     log.info('Loading VIP and sensitive patient flags...')
-    cursor.execute("""
+    cur = clarity_conn.cursor()
+    cur.execute("""
         SELECT PAT_ID,
                COALESCE(IS_VIP, 0)       AS is_vip,
                COALESCE(IS_SENSITIVE, 0) AS is_sensitive
         FROM PATIENT
         WHERE PAT_ID IS NOT NULL
     """)
-    patient_rows = cursor.fetchall()
-    vip_set = {row[0] for row in patient_rows if row[1]}
+    patient_rows = cur.fetchall()
+    vip_set       = {row[0] for row in patient_rows if row[1]}
     sensitive_set = {row[0] for row in patient_rows if row[2]}
     log.info(f'Loaded {len(vip_set)} VIP patients, {len(sensitive_set)} sensitive patients')
 
-    # Load panel relationships for in_panel derivation
     log.info('Loading panel relationships for in-panel derivation...')
-    cursor.execute("""
+    cur.execute("""
         SELECT DISTINCT PROV_ID, PAT_ID FROM PAT_ENC
         WHERE PROV_ID IS NOT NULL AND PAT_ID IS NOT NULL
     """)
-    panel_set = {(row[0], row[1]) for row in cursor.fetchall()}
+    panel_set = {(row[0], row[1]) for row in cur.fetchall()}
     log.info(f'Loaded {len(panel_set)} panel relationships')
 
-    # Load known employees
-    cursor.execute("SELECT USER_ID FROM CLARITY_EMP WHERE USER_ID IS NOT NULL")
-    known_emp_set = {row[0] for row in cursor.fetchall()}
+    cur.execute("SELECT USER_ID FROM CLARITY_EMP WHERE USER_ID IS NOT NULL")
+    known_emp_set = {row[0] for row in cur.fetchall()}
 
-    # Main access log query — behavioral metadata only
-    query = """
-        SELECT
-            al.ACCESS_LOG_ID  AS audit_id,
-            al.USER_ID        AS emp_id,
-            al.PAT_ID         AS pat_id,
-            al.ACTION_C       AS action_c,
-            al.ACCESS_INSTANT AS action_datetime,
-            al.DEP_ID         AS dept_id
-        FROM ACCESS_LOG al
-        WHERE al.ACCESS_INSTANT >= ?
-          AND al.USER_ID IS NOT NULL
-          AND al.PAT_ID IS NOT NULL
-        ORDER BY al.ACCESS_INSTANT ASC
-    """
+    # Stream ACCESS_LOG in AUDIT_CHUNK_SIZE-row pages using OFFSET/FETCH NEXT
+    log.info('Streaming ACCESS_LOG in chunks...')
+    total_extracted = 0
+    offset = 0
 
-    cursor.execute(query, (since,))
-    columns = [col[0] for col in cursor.description]
+    while True:
+        chunk_cursor = clarity_conn.cursor()
+        chunk_cursor.execute("""
+            SELECT
+                al.ACCESS_LOG_ID  AS audit_id,
+                al.USER_ID        AS emp_id,
+                al.PAT_ID         AS pat_id,
+                al.ACTION_C       AS action_c,
+                al.ACCESS_INSTANT AS action_datetime,
+                al.DEP_ID         AS dept_id
+            FROM ACCESS_LOG al
+            WHERE al.ACCESS_INSTANT >= ?
+              AND al.USER_ID IS NOT NULL
+              AND al.PAT_ID IS NOT NULL
+            ORDER BY al.ACCESS_LOG_ID ASC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """, (since, offset, AUDIT_CHUNK_SIZE))
 
-    records = []
-    row_count = 0
+        columns = [col[0] for col in chunk_cursor.description]
+        records = []
 
-    for row in cursor:
-        record = dict(zip(columns, row))
+        for row in chunk_cursor:
+            record = dict(zip(columns, row))
+            emp_id = record.get('emp_id')
+            pat_id = record.get('pat_id')
+            record['in_panel']           = (emp_id, pat_id) in panel_set
+            record['is_vip_access']      = pat_id in vip_set
+            record['is_sensitive_access']= pat_id in sensitive_set
+            record['is_known_user']      = emp_id in known_emp_set
+            if record.get('action_datetime'):
+                record['action_datetime'] = record['action_datetime'].isoformat()
+            records.append(record)
 
-        emp_id = record.get('emp_id')
-        pat_id = record.get('pat_id')
+        chunk_cursor.close()
 
-        # Derive boolean flags
-        record['in_panel'] = (emp_id, pat_id) in panel_set
-        record['is_vip_access'] = pat_id in vip_set
-        record['is_sensitive_access'] = pat_id in sensitive_set
-        record['is_known_user'] = emp_id in known_emp_set
+        if not records:
+            # No more rows — send final signal with is_final_table_batch=True
+            log.info(f'Streaming complete. Total audit events extracted: {total_extracted:,}')
+            send_callback('audit_events', [], is_final_table_batch=True)
+            break
 
-        # Convert datetime to ISO string for JSON serialization
-        if record.get('action_datetime'):
-            record['action_datetime'] = record['action_datetime'].isoformat()
+        total_extracted += len(records)
+        log.info(f'  Chunk at offset {offset:,}: {len(records):,} records '
+                 f'(total so far: {total_extracted:,})')
 
-        records.append(record)
-        row_count += 1
+        # Determine if this chunk is the last one: fewer rows than AUDIT_CHUNK_SIZE
+        is_last_chunk = len(records) < AUDIT_CHUNK_SIZE
 
-        if row_count % 50000 == 0:
-            log.info(f'  Processed {row_count:,} access log records...')
+        if not send_callback('audit_events', records, is_final_table_batch=is_last_chunk):
+            log.error(f'Audit events chunk at offset {offset:,} failed — aborting')
+            return False
 
-    log.info(f'Extracted {len(records):,} audit events')
-    return records
+        if is_last_chunk:
+            # We know there are no more rows — exit without an extra empty query
+            log.info(f'Streaming complete. Total audit events extracted: {total_extracted:,}')
+            break
+
+        offset += AUDIT_CHUNK_SIZE
+
+    return True
 
 
 # ─── MAIN PIPELINE ──────────────────────────────────────────────────────────
-def send_in_batches(config, table, records, dry_run):
-    """Send records to API in batches of BATCH_SIZE."""
+def send_in_batches(config, table, records, dry_run, is_final_table_batch=False):
+    """Send records to API in batches of BATCH_SIZE.
+
+    is_final_table_batch: if True, the last API batch in this call will have
+    is_last_batch=True, signalling the server to update sync_state and trigger
+    detection. Set this only when sending the last chunk of records for a table.
+    """
     if not records:
         log.info(f'No records to send for {table}')
         return True
@@ -379,9 +394,12 @@ def send_in_batches(config, table, records, dry_run):
     for i in range(0, len(records), BATCH_SIZE):
         batch = records[i:i + BATCH_SIZE]
         batch_num = (i // BATCH_SIZE) + 1
-        is_last = batch_num == total_batches
+        is_last_api_batch = (batch_num == total_batches)
+        # Only mark is_last_batch=True on the very last API call when
+        # the caller has confirmed this is the final chunk for the table.
+        is_last_batch = is_last_api_batch and is_final_table_batch
 
-        success = send_batch(config, table, batch, is_last, batch_num, dry_run)
+        success = send_batch(config, table, batch, is_last_batch, batch_num, dry_run)
         if not success:
             log.error(f'Batch {batch_num} failed — aborting {table} sync')
             return False
@@ -413,22 +431,32 @@ def main():
     clarity_conn = get_clarity_connection(config)
 
     try:
-        # Step 1 — Employees (always full sync — reference data)
+        # Step 1 — Employees (small reference table, all-at-once is fine)
         employees = extract_employees(clarity_conn, config)
-        if not send_in_batches(config, 'employees', employees, args.dry_run):
+        if not send_in_batches(config, 'employees', employees, args.dry_run,
+                               is_final_table_batch=True):
             log.error('Employee sync failed — aborting')
             sys.exit(1)
 
-        # Step 2 — Patient panels (always full sync — relationship data)
+        # Step 2 — Patient panels (small relationship table, all-at-once is fine)
         panels = extract_patient_panels(clarity_conn)
-        if not send_in_batches(config, 'patient_panels', panels, args.dry_run):
+        if not send_in_batches(config, 'patient_panels', panels, args.dry_run,
+                               is_final_table_batch=True):
             log.error('Panel sync failed — aborting')
             sys.exit(1)
 
-        # Step 3 — Audit events (delta sync)
+        # Step 3 — Audit events: streamed in 50K-row chunks to bound memory usage.
+        # The streaming function calls send_callback for each chunk and handles
+        # the is_final_table_batch=True signal on the last chunk automatically.
         last_sync = sync_state.get('audit_events')
-        events = extract_audit_events(clarity_conn, last_sync, args.full_sync)
-        if not send_in_batches(config, 'audit_events', events, args.dry_run):
+
+        def audit_send_callback(table, records, is_final_table_batch):
+            return send_in_batches(config, table, records, args.dry_run,
+                                   is_final_table_batch=is_final_table_batch)
+
+        if not extract_audit_events_streaming(
+                clarity_conn, last_sync, audit_send_callback,
+                full_sync=args.full_sync):
             log.error('Audit events sync failed — aborting')
             sys.exit(1)
 
