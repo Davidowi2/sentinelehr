@@ -130,7 +130,20 @@ def send_batch(config, table, records, is_last_batch, batch_num, dry_run=False):
 
 # ─── CLARITY CONNECTION ─────────────────────────────────────────────────────
 def get_clarity_connection(config):
-    """Connect to Epic Clarity database via ODBC."""
+    """
+    Connect to Epic Clarity database via ODBC.
+
+    Authentication modes:
+    - SQL authentication (production): used when both 'clarity_username' and
+      'clarity_password' are non-empty in config.json. Sends UID and PWD in
+      the connection string. Required for production hospital deployments.
+    - Windows authentication (development/testing only): used when both
+      'clarity_username' and 'clarity_password' are empty strings in config.json.
+      Uses Trusted_Connection=yes — the OS login of the user running the script
+      is passed to SQL Server. Suitable for local testing on a Windows developer
+      machine where the developer is already authenticated to the local SQL Server.
+      Do NOT use this mode in production.
+    """
     try:
         import pyodbc
     except ImportError:
@@ -138,14 +151,29 @@ def get_clarity_connection(config):
         log.error('Also install Microsoft ODBC Driver 17 for SQL Server from Microsoft.')
         sys.exit(1)
 
-    conn_str = (
-        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-        f"SERVER={config['clarity_server']};"
-        f"DATABASE={config['clarity_database']};"
-        f"UID={config['clarity_username']};"
-        f"PWD={config['clarity_password']};"
-        f"TrustServerCertificate=yes;"
-    )
+    use_sql_auth = bool(config.get('clarity_username') and config.get('clarity_password'))
+
+    if use_sql_auth:
+        # Production: SQL Server authentication with explicit credentials
+        log.info('Using SQL authentication')
+        conn_str = (
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={config['clarity_server']};"
+            f"DATABASE={config['clarity_database']};"
+            f"UID={config['clarity_username']};"
+            f"PWD={config['clarity_password']};"
+            f"TrustServerCertificate=yes;"
+        )
+    else:
+        # Development/testing only: Windows integrated authentication
+        log.info('Using Windows authentication (Trusted_Connection) — development mode only')
+        conn_str = (
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={config['clarity_server']};"
+            f"DATABASE={config['clarity_database']};"
+            f"Trusted_Connection=yes;"
+            f"TrustServerCertificate=yes;"
+        )
 
     try:
         conn = pyodbc.connect(conn_str, readonly=True)

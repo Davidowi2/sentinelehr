@@ -1,6 +1,6 @@
 {
     "api_key": "YOUR_SENTINELEHR_API_KEY_HERE",
-    "api_url": "https://sentinelehr-api.onrender.com",
+    "api_url": "https://sentinelehr.onrender.com",
     "clarity_server": "YOUR_EPIC_SERVER_HOSTNAME",
     "clarity_database": "Clarity",
     "clarity_username": "sentinelehr_readonly",
