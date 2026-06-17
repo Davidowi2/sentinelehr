@@ -411,4 +411,43 @@ Full 5-suite isolation test run against the live production API. All tests passe
 
 ---
 
-*Last updated: June 8, 2026*
+## Phase 15 — Ingestion Pipeline Hardening (Elite-Grade Push)
+- `a7d44ae` — Cleanup: revert self-pilot SSL bypasses, improve Windows auth fallback docs, fix config.example.json URL. Removed `verify=False` from `get_sync_state` and `send_batch`, removed urllib3 warning suppression, kept Windows auth fallback as documented dev feature, fixed `api_url` in `config.example.json` from wrong domain to `https://sentinelehr.onrender.com`.
+- `8e18939` — Fix: sync_state.last_record_count now counts correct table per ingest batch. The `is_last_batch=true` block was hardcoded to `SELECT COUNT(*) FROM audit_events` regardless of which table was being synced. Fixed with an if/elif block that picks the correct table.
+- `6e03429` — Feature: batch_id idempotency on POST /ingest/data. Added `batch_id UUID` column + `UNIQUE(batch_id, organization_id)` constraint to all 3 ingest tables via idempotent migrations. The endpoint now validates `batch_id` as a UUID, runs a `SELECT EXISTS` dedup check before any insert, and returns `{"status": "duplicate", ...}` (HTTP 200) if the batch was already processed. The extractor now generates `uuid.uuid4()` per batch and handles the duplicate response gracefully.
+- `fe18b93` — Feature: stream ACCESS_LOG in 50K-row chunks to bound memory usage. Replaced the all-at-once extraction with an OFFSET/FETCH NEXT chunked loop. Each 50K chunk is sent to the API immediately, then garbage-collected. Memory ceiling is now 50K records, not "total hospital size". Added `force_last_batch` param to `send_in_batches` to support the streaming callback.
+- `602bfe9` — Extractor: add schema_mapping config for non-standard Epic Clarity deployments. Added `DEFAULT_SCHEMA_MAPPING` module constant, `_validate_and_merge_schema_mapping()` validation function, and refactored all 4 SQL queries to use `[bracketed]` column names from the config. Added `--print-schema` and `--print-schema-example` CLI flags. `config.example.json` now includes the mapping with standard Epic defaults. Hospitals with custom column names can now configure the extractor without code changes.
+
+---
+
+## Phase 16 — Documentation Overhaul (Elite-Grade Push)
+- `286c5f1` — Docs: add DEPLOYMENT.md based on self-pilot run. 400+ line deployment guide for hospital IT teams. 10 sections covering overview, prerequisites, SQL Server permissions, installation, configuration, dry run, live run + Task Scheduler scheduling, troubleshooting (9-row error table), uninstallation, and support. All commands are Windows PowerShell. Replaced stale v1 README reference.
+- `68e600c` — Docs: add QUICKSTART.md. 123-line runbook for time-pressed hospital IT admins. 6 time-stamped phases (Install dependencies, Place files, Edit config, Dry run, Live run, Schedule daily) with just the commands and verification steps. Links to DEPLOYMENT.md for depth.
+- `923339e` — Docs: rewrite README.md to reflect current production architecture. 212-line developer-facing README covering status banner (design partner phase), what it does, architecture, repository layout, quick start, detection pipeline, database, security, documentation links, development status, and license/contact. Removed all references to v1 architecture (SQLite, `ingestion_pipeline.py`, the v1 mock data directory).
+- `ea8eff2` — Docs: clean up stale file references in README.md, add MARKETING_SITE.md link. Removed references to `seed_users.py` and `step1_and_2.py` (v1-era diagnostic scripts), added `MARKETING_SITE.md` to the Documentation section.
+- `268953d` — Cleanup: remove diagnostic scripts and unused screenshots. Deleted 8 diagnostic Python scripts, 5 review text files, and 50+ unused PNG screenshots from `dashboard/public/`. Repository is now clean of test artifacts.
+
+---
+
+## Phase 17 — Bug Fixes (Elite-Grade Push)
+- `aaccf0f` — Cases: make overdue threshold configurable per org via settings table. The 90-day threshold in `flag_overdue_cases()` was hardcoded. Added a `case_overdue_days` setting (default 90) to the `settings` table, refactored `flag_overdue_cases()` to read it with a fallback to 90, and exposed it via the existing `GET /settings/thresholds` and `PUT /settings/thresholds` endpoints with validation (0-99999). For org 1, the setting is set to 9999 so the demo data won't all get flagged as Overdue. The 405 previously stuck "Overdue" cases were reset to "Open". The threshold is now a real product feature, not a hardcoded constant.
+- (OCR fix commit hash) — Fix: requires_ocr_review = TRUE -> > 0 in /summary and /analytics/summary. The `cases.requires_ocr_review` column is INTEGER (0 or 1), not BOOLEAN. Two endpoints were comparing it as `= TRUE` which returned 0 results. Changed to `> 0` in both places, which correctly identifies cases with a non-zero OCR review count.
+
+---
+
+## Elite-Grade Push Summary
+
+| Area | Before | After |
+|---|---|---|
+| Ingestion API | `verify=False`, no retry, sync_state count wrong, no idempotency | Clean code, batch_id idempotency, correct per-table counts |
+| ACCESS_LOG extraction | Loads all rows into memory (memory bomb at scale) | Streams 50K-row chunks, bounded memory |
+| Schema flexibility | Hardcoded Epic column names | Configurable via `schema_mapping` |
+| Documentation | Stale v1 README | DEPLOYMENT.md + QUICKSTART.md + current README |
+| Overdue threshold | Hardcoded 90 days | Per-org configurable setting |
+| OCR count bug | Returned 0 due to boolean/integer mismatch | Returns correct count |
+| Working tree | 50+ unused screenshots, 8 diagnostic scripts | Clean |
+
+---
+
+*Last updated: June 18, 2026*
+*Elite-grade push complete. All 13 backlog items closed.*
