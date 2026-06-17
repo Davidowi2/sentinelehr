@@ -70,10 +70,8 @@ SentinelEHR/
 ├── breach_risk_scorer.py       # Risk scoring for alerts/cases
 ├── clarity_extractor.py        # Hospital-side Epic Clarity extractor
 ├── email_service.py            # Email notifications (alerts, OCR reminders)
-├── seed_users.py               # Utility: seed initial users/organizations
 ├── setup_db.py                 # Utility: initialize PostgreSQL database
 ├── setup_cases.py              # Utility: populate test cases
-├── step1_and_2.py              # Diagnostic utility
 ├── dashboard/                  # React/Vite frontend
 │   ├── src/
 │   │   ├── App.jsx             # Legacy frontend app
@@ -113,7 +111,6 @@ pip install -r requirements.txt
 python setup_db.py
 
 # 4. Seed test data (optional)
-python seed_users.py
 python setup_cases.py
 
 # 5. Start the backend API
@@ -185,6 +182,7 @@ SOC 2 certification is on the 12-month roadmap.
 ## Documentation
 - `DEPLOYMENT.md`: Full installation/operations guide for hospital IT teams
 - `QUICKSTART.md`: 10-minute extractor runbook
+- `MARKETING_SITE.md`: Public marketing website project documentation
 - `DEVLOG.md`: Full development history (Phases 0-14)
 - `mock_clarity_v2/README.md`: Synthetic Epic data generator for local testing
 
