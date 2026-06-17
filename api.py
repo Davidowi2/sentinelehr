@@ -1096,7 +1096,7 @@ def get_summary(request: Request, token_data = Depends(verify_token)):
         try:
             cursor.execute("""
                 SELECT COUNT(*) as ocr_required FROM cases
-                WHERE organization_id = %s AND requires_ocr_review = TRUE
+                WHERE organization_id = %s AND requires_ocr_review > 0
             """, (org_id,))
             ocr_row = cursor.fetchone()
             ocr_required = ocr_row['ocr_required'] if ocr_row else 0
@@ -2249,7 +2249,7 @@ def get_analytics_summary(request: Request, token_data = Depends(verify_token)):
 
         cursor.execute("""
             SELECT COUNT(*) as ocr_required FROM cases
-            WHERE organization_id = %s AND requires_ocr_review = TRUE
+            WHERE organization_id = %s AND requires_ocr_review > 0
         """, (org_id,))
         ocr_required_row = cursor.fetchone()
         ocr_required = ocr_required_row['ocr_required'] if ocr_required_row else 0
