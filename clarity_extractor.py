@@ -22,10 +22,25 @@ Configuration:
     Create a config.json file in the same directory as this script.
     See config.example.json for the required format.
 
+Schema Mapping:
+    By default, the extractor queries standard Epic Clarity column names
+    (USER_ID, USER_TYPE, ACCESS_LOG_ID, etc.). If your hospital's Epic
+    database uses non-standard column names — which is common for community
+    health centers and customized Epic deployments — add a "schema_mapping"
+    section to config.json. For each table, specify the actual column name
+    that corresponds to each SentinelEHR output alias. See config.example.json
+    for the full format with standard Epic defaults. Run:
+        python clarity_extractor.py --print-schema
+    to see the effective column mapping that will be used, and:
+        python clarity_extractor.py --print-schema-example
+    to print a template you can paste into config.json.
+
 Usage:
     python clarity_extractor.py
-    python clarity_extractor.py --dry-run    (extract but do not send)
-    python clarity_extractor.py --full-sync  (ignore last sync, send everything)
+    python clarity_extractor.py --dry-run              (extract but do not send)
+    python clarity_extractor.py --full-sync            (ignore last sync, send everything)
+    python clarity_extractor.py --print-schema         (show effective column mapping and exit)
+    python clarity_extractor.py --print-schema-example (print default mapping template and exit)
 
 Schedule:
     Run nightly via Windows Task Scheduler or cron.
@@ -57,6 +72,101 @@ log = logging.getLogger(__name__)
 CONFIG_FILE = Path(__file__).parent / 'config.json'
 BATCH_SIZE = 5000  # Records per API batch — reduce if network is slow
 
+# --- schema_mapping support ---
+# Standard Epic Clarity column names used when no schema_mapping is configured.
+# A hospital with custom column names overrides these in config.json under
+# the "schema_mapping" key — only the values (Epic column names) change;
+# the keys (SentinelEHR output aliases) are always fixed.
+DEFAULT_SCHEMA_MAPPING = {
+    'employees': {
+        'table': 'CLARITY_EMP',
+        'columns': {
+            'emp_id':        'USER_ID',
+            'role':          'USER_TYPE',
+            'dept_id':       'PRIMARY_DEP_ID',
+            'login_dept_id': 'DEFAULT_LOGIN_DEP_ID',
+            'is_float':      'IS_FLOAT',
+        }
+    },
+    'patient_panels': {
+        'table': 'PAT_ENC',
+        'columns': {
+            'emp_id': 'PROV_ID',
+            'pat_id': 'PAT_ID',
+        }
+    },
+    'patients': {
+        'table': 'PATIENT',
+        'columns': {
+            'pat_id':       'PAT_ID',
+            'is_vip':       'IS_VIP',
+            'is_sensitive': 'IS_SENSITIVE',
+        }
+    },
+    'audit_events': {
+        'table': 'ACCESS_LOG',
+        'columns': {
+            'audit_id':        'ACCESS_LOG_ID',
+            'emp_id':          'USER_ID',
+            'pat_id':          'PAT_ID',
+            'action_c':        'ACTION_C',
+            'action_datetime': 'ACCESS_INSTANT',
+            'dept_id':         'DEP_ID',
+        }
+    },
+}
+
+# Required output aliases per table — used to validate user-supplied mappings
+REQUIRED_ALIASES = {
+    'employees':      {'emp_id', 'role', 'dept_id', 'login_dept_id', 'is_float'},
+    'patient_panels': {'emp_id', 'pat_id'},
+    'patients':       {'pat_id', 'is_vip', 'is_sensitive'},
+    'audit_events':   {'audit_id', 'emp_id', 'pat_id', 'action_c', 'action_datetime', 'dept_id'},
+}
+
+
+def _validate_and_merge_schema_mapping(user_mapping):
+    """
+    Merge user-supplied schema_mapping with DEFAULT_SCHEMA_MAPPING.
+
+    Rules:
+    - If a table is absent from user_mapping, use the default and log a warning.
+    - If a table is present but missing 'table' key, error out.
+    - If a table is present but columns dict is missing required aliases, error out
+      with a specific list of the missing aliases.
+    - Returns the merged mapping dict.
+    """
+    merged = {}
+    for tbl, default in DEFAULT_SCHEMA_MAPPING.items():
+        if tbl not in user_mapping:
+            log.warning(f"No schema_mapping for '{tbl}' — using standard Epic defaults")
+            merged[tbl] = default
+            continue
+
+        entry = user_mapping[tbl]
+
+        if 'table' not in entry or not entry['table']:
+            log.error(f"schema_mapping.{tbl} is missing required 'table' key (the Epic table name, e.g. 'CLARITY_EMP')")
+            sys.exit(1)
+
+        if 'columns' not in entry or not isinstance(entry['columns'], dict):
+            log.error(f"schema_mapping.{tbl} is missing required 'columns' dict")
+            sys.exit(1)
+
+        required = REQUIRED_ALIASES[tbl]
+        provided = set(entry['columns'].keys())
+        missing  = required - provided
+        if missing:
+            log.error(
+                f"schema_mapping.{tbl}.columns is missing required output aliases: "
+                f"{sorted(missing)}. Each alias must map to the actual Epic column name."
+            )
+            sys.exit(1)
+
+        merged[tbl] = entry
+
+    return merged
+
 
 def load_config():
     """Load and validate configuration from config.json."""
@@ -74,6 +184,16 @@ def load_config():
     if missing:
         log.error(f'Missing required config keys: {missing}')
         sys.exit(1)
+
+    # --- schema_mapping support ---
+    # Optional — if absent, standard Epic defaults are used automatically.
+    user_mapping = config.get('schema_mapping')
+    if user_mapping is not None:
+        log.info('schema_mapping found in config.json — validating...')
+        config['schema_mapping'] = _validate_and_merge_schema_mapping(user_mapping)
+        log.info('schema_mapping validated successfully')
+    else:
+        config['schema_mapping'] = DEFAULT_SCHEMA_MAPPING
 
     return config
 
@@ -194,24 +314,28 @@ def get_clarity_connection(config):
 # ─── DATA EXTRACTION ────────────────────────────────────────────────────────
 def extract_employees(clarity_conn, config):
     """
-    Extract employee reference data from CLARITY_EMP.
-    Columns extracted: USER_ID, role, department, shift times, float status.
+    Extract employee reference data.
+    Table and column names are read from config['schema_mapping']['employees'].
     No personally identifiable employee information is extracted.
     """
     log.info('Extracting employee reference data...')
-    cursor = clarity_conn.cursor()
 
-    query = """
+    # --- schema_mapping support ---
+    mapping = config['schema_mapping']['employees']
+    table   = mapping['table']
+    cols    = mapping['columns']
+
+    query = f"""
         SELECT
-            e.USER_ID                       AS emp_id,
-            COALESCE(e.USER_TYPE, 'Unknown') AS role,
-            COALESCE(e.PRIMARY_DEP_ID, 0)   AS dept_id,
-            COALESCE(e.DEFAULT_LOGIN_DEP_ID, 0) AS login_dept_id,
-            '08:00'                         AS normal_start,
-            '17:00'                         AS normal_end,
-            CASE WHEN e.USER_TYPE = 'float' THEN 1 ELSE 0 END AS is_float
-        FROM CLARITY_EMP e
-        WHERE e.USER_ID IS NOT NULL
+            [{cols['emp_id']}]                              AS emp_id,
+            COALESCE([{cols['role']}], 'Unknown')           AS role,
+            COALESCE([{cols['dept_id']}], 0)                AS dept_id,
+            COALESCE([{cols['login_dept_id']}], 0)          AS login_dept_id,
+            '08:00'                                         AS normal_start,
+            '17:00'                                         AS normal_end,
+            CASE WHEN [{cols['role']}] = 'float' THEN 1 ELSE 0 END AS is_float
+        FROM [{table}]
+        WHERE [{cols['emp_id']}] IS NOT NULL
     """
 
     # Allow config override for custom shift hours
@@ -220,6 +344,7 @@ def extract_employees(clarity_conn, config):
     if config.get('shift_end'):
         query = query.replace("'17:00'", f"'{config['shift_end']}'")
 
+    cursor = clarity_conn.cursor()
     cursor.execute(query)
     columns = [col[0] for col in cursor.description]
     rows = cursor.fetchall()
@@ -234,24 +359,29 @@ def extract_employees(clarity_conn, config):
     return records
 
 
-def extract_patient_panels(clarity_conn):
+def extract_patient_panels(clarity_conn, config):
     """
-    Extract care panel relationships from PAT_ENC.
-    Only extracts provider-patient encounter relationships.
+    Extract care panel relationships.
+    Table and column names are read from config['schema_mapping']['patient_panels'].
     No clinical content, diagnoses, or notes are extracted.
     """
     log.info('Extracting patient panel relationships...')
-    cursor = clarity_conn.cursor()
 
-    query = """
+    # --- schema_mapping support ---
+    mapping = config['schema_mapping']['patient_panels']
+    table   = mapping['table']
+    cols    = mapping['columns']
+
+    query = f"""
         SELECT DISTINCT
-            pe.PROV_ID  AS emp_id,
-            pe.PAT_ID   AS pat_id
-        FROM PAT_ENC pe
-        WHERE pe.PROV_ID IS NOT NULL
-          AND pe.PAT_ID IS NOT NULL
+            [{cols['emp_id']}] AS emp_id,
+            [{cols['pat_id']}] AS pat_id
+        FROM [{table}]
+        WHERE [{cols['emp_id']}] IS NOT NULL
+          AND [{cols['pat_id']}] IS NOT NULL
     """
 
+    cursor = clarity_conn.cursor()
     cursor.execute(query)
     columns = [col[0] for col in cursor.description]
     rows = cursor.fetchall()
@@ -261,9 +391,10 @@ def extract_patient_panels(clarity_conn):
     return records
 
 
-def extract_audit_events_streaming(clarity_conn, last_sync_at, send_callback, full_sync=False):
+def extract_audit_events_streaming(clarity_conn, config, last_sync_at, send_callback, full_sync=False):
     """
-    Stream ACCESS_LOG rows in chunks and pass each chunk to send_callback.
+    Stream audit log rows in chunks and pass each chunk to send_callback.
+    Table and column names are read from config['schema_mapping'].
 
     Memory ceiling: AUDIT_CHUNK_SIZE records at any one time (~50K rows).
     For large hospitals this replaces the previous all-at-once approach which
@@ -274,6 +405,23 @@ def extract_audit_events_streaming(clarity_conn, last_sync_at, send_callback, fu
         Returns True on success, False on failure.
     """
     AUDIT_CHUNK_SIZE = 50000
+
+    # --- schema_mapping support ---
+    ae_mapping  = config['schema_mapping']['audit_events']
+    ae_table    = ae_mapping['table']
+    ae_cols     = ae_mapping['columns']
+
+    pat_mapping = config['schema_mapping']['patients']
+    pat_table   = pat_mapping['table']
+    pat_cols    = pat_mapping['columns']
+
+    pp_mapping  = config['schema_mapping']['patient_panels']
+    pp_table    = pp_mapping['table']
+    pp_cols     = pp_mapping['columns']
+
+    emp_mapping = config['schema_mapping']['employees']
+    emp_table   = emp_mapping['table']
+    emp_cols    = emp_mapping['columns']
 
     # Determine the since-date for delta vs full sync — unchanged logic
     if full_sync or not last_sync_at:
@@ -286,12 +434,12 @@ def extract_audit_events_streaming(clarity_conn, last_sync_at, send_callback, fu
     # Pre-load lookup sets once (small tables, safe to hold in memory)
     log.info('Loading VIP and sensitive patient flags...')
     cur = clarity_conn.cursor()
-    cur.execute("""
-        SELECT PAT_ID,
-               COALESCE(IS_VIP, 0)       AS is_vip,
-               COALESCE(IS_SENSITIVE, 0) AS is_sensitive
-        FROM PATIENT
-        WHERE PAT_ID IS NOT NULL
+    cur.execute(f"""
+        SELECT [{pat_cols['pat_id']}],
+               COALESCE([{pat_cols['is_vip']}], 0)       AS is_vip,
+               COALESCE([{pat_cols['is_sensitive']}], 0) AS is_sensitive
+        FROM [{pat_table}]
+        WHERE [{pat_cols['pat_id']}] IS NOT NULL
     """)
     patient_rows = cur.fetchall()
     vip_set       = {row[0] for row in patient_rows if row[1]}
@@ -299,36 +447,38 @@ def extract_audit_events_streaming(clarity_conn, last_sync_at, send_callback, fu
     log.info(f'Loaded {len(vip_set)} VIP patients, {len(sensitive_set)} sensitive patients')
 
     log.info('Loading panel relationships for in-panel derivation...')
-    cur.execute("""
-        SELECT DISTINCT PROV_ID, PAT_ID FROM PAT_ENC
-        WHERE PROV_ID IS NOT NULL AND PAT_ID IS NOT NULL
+    cur.execute(f"""
+        SELECT DISTINCT [{pp_cols['emp_id']}], [{pp_cols['pat_id']}]
+        FROM [{pp_table}]
+        WHERE [{pp_cols['emp_id']}] IS NOT NULL
+          AND [{pp_cols['pat_id']}] IS NOT NULL
     """)
     panel_set = {(row[0], row[1]) for row in cur.fetchall()}
     log.info(f'Loaded {len(panel_set)} panel relationships')
 
-    cur.execute("SELECT USER_ID FROM CLARITY_EMP WHERE USER_ID IS NOT NULL")
+    cur.execute(f"SELECT [{emp_cols['emp_id']}] FROM [{emp_table}] WHERE [{emp_cols['emp_id']}] IS NOT NULL")
     known_emp_set = {row[0] for row in cur.fetchall()}
 
-    # Stream ACCESS_LOG in AUDIT_CHUNK_SIZE-row pages using OFFSET/FETCH NEXT
-    log.info('Streaming ACCESS_LOG in chunks...')
+    # Stream the audit log in AUDIT_CHUNK_SIZE-row pages using OFFSET/FETCH NEXT
+    log.info(f'Streaming [{ae_table}] in chunks...')
     total_extracted = 0
     offset = 0
 
     while True:
         chunk_cursor = clarity_conn.cursor()
-        chunk_cursor.execute("""
+        chunk_cursor.execute(f"""
             SELECT
-                al.ACCESS_LOG_ID  AS audit_id,
-                al.USER_ID        AS emp_id,
-                al.PAT_ID         AS pat_id,
-                al.ACTION_C       AS action_c,
-                al.ACCESS_INSTANT AS action_datetime,
-                al.DEP_ID         AS dept_id
-            FROM ACCESS_LOG al
-            WHERE al.ACCESS_INSTANT >= ?
-              AND al.USER_ID IS NOT NULL
-              AND al.PAT_ID IS NOT NULL
-            ORDER BY al.ACCESS_LOG_ID ASC
+                [{ae_cols['audit_id']}]        AS audit_id,
+                [{ae_cols['emp_id']}]          AS emp_id,
+                [{ae_cols['pat_id']}]          AS pat_id,
+                [{ae_cols['action_c']}]        AS action_c,
+                [{ae_cols['action_datetime']}] AS action_datetime,
+                [{ae_cols['dept_id']}]         AS dept_id
+            FROM [{ae_table}]
+            WHERE [{ae_cols['action_datetime']}] >= ?
+              AND [{ae_cols['emp_id']}] IS NOT NULL
+              AND [{ae_cols['pat_id']}] IS NOT NULL
+            ORDER BY [{ae_cols['audit_id']}] ASC
             OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
         """, (since, offset, AUDIT_CHUNK_SIZE))
 
@@ -339,10 +489,10 @@ def extract_audit_events_streaming(clarity_conn, last_sync_at, send_callback, fu
             record = dict(zip(columns, row))
             emp_id = record.get('emp_id')
             pat_id = record.get('pat_id')
-            record['in_panel']           = (emp_id, pat_id) in panel_set
-            record['is_vip_access']      = pat_id in vip_set
-            record['is_sensitive_access']= pat_id in sensitive_set
-            record['is_known_user']      = emp_id in known_emp_set
+            record['in_panel']            = (emp_id, pat_id) in panel_set
+            record['is_vip_access']       = pat_id in vip_set
+            record['is_sensitive_access'] = pat_id in sensitive_set
+            record['is_known_user']       = emp_id in known_emp_set
             if record.get('action_datetime'):
                 record['action_datetime'] = record['action_datetime'].isoformat()
             records.append(record)
@@ -413,7 +563,22 @@ def main():
                         help='Extract data but do not send to API')
     parser.add_argument('--full-sync', action='store_true',
                         help='Ignore last sync timestamp and extract last 90 days')
+    # --- schema_mapping support ---
+    parser.add_argument('--print-schema', action='store_true',
+                        help='Print the effective column mapping that will be used and exit')
+    parser.add_argument('--print-schema-example', action='store_true',
+                        help='Print a template schema_mapping block with standard Epic defaults and exit')
     args = parser.parse_args()
+
+    # --- schema_mapping support: handle print flags before any connection ---
+    if args.print_schema_example:
+        print(json.dumps({'schema_mapping': DEFAULT_SCHEMA_MAPPING}, indent=4))
+        sys.exit(0)
+
+    if args.print_schema:
+        config = load_config()
+        print(json.dumps({'schema_mapping': config['schema_mapping']}, indent=4))
+        sys.exit(0)
 
     log.info('=' * 60)
     log.info('SentinelEHR Clarity Extractor starting')
@@ -439,7 +604,7 @@ def main():
             sys.exit(1)
 
         # Step 2 — Patient panels (small relationship table, all-at-once is fine)
-        panels = extract_patient_panels(clarity_conn)
+        panels = extract_patient_panels(clarity_conn, config)
         if not send_in_batches(config, 'patient_panels', panels, args.dry_run,
                                is_final_table_batch=True):
             log.error('Panel sync failed — aborting')
@@ -455,7 +620,7 @@ def main():
                                    is_final_table_batch=is_final_table_batch)
 
         if not extract_audit_events_streaming(
-                clarity_conn, last_sync, audit_send_callback,
+                clarity_conn, config, last_sync, audit_send_callback,
                 full_sync=args.full_sync):
             log.error('Audit events sync failed — aborting')
             sys.exit(1)

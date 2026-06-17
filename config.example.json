@@ -6,5 +6,44 @@
     "clarity_username": "sentinelehr_readonly",
     "clarity_password": "YOUR_READONLY_PASSWORD",
     "shift_start": "07:00",
-    "shift_end": "19:00"
+    "shift_end": "19:00",
+    "schema_mapping": {
+        "_comment": "Column names below are standard Epic Clarity defaults. Only edit the VALUES (right side), not the keys. Remove this section entirely to use standard Epic defaults.",
+        "employees": {
+            "table": "CLARITY_EMP",
+            "columns": {
+                "emp_id":        "USER_ID",
+                "role":          "USER_TYPE",
+                "dept_id":       "PRIMARY_DEP_ID",
+                "login_dept_id": "DEFAULT_LOGIN_DEP_ID",
+                "is_float":      "IS_FLOAT"
+            }
+        },
+        "patient_panels": {
+            "table": "PAT_ENC",
+            "columns": {
+                "emp_id": "PROV_ID",
+                "pat_id": "PAT_ID"
+            }
+        },
+        "patients": {
+            "table": "PATIENT",
+            "columns": {
+                "pat_id":       "PAT_ID",
+                "is_vip":       "IS_VIP",
+                "is_sensitive": "IS_SENSITIVE"
+            }
+        },
+        "audit_events": {
+            "table": "ACCESS_LOG",
+            "columns": {
+                "audit_id":        "ACCESS_LOG_ID",
+                "emp_id":          "USER_ID",
+                "pat_id":          "PAT_ID",
+                "action_c":        "ACTION_C",
+                "action_datetime": "ACCESS_INSTANT",
+                "dept_id":         "DEP_ID"
+            }
+        }
+    }
 }
