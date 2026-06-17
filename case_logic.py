@@ -264,12 +264,18 @@ def set_case_outcome(case_id: str, outcome: str, user_id: int) -> None:
 
 def flag_overdue_cases(conn) -> int:
     cursor = conn.cursor()
-    # SELECT all cases where status NOT IN ('Resolved', 'Closed') AND created_at < NOW() - INTERVAL '90 days'
+    
+    # Read case_overdue_days setting, default to 90
+    cursor.execute("SELECT value FROM settings WHERE key = 'case_overdue_days'")
+    row = cursor.fetchone()
+    case_overdue_days = int(row['value']) if row else 90
+    
+    # SELECT all cases where status NOT IN ('Resolved', 'Closed') AND created_at < NOW() - INTERVAL '%s days'
     cursor.execute("""
         SELECT case_id FROM cases 
         WHERE status NOT IN ('Resolved', 'Closed', 'Overdue') 
-        AND created_at < NOW() - INTERVAL '90 days'
-    """)
+        AND created_at < NOW() - INTERVAL '%s days'
+    """, (str(case_overdue_days),))
     overdue_rows = cursor.fetchall()
     
     count = 0
@@ -284,8 +290,8 @@ def flag_overdue_cases(conn) -> int:
         
         cursor.execute("""
             INSERT INTO case_audit_log (case_id, action, note) 
-            VALUES (%s, 'status_changed', 'Auto-flagged: exceeded 90-day resolution window')
-        """, (case_id,))
+            VALUES (%s, 'status_changed', %s)
+        """, (case_id, f'Auto-flagged: exceeded {case_overdue_days}-day resolution window'))
         count += 1
 
     conn.commit()

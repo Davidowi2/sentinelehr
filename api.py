@@ -93,7 +93,8 @@ def seed_database():
             INSERT INTO settings (key, value) VALUES 
             ('critical_threshold', '0.7'), 
             ('high_threshold', '0.4'), 
-            ('medium_threshold', '0.2') 
+            ('medium_threshold', '0.2'),
+            ('case_overdue_days', '90')
             ON CONFLICT (key) DO NOTHING 
         ''')
         conn.commit()
@@ -2278,6 +2279,7 @@ class ThresholdUpdate(BaseModel):
     critical_threshold: float
     high_threshold: float
     medium_threshold: float
+    case_overdue_days: int
 
 @app.put("/settings/thresholds")
 def update_thresholds(
@@ -2300,12 +2302,17 @@ def update_thresholds(
         if body.high_threshold <= body.medium_threshold:
             raise HTTPException(status_code=400, detail="High threshold must be greater than medium threshold")
         
+        # Validate case_overdue_days
+        if not (0 <= body.case_overdue_days <= 99999):
+            raise HTTPException(status_code=400, detail="case_overdue_days must be between 0 and 99999")
+            
         # Store thresholds in database
         conn = get_connection() 
         cursor = conn.cursor() 
         cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.critical_threshold), 'critical_threshold')) 
         cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.high_threshold), 'high_threshold')) 
-        cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.medium_threshold), 'medium_threshold')) 
+        cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.medium_threshold), 'medium_threshold'))
+        cursor.execute('UPDATE settings SET value = %s, updated_at = NOW() WHERE key = %s', (str(body.case_overdue_days), 'case_overdue_days'))
         conn.commit() 
         conn.close() 
         
@@ -2314,7 +2321,8 @@ def update_thresholds(
             "thresholds": {
                 "critical_threshold": body.critical_threshold,
                 "high_threshold": body.high_threshold,
-                "medium_threshold": body.medium_threshold
+                "medium_threshold": body.medium_threshold,
+                "case_overdue_days": body.case_overdue_days
             }
         }
     except HTTPException:
@@ -2331,18 +2339,24 @@ def get_thresholds(
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT key, value FROM settings WHERE key IN ('critical_threshold', 'high_threshold', 'medium_threshold')")
+        cursor.execute("SELECT key, value FROM settings WHERE key IN ('critical_threshold', 'high_threshold', 'medium_threshold', 'case_overdue_days')")
         rows = cursor.fetchall()
         conn.close()
         
-        # Convert to dictionary with float values
-        thresholds = {row['key']: float(row['value']) for row in rows}
+        # Convert to dictionary with appropriate types
+        thresholds = {}
+        for row in rows:
+            if row['key'] == 'case_overdue_days':
+                thresholds[row['key']] = int(row['value'])
+            else:
+                thresholds[row['key']] = float(row['value'])
         
         # Ensure we have all keys, otherwise use defaults
         return {
             "critical_threshold": thresholds.get('critical_threshold', 0.7),
             "high_threshold": thresholds.get('high_threshold', 0.4),
-            "medium_threshold": thresholds.get('medium_threshold', 0.2)
+            "medium_threshold": thresholds.get('medium_threshold', 0.2),
+            "case_overdue_days": thresholds.get('case_overdue_days', 90)
         }
     except Exception as e:
         # Fallback to defaults if database fails
@@ -2350,7 +2364,8 @@ def get_thresholds(
         return {
             "critical_threshold": 0.7,
             "high_threshold": 0.4,
-            "medium_threshold": 0.2
+            "medium_threshold": 0.2,
+            "case_overdue_days": 90
         }
 
 # ─── ADMIN DETECTION PIPELINE ──────────────────────────────
