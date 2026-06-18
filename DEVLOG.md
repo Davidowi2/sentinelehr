@@ -431,7 +431,7 @@ Full 5-suite isolation test run against the live production API. All tests passe
 
 ## Phase 17 — Bug Fixes (Elite-Grade Push)
 - `aaccf0f` — Cases: make overdue threshold configurable per org via settings table. The 90-day threshold in `flag_overdue_cases()` was hardcoded. Added a `case_overdue_days` setting (default 90) to the `settings` table, refactored `flag_overdue_cases()` to read it with a fallback to 90, and exposed it via the existing `GET /settings/thresholds` and `PUT /settings/thresholds` endpoints with validation (0-99999). For org 1, the setting is set to 9999 so the demo data won't all get flagged as Overdue. The 405 previously stuck "Overdue" cases were reset to "Open". The threshold is now a real product feature, not a hardcoded constant.
-- (OCR fix commit hash) — Fix: requires_ocr_review = TRUE -> > 0 in /summary and /analytics/summary. The `cases.requires_ocr_review` column is INTEGER (0 or 1), not BOOLEAN. Two endpoints were comparing it as `= TRUE` which returned 0 results. Changed to `> 0` in both places, which correctly identifies cases with a non-zero OCR review count.
+- (7e88b0e) — Fix: requires_ocr_review = TRUE -> > 0 in /summary and /analytics/summary. The `cases.requires_ocr_review` column is INTEGER (0 or 1), not BOOLEAN. Two endpoints were comparing it as `= TRUE` which returned 0 results. Changed to `> 0` in both places, which correctly identifies cases with a non-zero OCR review count.
 
 ---
 
